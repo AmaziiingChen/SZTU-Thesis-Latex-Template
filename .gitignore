@@ -1,4 +1,5 @@
 /*.bat
+.DS_Store
 *.aux
 *.lof
 *.lot
@@ -26,7 +27,17 @@
 *.nav
 *.rar
 ~$*.docx
+~$*.doc
 ~$*.xlsx
 ~$*.pptx
 *.tmp
 *.thm
+*.py[cod]
+__pycache__/
+/tmp/
+
+# Local-only thesis, proposal, and other reference samples.
+/references/private/*
+!/references/private/README.md
+/output/**/private/
+/templates/proposal/fonts.local/

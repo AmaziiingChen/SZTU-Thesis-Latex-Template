@@ -1,0 +1,29 @@
+{
+  "schema_version": "0.2",
+  "metadata": {
+    "title": "面向毕业论文的多格式模板生成方法研究",
+    "student_name": "张三",
+    "student_id": "202200000001",
+    "major": "光源与照明",
+    "college": "大数据与互联网学院",
+    "advisor": "李明"
+  },
+  "sections": {
+    "significance_and_status": [
+      "本课题研究如何用统一数据生成 Word 与 LaTeX 开题报告，以减少重复排版。",
+      "相关方法可以提升过程文档的一致性，并降低学生反复调整格式的成本。"
+    ],
+    "research_content": [
+      "建立字段模型，并实现两种文档渲染器。"
+    ],
+    "methods_and_means": [
+      "采用模板结构分析与确定性数据填充方法。"
+    ],
+    "research_steps": [
+      "分析官方模板，完成原型并进行对比测试。"
+    ],
+    "references": [
+      "[1] ECMA International. Office Open XML File Formats."
+    ]
+  }
+}

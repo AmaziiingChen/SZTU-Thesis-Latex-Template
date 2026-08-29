@@ -20,7 +20,7 @@ LaTeX利用设置好的模板，可以编译为格式统一的pdf。
 
 本项目的目的是为了创建一个符合深圳技术大学毕业论文（设计）撰写规范的TeX模板，解决学位论文撰写时格式调整的痛点。
 
-本模板当前收录了[本科论文格式范例2026](./official_documents/本科论文格式范例2026.docx)与[本科生毕业论文（设计）撰写规范及要求](./official_documents/本科生毕业论文（设计）撰写规范及要求.doc)；模板与当年正式要求的符合性仍需逐项核验。
+本模板当前收录了[本科论文格式范例2026](./references/official/本科论文格式范例2026.docx)与[本科生毕业论文（设计）撰写规范及要求](./references/official/本科生毕业论文（设计）撰写规范及要求.doc)；模板与当年正式要求的符合性仍需逐项核验。
 
 本 fork 的论文模板、过程文档、教程与 Agent 辅助写作建设计划见 [docs/PROJECT_PLAN.md](./docs/PROJECT_PLAN.md)。
 
@@ -40,7 +40,16 @@ LaTeX利用设置好的模板，可以编译为格式统一的pdf。
 
 ## 版本状况
 
-完整支持本科生毕业论文要求。
+现有本科毕业论文模板可正常编译；开题报告已形成 Word/LaTeX 双路工程原型，任务书和
+中期检查等过程文档模板仍在建设中。
+
+## 项目目录
+
+- 仓库根目录：现有本科毕业论文模板，继续使用 `sztuthesis_main.tex` 编译。
+- `templates/`：开题报告、任务书、中期检查等过程文档模板。
+- `references/official/`：学校正式格式文件与通知附件。
+- `references/private/`：仅供本地参考的论文、开题报告等样例；该目录内容不会提交到 Git。
+- `docs/`：macOS、Windows、Agent 使用指南和视频资料。
 
 ## 文件介绍
 
@@ -88,7 +97,10 @@ LaTeX利用设置好的模板，可以编译为格式统一的pdf。
 bash build.sh --clean
 ```
 
-模板会优先使用 Windows 规范字体；在 macOS 上缺少对应字体时，会回退到系统中文字体或 TeX Live 自带的 Fandol 字体。
+2026 届开题报告模板严格使用宋体（SimSun）、黑体（SimHei）和 Times New Roman，
+缺少任何一套字体时停止编译，不允许回退到系统默认字体或 Fandol。安装与预检方法见
+[`templates/proposal/README.md`](templates/proposal/README.md#必需字体禁止自动替换)。
+仓库根目录的历史毕业论文模板仍按其原有字体策略运行，后续将依据对应官方规范单独校准。
 
 ### Linux
 

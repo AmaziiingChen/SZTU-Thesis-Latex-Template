@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sztu.example/schema/proposal.schema.json",
+  "title": "深圳技术大学本科毕业论文（设计）开题报告数据",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "metadata", "sections"],
+  "properties": {
+    "schema_version": {
+      "const": "0.2"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "student_name",
+        "student_id",
+        "major",
+        "college",
+        "advisor"
+      ],
+      "properties": {
+        "title": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 80},
+            {"$ref": "#/$defs/richParagraph"}
+          ]
+        },
+        "student_name": {"type": "string", "minLength": 1, "maxLength": 20},
+        "student_id": {"type": "string", "minLength": 1, "maxLength": 30},
+        "major": {"type": "string", "minLength": 1, "maxLength": 40},
+        "college": {"type": "string", "minLength": 1, "maxLength": 50},
+        "advisor": {"type": "string", "minLength": 1, "maxLength": 30}
+      }
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "significance_and_status",
+        "research_content",
+        "methods_and_means",
+        "research_steps",
+        "references"
+      ],
+      "properties": {
+        "significance_and_status": {"$ref": "#/$defs/significanceParagraphs"},
+        "research_content": {"$ref": "#/$defs/paragraphs"},
+        "methods_and_means": {"$ref": "#/$defs/paragraphs"},
+        "research_steps": {"$ref": "#/$defs/paragraphs"},
+        "references": {"$ref": "#/$defs/referenceParagraphs"}
+      }
+    }
+  },
+  "$defs": {
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1, "maxLength": 5000},
+        "script": {"enum": ["normal", "sub", "super"]},
+        "italic": {"type": "boolean"},
+        "bold": {"type": "boolean"}
+      }
+    },
+    "richParagraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runs"],
+      "properties": {
+        "runs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {"$ref": "#/$defs/run"}
+        }
+      }
+    },
+    "paragraph": {
+      "oneOf": [
+        {"type": "string", "minLength": 1, "maxLength": 5000},
+        {"$ref": "#/$defs/richParagraph"}
+      ]
+    },
+    "paragraphs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {"$ref": "#/$defs/paragraph"}
+    },
+    "significanceParagraphs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 50,
+      "items": {"$ref": "#/$defs/paragraph"}
+    },
+    "referenceParagraphs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "oneOf": [
+          {"type": "string", "minLength": 1, "maxLength": 1000},
+          {"$ref": "#/$defs/richParagraph"}
+        ]
+      }
+    }
+  }
+}

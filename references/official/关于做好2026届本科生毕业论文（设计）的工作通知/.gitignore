@@ -1,0 +1,9 @@
+# This local notice archive contains administrative material that is not needed
+# to build or verify the public typesetting templates. Track only the official
+# layout sources currently used by this repository.
+*
+!.gitignore
+!2 2026届开题报告.pdf
+!4 中期检查表-范例(红色字体部分需填写自己实际内容并删除，完成后应改成全文字体应为黑色).docx
+!4 中期检查表-范例(红色字体部分需填写自己实际内容并删除，完成后应改成全文字体应为黑色).pdf
+!附件3 本科毕业档案相关表格/

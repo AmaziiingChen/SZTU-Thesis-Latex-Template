@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.2",
+  "metadata": {
+    "title": "基于统一数据模型的本科毕业论文过程文档生成系统设计与跨平台复杂格式自动校验及智能排版方法研究与工程应用",
+    "student_name": "张三",
+    "student_id": "202200000001",
+    "major": "计算机科学与技术人工智能与大数据分析方向",
+    "college": "大数据与互联网及人工智能交叉创新学院",
+    "advisor": "李明"
+  },
+  "sections": {
+    "significance_and_status": [
+      "本样例用于检查顶部信息表中的多行字段是否保持规定的水平与垂直对齐方式。",
+      "同时检查正文表格是否与信息表连续连接，并验证所有边框采用一致线宽。"
+    ],
+    "research_content": [
+      "验证双倍长度题目、长专业名称、长学院名称以及超长参考文献的自动换行。"
+    ],
+    "methods_and_means": [
+      "使用实际 XeLaTeX 编译结果测量文字边界、单元格中心和表格边线坐标。"
+    ],
+    "research_steps": [
+      "生成压力测试文档，完成中文渲染门禁与逐页视觉检查。"
+    ],
+    "references": [
+      "[1] International Organization for Standardization. A deliberately extended bibliographic entry for validating deterministic multi-line wrapping, cross-platform typography, consistent left alignment, and preservation of complete publication metadata in an undergraduate thesis proposal template under realistic narrow-column document constraints[J]. Journal of Document Engineering and Reproducible Typesetting, 2026, 18(4): 101-138. ENDREF-A.",
+      "[2] 深圳技术大学文档工程研究组. 面向跨平台复杂格式、超长中英文混排内容、统一数据入口和可重复视觉验收的本科毕业论文过程文档自动生成与质量保证方法研究[M]. 深圳: 深圳技术大学出版社, 2026: 1-128. ENDREF-B."
+    ]
+  }
+}
