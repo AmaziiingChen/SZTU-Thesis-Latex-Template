@@ -12,6 +12,11 @@
       "latex_family": "SimHei",
       "font_file_keys": ["SimHei"]
     },
+    "cjk_school_mark": {
+      "word_family": "华文行楷",
+      "latex_family": "STXingkai",
+      "font_file_keys": ["STXingkai"]
+    },
     "cjk_form_title": {
       "word_family": "方正小标宋简体",
       "latex_family": "FZXiaoBiaoSong-B05S",
@@ -29,6 +34,10 @@
     }
   },
   "font_files": {
+    "STXingkai": {
+      "environment": "SZTU_STXINGKAI_FONT",
+      "candidates": ["STXingkai.ttf", "华文行楷.ttf"]
+    },
     "FZXiaoBiaoSong": {
       "environment": "SZTU_FZXIAOBIAOSONG_FONT",
       "candidates": ["方正小标宋简体.ttf", "FZXiaoBiaoSong-B05S.ttf"]

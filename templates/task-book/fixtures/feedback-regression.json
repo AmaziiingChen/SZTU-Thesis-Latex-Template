@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": "面向跨平台排版校验与过程材料一致性检查的本科毕业论文文档生成方法研究",
+    "student_name": "林清和",
+    "student_id": "202600301066",
+    "college": "新材料与新能源学院",
+    "major": "光源与照明",
+    "class_name": "光电三班",
+    "advisor": "周明"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "建立可复用的任务书数据模型，验证字体、表格、签名区及跨页边框，并形成可追溯的测试记录。"
+    ],
+    "schedule": [
+      {"period": "第1—4周", "content": "完成规范测量、数据建模和模板实现。"},
+      {"period": "第5—8周", "content": "完成短内容、长内容与边界案例验证。"}
+    ],
+    "required_materials": [
+      "学校当年发布的任务书原件、填写说明和本地匿名化压力样例。"
+    ],
+    "references": [
+      "[1] ECMA International. Office Open XML File Formats[S]. 2021."
+    ],
+    "topic_information": {
+      "nature": "graduation_design",
+      "source": {
+        "type": "research_project",
+        "research_project": {
+          "level": "provincial_ministerial",
+          "project_number": "SZTU-2026-016"
+        }
+      }
+    }
+  }
+}

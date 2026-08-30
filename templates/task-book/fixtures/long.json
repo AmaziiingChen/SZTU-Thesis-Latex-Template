@@ -1,0 +1,63 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": "面向多源异构城市感知数据的可信融合、时空建模与可解释预测平台设计",
+    "student_name": "林海舟",
+    "student_id": "202600402016",
+    "college": "城市交通与物流学院",
+    "major": "智能交通工程",
+    "class_name": "智能交通二班",
+    "advisor": "周思远"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "本课题针对浮动车、地磁、视频和气象数据在采样频率、空间尺度与缺失模式上的差异，设计可追溯的数据治理与时空融合平台。平台应完成原始数据接入、质量检查、统一编码、特征构建、模型训练、结果解释和实验归档。",
+      "在数据层建立统一时间轴与路网拓扑，将多源观测映射到带来源、时间、空间和质量标记的数据单元；对缺失、异常和时间漂移给出可复现实验处理方案。",
+      "在模型层比较统计模型、图神经网络与跨模态注意力方法，明确训练集、验证集和测试集划分，至少完成三组基线、两组消融与一组异常场景实验。",
+      {
+        "type": "ordered_list",
+        "items": [
+          {"marker": "（1）", "content": "完成数据字典、接口协议、异常规则和匿名化方案。"},
+          {"marker": "（2）", "content": "完成动态图构建、特征融合和不确定性估计模块。"},
+          {"marker": "（3）", "content": "完成训练监控、指标计算、可视化和实验复现脚本。"},
+          {"marker": "（4）", "content": "完成系统测试、论文撰写、答辩演示和归档材料。"}
+        ]
+      },
+      "系统实现应具有清晰的模块边界和配置入口，关键实验必须记录数据版本、随机种子、参数、环境与输出摘要。论文应说明研究问题、方法依据、实验设计、结果限制与可复现条件。",
+      "学生须每周向指导教师汇报进展，依据意见更新计划；涉及公开数据以外的材料时，应完成脱敏并遵守数据使用约束。最终提交源码、数据字典、测试报告、演示材料和毕业论文。"
+    ],
+    "schedule": [
+      {"period": "第1—2周", "content": "检索文献，明确研究问题、数据范围和评价指标，完成开题材料。"},
+      {"period": "第3—4周", "content": "完成数据字典、采集接口、匿名化和质量检查模块。"},
+      {"period": "第5—6周", "content": "建立统一时间轴与路网拓扑，完成基线特征工程。"},
+      {"period": "第7—8周", "content": "实现统计模型、图模型与跨模态注意力模型，完成中期检查。"},
+      {"period": "第9—10周", "content": "完成主要实验、消融实验和异常场景实验，整理运行记录。"},
+      {"period": "第11—12周", "content": "完成结果解释、误差分析、平台联调和性能测试。"},
+      {"period": "第13—14周", "content": "完成论文初稿、图表复核和引用检查，根据指导意见修改。"},
+      {"period": "第15—16周", "content": "完成终稿、查重、答辩演示和电子及纸质材料归档。"}
+    ],
+    "required_materials": [
+      "研究区域公开路网、浮动车轨迹、地磁流量、匿名化视频统计量和气象观测数据。",
+      "数据字段说明、采样时间、坐标系统、缺失标记、许可范围和版本校验值。",
+      "Python、深度学习框架、空间数据库和实验追踪工具的官方文档。",
+      "学校本科毕业论文（设计）撰写规范、过程材料表格和学术诚信要求。",
+      "基线实现、单元测试、接口测试、性能测试和复现实验记录。"
+    ],
+    "references": [
+      "[1] Goodfellow I, Bengio Y, Courville A. Deep Learning[M]. Cambridge: MIT Press, 2016.",
+      "[2] Hamilton W L. Graph Representation Learning[M]. San Rafael: Morgan & Claypool, 2020.",
+      "[3] Vaswani A, Shazeer N, Parmar N, et al. Attention Is All You Need[C]//Advances in Neural Information Processing Systems. 2017: 5998-6008.",
+      "[4] Wu Z, Pan S, Chen F, et al. A Comprehensive Survey on Graph Neural Networks[J]. IEEE Transactions on Neural Networks and Learning Systems, 2021, 32(1): 4-24.",
+      "[5] 李明, 王浩. 多源交通数据时空融合方法综述[J]. 交通信息与安全, 2024, 42(5): 1-14.",
+      "[6] 周远, 刘晨. 面向城市路网的动态图预测与不确定性分析[J]. 计算机工程, 2025, 51(7): 220-231."
+    ],
+    "topic_information": {
+      "nature": "graduation_design",
+      "source": {
+        "type": "self_proposed",
+        "self_proposed_by": "teacher_student_joint"
+      }
+    }
+  }
+}

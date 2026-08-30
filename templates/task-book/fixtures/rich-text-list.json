@@ -1,0 +1,126 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": {
+      "type": "paragraph",
+      "runs": [
+        {"text": "g-C"},
+        {"text": "3", "script": "sub"},
+        {"text": "N"},
+        {"text": "4", "script": "sub"},
+        {"text": "光催化材料的多尺度结构表征与性能分析"}
+      ]
+    },
+    "student_name": "许安然",
+    "student_id": "202600201035",
+    "college": "新材料与新能源学院",
+    "major": "材料科学与工程",
+    "class_name": "材料三班",
+    "advisor": "孙启明"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      {
+        "type": "paragraph",
+        "runs": [
+          {"text": "本课题制备 g-C"},
+          {"text": "3", "script": "sub"},
+          {"text": "N"},
+          {"text": "4", "script": "sub"},
+          {"text": " 基光催化材料，考察 H"},
+          {"text": "2", "script": "sub"},
+          {"text": "O"},
+          {"text": "2", "script": "sub"},
+          {"text": " 浓度为 10"},
+          {"text": "−3", "script": "super"},
+          {"text": " mol·L"},
+          {"text": "−1", "script": "super"},
+          {"text": " 时的反应动力学，并以 "},
+          {"text": "R", "italic": true},
+          {"text": "2", "script": "super"},
+          {"text": " 和 "},
+          {"text": "k", "italic": true, "bold": true},
+          {"text": " 评价拟合效果。"}
+        ]
+      },
+      {
+        "type": "ordered_list",
+        "items": [
+          {"marker": "（1）", "content": "完成样品制备、物相与形貌表征。"},
+          {"marker": "（2）", "content": "完成暗吸附平衡、光催化反应和循环稳定性实验。"},
+          {"marker": "（3）", "content": "比较空白样、对照样与改性样并分析可能机理。"}
+        ]
+      },
+      {
+        "type": "image",
+        "path": "assets/research-workflow.png",
+        "alt": "虚构的材料制备、表征、反应和结果分析流程示意图",
+        "width_mm": 112,
+        "caption": "图 1  材料实验与数据分析流程"
+      },
+      {
+        "type": "paragraph",
+        "runs": [
+          {"text": "实验要求：", "bold": true},
+          {"text": "学生应保存原始谱图、实验记录、处理脚本和统计结果，图表必须标明单位、误差和样本数量。"}
+        ]
+      }
+    ],
+    "schedule": [
+      {
+        "period": "第1—4周",
+        "content": {
+          "type": "paragraph",
+          "runs": [
+            {"text": "完成 g-C"},
+            {"text": "3", "script": "sub"},
+            {"text": "N"},
+            {"text": "4", "script": "sub"},
+            {"text": " 样品制备与基础表征。"}
+          ]
+        }
+      },
+      {"period": "第5—10周", "content": "完成光催化实验、动力学拟合和重复性测试。"},
+      {"period": "第11—16周", "content": "完成机理分析、论文撰写、修改和答辩准备。"}
+    ],
+    "required_materials": [
+      "紫外可见吸收光谱、X 射线衍射、扫描电子显微镜和反应浓度随时间变化数据。",
+      {
+        "type": "paragraph",
+        "runs": [
+          {"text": "反应物 H"},
+          {"text": "2", "script": "sub"},
+          {"text": "O"},
+          {"text": "2", "script": "sub"},
+          {"text": " 的安全数据表、实验室操作规程和废液处置记录。"}
+        ]
+      }
+    ],
+    "references": [
+      {
+        "type": "paragraph",
+        "runs": [
+          {"text": "[1] Wang X, Maeda K, Thomas A, et al. A Metal-Free Polymeric Photocatalyst for Hydrogen Production from Water under Visible Light[J]. Nature Materials, 2009, 8(1): 76-80."}
+        ]
+      },
+      {
+        "type": "paragraph",
+        "runs": [
+          {"text": "[2] 陈晓, 刘洋. g-C"},
+          {"text": "3", "script": "sub"},
+          {"text": "N"},
+          {"text": "4", "script": "sub"},
+          {"text": " 光催化材料改性研究进展[J]. 材料导报, 2025, 39(6): 88-99."}
+        ]
+      }
+    ],
+    "topic_information": {
+      "nature": "graduation_thesis",
+      "source": {
+        "type": "self_proposed",
+        "self_proposed_by": "student"
+      }
+    }
+  }
+}

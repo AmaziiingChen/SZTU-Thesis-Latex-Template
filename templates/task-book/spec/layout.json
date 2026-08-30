@@ -1,0 +1,186 @@
+{
+  "version": "0.3",
+  "typography": {
+    "cover_number": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "四号",
+      "bold": false
+    },
+    "school_name": {
+      "cjk_font_role": "cjk_school_mark",
+      "latin_font_role": "latin",
+      "size": "小初",
+      "bold": true
+    },
+    "document_title": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "小一",
+      "bold": true
+    },
+    "cohort": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "cjk_label",
+      "size": "四号",
+      "bold": true
+    },
+    "cover_label": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "三号",
+      "bold": false
+    },
+    "cover_value": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "三号",
+      "bold": false
+    },
+    "cover_title_value": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "三号",
+      "bold": false
+    },
+    "notice_title": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "四号",
+      "bold": false
+    },
+    "notice_body": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    },
+    "section_title": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    },
+    "title_row_value": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    },
+    "body": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    },
+    "topic_body": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "五号",
+      "bold": false
+    },
+    "signature": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    }
+  },
+  "page": {
+    "width_mm": 210.0,
+    "height_mm": 297.0,
+    "top_margin_mm": 25.4,
+    "bottom_margin_mm": 25.4,
+    "left_margin_mm": 31.75,
+    "right_margin_mm": 31.75
+  },
+  "cover": {
+    "content_width_mm": 150.32,
+    "number_top_mm": 28.6,
+    "school_name_top_mm": 64.6,
+    "document_title_top_mm": 84.7,
+    "cohort_top_mm": 100.1,
+    "title_field_top_mm": 132.8,
+    "school_name_space_before_pt": 62.4,
+    "school_name_space_after_pt": 0.0,
+    "document_title_space_after_pt": 0.0,
+    "cohort_space_after_pt": 61.0,
+    "metadata_rows_top_mm": [187.8, 209.8, 231.8, 253.8],
+    "metadata_row_height_mm": 21.0,
+    "metadata_space_after_pt_one_line": 106.3,
+    "metadata_space_after_pt_two_lines": 71.8,
+    "metadata_column_gap_mm": 8.0,
+    "short_field_underline_width_mm": 42.0,
+    "full_field_underline_width_mm": 121.16,
+    "title_underline_width_mm": 128.0,
+    "title_max_lines": 2,
+    "title_second_line_alignment": "left",
+    "underline_pt": 0.5
+  },
+  "notice": {
+    "title_top_mm": 42.45,
+    "first_item_top_mm": 71.05,
+    "page_top_skip_mm": 13.5,
+    "title_to_items_mm": 21.5,
+    "title_space_after_pt": 39.25,
+    "hanging_indent_twip": 403,
+    "hanging_chars_hundredth": 168,
+    "item_space_after_pt": 0.0
+  },
+  "paragraphs": {
+    "body_line_spacing": 1.0,
+    "notice_line_spacing": 1.5,
+    "first_line_indent_em": 2.0,
+    "ordered_list_left_indent_em": 0.0,
+    "ordered_list_hanging_indent_em": 2.0,
+    "schedule_date_prefix_no_indent": true,
+    "reference_first_line_indent_em": 0.0,
+    "caption_space_before_pt": 3.0,
+    "caption_space_after_pt": 3.0
+  },
+  "table": {
+    "width_mm": 150.32,
+    "column_widths_mm": [150.32],
+    "border_pt": 0.5,
+    "horizontal_padding_mm": 1.905,
+    "top_bottom_padding_mm": 1.0,
+    "flow_vertical_padding_mm": 1.0,
+    "flow_end_space_mm": 0.0
+  },
+  "section_min_heights_mm": {
+    "title": 12.0,
+    "basic_content_and_requirements": 0.0,
+    "schedule": 0.0,
+    "required_materials_and_references": 0.0,
+    "topic_information": 21.96,
+    "college_leader_opinion": 33.249
+  },
+  "signature": {
+    "right_inset_mm": 7.5,
+    "advisor_blank_width_mm": 45.0,
+    "college_leader_blank_width_mm": 50.0,
+    "college_blank_paragraphs": 4,
+    "college_opinion_label_indent_mm": 3.175,
+    "topic_other_blank_width_mm": 32.0,
+    "topic_project_label_width_mm": 25.0,
+    "topic_project_value_alignment": "center",
+    "topic_underline_gap_mm": 0.0,
+    "self_proposed_left_indent_em": 5.0,
+    "self_proposed_alignment": "left",
+    "date_year_blank_width_mm": 12.7,
+    "date_month_blank_width_mm": 6.35,
+    "date_day_blank_width_mm": 6.35,
+    "date_label_width_mm": 5.0
+  },
+  "checkbox": {
+    "style": "outline_with_tick",
+    "size_em": 0.72,
+    "outline_pt": 0.5,
+    "tick_pt": 0.7
+  },
+  "latex_pagination": {},
+  "image": {
+    "default_width_mm": 120.0,
+    "max_width_mm": 146.0
+  }
+}

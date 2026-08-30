@@ -1,0 +1,96 @@
+{
+  "version": "0.3",
+  "cover": {
+    "document_number_label": "编号(学号)：",
+    "school_name": "深圳技术大学",
+    "document_title": "本科毕业论文(设计)任务书",
+    "cohort_format": "（ {graduation_year} 届）",
+    "field_labels": {
+      "title": "题目：",
+      "college": "学    院：",
+      "major": "专    业：",
+      "class_name": "班    级：",
+      "student_id": "学    号：",
+      "student_name": "学生姓名：",
+      "advisor": "指导教师："
+    }
+  },
+  "notice": {
+    "title": "本科生毕业论文（设计）须知",
+    "items": [
+      {
+        "marker": "1．",
+        "text": "努力学习、勤于实践、勇于创新，保质保量地完成任务书规定的内容。"
+      },
+      {
+        "marker": "2．",
+        "text": "独立完成规定的工作任务，不弄虚作假，不抄袭别人的工作内容。"
+      },
+      {
+        "marker": "3．",
+        "text": "实验时，爱护仪器设备，节约材料，严格遵守操作规程及实验室有关制度。"
+      },
+      {
+        "marker": "4．",
+        "text": "毕业论文（设计）必须符合深圳技术大学本科生毕业论文（设计）撰写规范与要求，否则不能取得考核成绩。"
+      },
+      {
+        "marker": "5．",
+        "text": "毕业论文（设计）成果、资料应于答辩结束后及时交给学院收存，学生不得擅自带离学校。经指导教师推荐可作为论文发表。"
+      },
+      {
+        "marker": "6．",
+        "text": "妥善保存《深圳技术大学本科毕业论文（设计）任务书》。"
+      }
+    ]
+  },
+  "body": {
+    "section_labels": {
+      "title": "题目名称：",
+      "basic_content_and_requirements": "一、毕业论文(设计)基本内容与要求：",
+      "schedule": "二、进度安排：",
+      "required_materials_and_references": "三、需收集的资料和指导性参考文献：",
+      "topic_information": "四、选题信息："
+    },
+    "schedule_labels": {
+      "period": "时间安排",
+      "content": "主要工作内容"
+    },
+    "topic_information": {
+      "nature_label": "选题性质：",
+      "nature_options": {
+        "graduation_design": "设计",
+        "graduation_thesis": "论文"
+      },
+      "source_label": "选题来源：",
+      "source_options": {
+        "research_project": "1. 科研项目",
+        "practice_project": "2. 实践项目",
+        "self_proposed": "3. 自拟题目"
+      },
+      "research_project_levels": {
+        "national": "国家级",
+        "provincial_ministerial": "省部级",
+        "other": "其他："
+      },
+      "project_number_label": "项目编号：",
+      "self_proposed_by_options": {
+        "teacher": "教师自拟",
+        "student": "学生自拟",
+        "teacher_student_joint": "师生共拟"
+      },
+      "unchecked_box": "outline_box",
+      "checked_mark": "outline_box_with_tick"
+    },
+    "signature_labels": {
+      "advisor": "指导教师签名：",
+      "college_opinion": "学院领导意见：",
+      "college_leader": "签名：",
+      "date_labels": {
+        "year": "年",
+        "month": "月",
+        "day": "日"
+      }
+    }
+  }
+}

@@ -2,7 +2,11 @@
   "version": "2026.1",
   "unit": "pt",
   "sizes": {
+    "小初": {"pt": 36.0, "latex_zihao": "-0"},
+    "小一": {"pt": 24.0, "latex_zihao": "-1"},
     "小二": {"pt": 18.0, "latex_zihao": "-2"},
+    "三号": {"pt": 16.0, "latex_zihao": "3"},
+    "四号": {"pt": 14.0, "latex_zihao": "4"},
     "小四": {"pt": 12.0, "latex_zihao": "-4"},
     "五号": {"pt": 10.5, "latex_zihao": "5"}
   }

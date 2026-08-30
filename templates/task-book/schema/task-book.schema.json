@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sztu.example/schema/task-book.schema.json",
+  "title": "深圳技术大学本科毕业论文（设计）任务书数据",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "metadata", "sections"],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "graduation_year",
+        "title",
+        "student_name",
+        "student_id",
+        "college",
+        "major",
+        "class_name",
+        "advisor"
+      ],
+      "properties": {
+        "graduation_year": {"type": "integer", "minimum": 2000, "maximum": 2100},
+        "title": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 100},
+            {"$ref": "#/$defs/richParagraph"}
+          ]
+        },
+        "student_name": {"type": "string", "minLength": 1, "maxLength": 20},
+        "student_id": {"type": "string", "minLength": 1, "maxLength": 30},
+        "college": {"type": "string", "minLength": 1, "maxLength": 50},
+        "major": {"type": "string", "minLength": 1, "maxLength": 50},
+        "class_name": {"type": "string", "minLength": 1, "maxLength": 30},
+        "advisor": {"type": "string", "minLength": 1, "maxLength": 30}
+      }
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "basic_content_and_requirements",
+        "schedule",
+        "required_materials",
+        "references",
+        "topic_information"
+      ],
+      "properties": {
+        "basic_content_and_requirements": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 80,
+          "items": {"$ref": "#/$defs/contentBlock"}
+        },
+        "schedule": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 60,
+          "items": {"$ref": "#/$defs/scheduleEntry"}
+        },
+        "required_materials": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 50,
+          "items": {"$ref": "#/$defs/contentBlock"}
+        },
+        "references": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {"$ref": "#/$defs/referenceParagraph"}
+        },
+        "topic_information": {"$ref": "#/$defs/topicInformation"}
+      }
+    }
+  },
+  "$defs": {
+    "richParagraph": {
+      "$ref": "../../common/schema/content-block.schema.json#/$defs/richParagraph"
+    },
+    "paragraph": {
+      "$ref": "../../common/schema/content-block.schema.json#/$defs/paragraph"
+    },
+    "contentBlock": {
+      "$ref": "../../common/schema/content-block.schema.json#/$defs/contentBlock"
+    },
+    "referenceParagraph": {
+      "oneOf": [
+        {"type": "string", "minLength": 1, "maxLength": 1500},
+        {"$ref": "#/$defs/richParagraph"}
+      ]
+    },
+    "scheduleEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["period", "content"],
+      "properties": {
+        "period": {"type": "string", "minLength": 1, "maxLength": 50},
+        "content": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 1500},
+            {"$ref": "#/$defs/richParagraph"}
+          ]
+        }
+      }
+    },
+    "topicInformation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nature", "source"],
+      "properties": {
+        "nature": {"enum": ["graduation_design", "graduation_thesis"]},
+        "source": {
+          "oneOf": [
+            {"$ref": "#/$defs/researchProjectSource"},
+            {"$ref": "#/$defs/practiceProjectSource"},
+            {"$ref": "#/$defs/selfProposedSource"}
+          ]
+        }
+      }
+    },
+    "researchProjectSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "research_project"],
+      "properties": {
+        "type": {"const": "research_project"},
+        "research_project": {
+          "oneOf": [
+            {"$ref": "#/$defs/namedResearchProject"},
+            {"$ref": "#/$defs/otherResearchProject"}
+          ]
+        }
+      }
+    },
+    "namedResearchProject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "project_number"],
+      "properties": {
+        "level": {"enum": ["national", "provincial_ministerial"]},
+        "project_number": {"type": "string", "minLength": 1, "maxLength": 50}
+      }
+    },
+    "otherResearchProject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "other_level", "project_number"],
+      "properties": {
+        "level": {"const": "other"},
+        "other_level": {"type": "string", "minLength": 1, "maxLength": 50},
+        "project_number": {"type": "string", "minLength": 1, "maxLength": 50}
+      }
+    },
+    "practiceProjectSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {"type": {"const": "practice_project"}}
+    },
+    "selfProposedSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "self_proposed_by"],
+      "properties": {
+        "type": {"const": "self_proposed"},
+        "self_proposed_by": {
+          "enum": ["teacher", "student", "teacher_student_joint"]
+        }
+      }
+    }
+  }
+}

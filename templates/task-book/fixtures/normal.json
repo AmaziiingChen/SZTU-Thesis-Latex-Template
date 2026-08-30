@@ -1,0 +1,54 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": "基于统一数据模型的本科毕业论文过程文档生成系统设计与实现",
+    "student_name": "王若明",
+    "student_id": "202600301028",
+    "college": "新材料与新能源学院",
+    "major": "光源与照明",
+    "class_name": "光电二班",
+    "advisor": "陈明"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "本课题面向本科毕业论文过程文档排版不一致的问题，建立统一数据模型并实现 Word 与 LaTeX 双路生成。",
+      {
+        "type": "ordered_list",
+        "items": [
+          {"marker": "（1）", "content": "分析官方任务书的页面、字体、表格和签署区域约束。"},
+          {"marker": "（2）", "content": "实现结构化数据校验、富文本表达和确定性排版。"},
+          {"marker": "（3）", "content": "使用短、正常、长和跨页案例验证输出稳定性。"}
+        ]
+      },
+      "学生应独立完成系统设计、程序实现、实验分析和论文撰写，提交可复现源码、测试记录与毕业论文终稿。"
+    ],
+    "schedule": [
+      {"period": "第1—2周", "content": "完成文献调研、需求分析和开题。"},
+      {"period": "第3—6周", "content": "完成统一数据模型和 Word 渲染原型。"},
+      {"period": "第7—10周", "content": "完成 LaTeX 渲染、自动检查和中期测试。"},
+      {"period": "第11—14周", "content": "补充压力案例，完成论文撰写和修改。"},
+      {"period": "第15—16周", "content": "完成查重、答辩材料整理和最终归档。"}
+    ],
+    "required_materials": [
+      "学校当年发布的本科毕业论文（设计）工作通知、撰写规范和相关过程表格。",
+      "WordprocessingML、LaTeX 表格分页及中文字体度量的官方技术资料。",
+      "仅在本地保存的匿名化版式压力样例和逐页检查记录。"
+    ],
+    "references": [
+      "[1] ECMA International. ECMA-376: Office Open XML File Formats[S]. 2021.",
+      "[2] Lamport L. LaTeX: A Document Preparation System[M]. 2nd ed. Boston: Addison-Wesley, 1994.",
+      "[3] 刘晨, 周远. 基于结构化数据的学术文档自动排版方法[J]. 计算机工程与应用, 2025, 61(8): 210-218."
+    ],
+    "topic_information": {
+      "nature": "graduation_design",
+      "source": {
+        "type": "research_project",
+        "research_project": {
+          "level": "provincial_ministerial",
+          "project_number": "GD-EDU-2026-017"
+        }
+      }
+    }
+  }
+}

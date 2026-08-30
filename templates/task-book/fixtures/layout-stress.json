@@ -1,0 +1,39 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": "面向超长学院专业字段与多行题目的本科毕业设计任务书确定性排版和跨平台一致性验证研究",
+    "student_name": "欧阳明远",
+    "student_id": "202600999999999999",
+    "college": "城市交通与物流学院（未来交通学院）智能系统联合培养中心",
+    "major": "智能交通与智慧城市系统工程（跨学科联合培养方向）",
+    "class_name": "智能交通工程联合培养实验班",
+    "advisor": "赵文清"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "本样例用于检查封面长学院、长专业、长班级、长学号和多行题目的换行、对齐、下划线及边界留白，不允许通过缩小官方字号规避。"
+    ],
+    "schedule": [
+      {"period": "2026年1—2月", "content": "完成信息区压力数据、换行边界和跨平台字体度量测试。"},
+      {"period": "2025年10月—11月", "content": "完成表格边框、签名空间和长参考文献测试。"}
+    ],
+    "required_materials": [
+      "A4 页面、三号封面字段、五号正文、连续单列表格和手写签名空间的测量记录。"
+    ],
+    "references": [
+      "[1] A Very Long Fictional Reference Entry for Testing Wrapped English Text, Mixed Punctuation, Stable Hanging Alignment, and the Right Cell Padding in a Formal Chinese Graduation Task Book Template[J]. Journal of Reproducible Document Layout, 2026, 18(4): 101-128."
+    ],
+    "topic_information": {
+      "nature": "graduation_thesis",
+      "source": {
+        "type": "research_project",
+        "research_project": {
+          "level": "other",
+          "other_level": "校级跨学科教学改革研究项目",
+          "project_number": "SZTU-LAYOUT-STRESS-2026-0009"
+        }
+      }
+    }
+  }
+}

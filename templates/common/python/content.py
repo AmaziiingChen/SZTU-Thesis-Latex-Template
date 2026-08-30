@@ -29,6 +29,32 @@ def display_width(text: str) -> float:
     return sum(0.5 if ord(char) < 128 else 1.0 for char in text)
 
 
+ARABIC_MONTH_PATTERN = r"(?:0?[1-9]|1[0-2])"
+CHINESE_MONTH_PATTERN = r"(?:[一二三四五六七八九]|十[一二]?)"
+MONTH_RANGE_CONNECTOR_PATTERN = r"[-–—－~～至]"
+CALENDAR_DATE_PREFIX_PATTERN = re.compile(
+    rf"^\s*(?:"
+    rf"(?:19|20)\d{{2}}\s*年\s*(?:"
+    rf"{ARABIC_MONTH_PATTERN}\s*(?:月|{MONTH_RANGE_CONNECTOR_PATTERN}\s*{ARABIC_MONTH_PATTERN}\s*月)"
+    rf"|{CHINESE_MONTH_PATTERN}\s*月"
+    rf")"
+    rf"|(?:19|20)\d{{2}}\s*[-./]\s*{ARABIC_MONTH_PATTERN}(?!\d)"
+    rf"|{ARABIC_MONTH_PATTERN}\s*(?:月|{MONTH_RANGE_CONNECTOR_PATTERN}\s*{ARABIC_MONTH_PATTERN}\s*月)"
+    rf"|{CHINESE_MONTH_PATTERN}\s*月"
+    rf")"
+)
+
+
+def starts_with_calendar_date(text: str) -> bool:
+    """Return whether a schedule label begins with a calendar month/date.
+
+    Week labels such as ``第1—2周`` are deliberately excluded, while compact
+    month ranges such as ``2026年1—2月`` remain date-prefixed paragraphs.
+    """
+
+    return CALENDAR_DATE_PREFIX_PATTERN.match(text) is not None
+
+
 def runs_text(runs: list[dict[str, Any]]) -> str:
     return "".join(run["text"] for run in runs)
 

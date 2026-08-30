@@ -1,0 +1,29 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": "面向过程文档的规范化生成方法",
+    "student_name": "张明远",
+    "student_id": "202600100001",
+    "college": "大数据与互联网学院",
+    "major": "计算机科学与技术",
+    "class_name": "计科一班",
+    "advisor": "李华"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "完成需求分析、原型实现与测试，并按学校规范提交毕业论文。"
+    ],
+    "schedule": [
+      {"period": "第1—4周", "content": "完成调研、需求分析和总体方案设计。"}
+    ],
+    "required_materials": [],
+    "references": [
+      "[1] 张华. 文档自动生成方法研究[J]. 软件工程实践, 2025, 12(3): 1-8."
+    ],
+    "topic_information": {
+      "nature": "graduation_design",
+      "source": {"type": "practice_project"}
+    }
+  }
+}

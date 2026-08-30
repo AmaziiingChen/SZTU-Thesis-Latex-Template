@@ -1,0 +1,388 @@
+\documentclass[UTF8,a4paper,fontset=none]{ctexart}
+
+\usepackage{adjustbox}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{changepage}
+\usepackage{fontspec}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{ragged2e}
+\usepackage{setspace}
+\usepackage{tabularray}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usetikzlibrary{calc}
+
+\input{task-book-typography.tex}
+\geometry{top=\SZTUPageTopMargin,bottom=\SZTUPageBottomMargin,left=\SZTUPageLeftMargin,right=\SZTUPageRightMargin,headheight=0pt,headsep=0pt}
+\pagestyle{empty}
+\setlength{\parskip}{0pt}
+\setlength{\parindent}{\SZTUFirstLineIndent}
+\setlength{\tabcolsep}{0pt}
+\setlength{\arrayrulewidth}{\SZTUFormRuleWidth}
+\input{task-book-fonts.tex}
+\input{task-book-fixed.tex}
+\input{task-book-data.tex}
+
+\newcommand{\CoverNumberText}[1]{{\songti\SZTUCoverNumberStyle #1}}
+\newcommand{\SchoolNameText}[1]{{\schoolmark\SZTUSchoolNameStyle #1}}
+\newcommand{\DocumentTitleText}[1]{{\heitiBold\SZTUDocumentTitleStyle #1}}
+\newcommand{\CohortText}[1]{{\heitiBold\heitiLatin\SZTUCohortStyle #1}}
+\newcommand{\CoverLabelText}[1]{{\heiti\SZTUCoverLabelStyle #1}}
+\newcommand{\CoverValueText}[1]{{\songti\SZTUCoverValueStyle #1}}
+\newcommand{\CoverTitleValueText}[1]{{\heiti\SZTUCoverTitleValueStyle #1}}
+\newcommand{\NoticeTitleText}[1]{{\heiti\SZTUNoticeTitleStyle #1}}
+\newcommand{\NoticeBodyText}[1]{{\songti\SZTUNoticeBodyStyle #1}}
+\newcommand{\SectionTitleText}[1]{{\heiti\SZTUSectionTitleStyle #1}}
+\newcommand{\TitleRowValueText}[1]{{\heiti\SZTUTitleRowValueStyle #1}}
+\newcommand{\BodyText}[1]{{\songti\SZTUBodyStyle #1}}
+\newcommand{\TopicText}[1]{{\songti\SZTUTopicBodyStyle #1}}
+\newcommand{\SignatureText}[1]{{\heiti\SZTUSignatureStyle #1}}
+\newcommand{\DateText}[1]{{\songti\SZTUNoticeBodyStyle #1}}
+
+\newlength{\TaskCoverTitleLabelWidth}
+\setlength{\TaskCoverTitleLabelWidth}{\dimexpr\SZTUCoverContentWidth-\SZTUTitleUnderlineWidth\relax}
+\newlength{\TaskCoverTitleValueWidth}
+\setlength{\TaskCoverTitleValueWidth}{\dimexpr\SZTUCoverContentWidth-\TaskCoverTitleLabelWidth\relax}
+\newlength{\TaskCoverMetadataLabelWidth}
+\setlength{\TaskCoverMetadataLabelWidth}{\dimexpr\SZTUCoverContentWidth-\SZTUFullFieldUnderlineWidth\relax}
+\newlength{\TaskCoverShortLabelWidth}
+\setlength{\TaskCoverShortLabelWidth}{\SZTUShortFieldLabelWidth}
+\newlength{\TaskTableExtraWidth}
+\setlength{\TaskTableExtraWidth}{\dimexpr\SZTUTableWidth-\textwidth\relax}
+\newsavebox{\TaskCoverInlineMeasure}
+
+\newcommand{\TaskCoverOneLineTitle}{%
+  \makebox[\TaskCoverTitleLabelWidth][l]{\CoverLabelText{\FixedCoverTitleLabel}}%
+  \begin{minipage}[t]{\TaskCoverTitleValueWidth}
+    \centering\CoverTitleValueText{\TaskCoverTitleLineOne}\par
+    \vspace{1mm}\hrule height \SZTUCoverUnderlineWidth
+  \end{minipage}%
+}
+\newcommand{\TaskCoverTwoLineTitle}{%
+  \begin{tikzpicture}[baseline=(label.north)]
+    \node[anchor=north west,inner sep=0pt,outer sep=0pt] (label) at (0,0) {%
+      \makebox[\TaskCoverTitleLabelWidth][l]{\CoverLabelText{\FixedCoverTitleLabel}}%
+    };
+    \node[anchor=north west,inner sep=0pt,outer sep=0pt] at (label.north east) {%
+      \makebox[\TaskCoverTitleValueWidth][c]{\CoverTitleValueText{\TaskCoverTitleLineOne}}%
+    };
+    \node[anchor=north west,inner sep=0pt,outer sep=0pt] at (0,-11mm) {%
+      \makebox[\SZTUCoverContentWidth][l]{\CoverTitleValueText{\TaskCoverTitleLineTwo}}%
+    };
+    \draw[line width=\SZTUCoverUnderlineWidth]
+      (\TaskCoverTitleLabelWidth,-5.5mm) -- (\SZTUCoverContentWidth,-5.5mm);
+    \draw[line width=\SZTUCoverUnderlineWidth]
+      (0,-16.5mm) -- (\SZTUCoverContentWidth,-16.5mm);
+    \path[use as bounding box] (0,0) rectangle (\SZTUCoverContentWidth,-17mm);
+  \end{tikzpicture}%
+}
+\newcommand{\TaskCoverTitleBlock}{%
+  \ifnum\TaskCoverTitleLineCount=2\relax
+    \TaskCoverTwoLineTitle
+  \else
+    \TaskCoverOneLineTitle
+  \fi
+}
+\newcommand{\TaskCoverUnderlinedValue}[2]{%
+  \begin{minipage}[t]{#1}
+    \centering\CoverValueText{#2}\par
+    \hrule height \SZTUCoverUnderlineWidth
+  \end{minipage}%
+}
+\newcommand{\TaskCoverFullMetadataRow}[2]{%
+  \makebox[\TaskCoverMetadataLabelWidth][l]{\CoverLabelText{#1}}%
+  \TaskCoverUnderlinedValue{\SZTUFullFieldUnderlineWidth}{#2}%
+}
+\newcommand{\TaskCoverShortMetadataRow}[4]{%
+  \makebox[\TaskCoverShortLabelWidth][l]{\CoverLabelText{#1}}%
+  \TaskCoverUnderlinedValue{\SZTUShortFieldUnderlineWidth}{#2}%
+  \hspace*{\SZTUMetadataColumnGap}%
+  \makebox[\TaskCoverShortLabelWidth][l]{\CoverLabelText{#3}}%
+  \TaskCoverUnderlinedValue{\SZTUShortFieldUnderlineWidth}{#4}%
+}
+
+\newcommand{\TaskNoticeParagraph}[1]{%
+  \par\begingroup
+  \setstretch{\SZTUNoticeLineSpacing}%
+  \songti\SZTUNoticeBodyStyle
+  \justifying
+  \setlength{\parindent}{\SZTUNoticeHangingIndent}%
+  #1\par
+  \endgroup
+  \vspace{\SZTUNoticeItemGap}%
+}
+\newcommand{\TaskNoticeItem}[2]{%
+  \par\begingroup
+  \setstretch{\SZTUNoticeLineSpacing}%
+  \songti\SZTUNoticeBodyStyle
+  \justifying
+  \setlength{\leftskip}{\SZTUNoticeHangingIndent}%
+  \setlength{\parindent}{-\SZTUNoticeHangingIndent}%
+  \makebox[\SZTUNoticeHangingIndent][l]{#1}#2\par
+  \endgroup
+  \vspace{\SZTUNoticeItemGap}%
+}
+\newcommand{\TaskBodyParagraph}[1]{%
+  \par\begingroup
+  \setstretch{\SZTUBodyLineSpacing}%
+  \songti\SZTUBodyStyle
+  \justifying
+  \setlength{\parindent}{\SZTUFirstLineIndent}%
+  #1\par
+  \endgroup
+}
+\newcommand{\TaskOrderedItem}[2]{%
+  \par\begingroup
+  \setstretch{\SZTUBodyLineSpacing}%
+  \songti\SZTUBodyStyle
+  \justifying
+  \setlength{\leftskip}{\SZTUOrderedListHangingIndent}%
+  \setlength{\parindent}{-\SZTUOrderedListHangingIndent}%
+  \makebox[\SZTUOrderedListHangingIndent][l]{#1}#2\par
+  \endgroup
+}
+\newcommand{\TaskScheduleDateParagraph}[1]{%
+  \par\begingroup
+  \setstretch{\SZTUBodyLineSpacing}%
+  \songti\SZTUBodyStyle
+  \justifying
+  \setlength{\parindent}{0pt}%
+  #1\par
+  \endgroup
+}
+\newcommand{\TaskReference}[1]{%
+  \par\begingroup
+  \setstretch{\SZTUBodyLineSpacing}%
+  \songti\SZTUBodyStyle
+  \RaggedRight
+  \setlength{\parindent}{0pt}%
+  #1\par
+  \endgroup
+}
+\newcommand{\TaskFigure}[3]{%
+  \par\begin{center}
+    \includegraphics[width=#2]{#1}\par
+    \if\relax\detokenize{#3}\relax\else
+      \vspace{3pt}\BodyText{#3}\par\vspace{3pt}%
+    \fi
+  \end{center}\par
+}
+
+\newcommand{\TaskCheckbox}[1]{%
+  \tikz[baseline=-0.12em]{%
+    \draw[line width=\SZTUCheckboxOutlineWidth]
+      (0,0) rectangle (\SZTUCheckboxSize,\SZTUCheckboxSize);%
+    #1%
+  }%
+}
+\newcommand{\EmptyBox}{\makebox[1em][c]{\TaskCheckbox{}}}
+\newcommand{\CheckedBox}{\makebox[1em][c]{\TaskCheckbox{%
+  \draw[line width=\SZTUCheckboxTickWidth,line cap=round,line join=round]
+    (0.12em,0.36em) -- (0.28em,0.18em) -- (0.61em,0.58em);%
+}}}
+\newcommand{\TaskTopicChoice}[2]{#1\hspace{0.35em}#2}
+\newcommand{\TaskUnderline}[2]{%
+  \tikz[baseline=(field.base)]{%
+    \node[
+      anchor=base west,
+      inner sep=0pt,
+      outer sep=0pt,
+      text width=#1,
+      align=center
+    ] (field) at (0,0) {\strut #2};%
+    \draw[line width=\SZTUFormRuleWidth]
+      ([yshift=-\SZTUTopicUnderlineGap]field.south west) --
+      ([yshift=-\SZTUTopicUnderlineGap]field.south east);%
+  }%
+}
+\newcommand{\TaskSelfOptionLine}[1]{%
+  \noindent\hspace*{\SZTUSelfProposedIndent}\TopicText{#1}\par
+}
+\newcommand{\TaskSelfSignatureLine}[1]{%
+  \noindent\hspace*{\SZTUSelfProposedIndent}\TopicText{#1}%
+  \hfill
+  \SignatureText{\FixedTeacherSignatureLabel\TaskSignatureSlot{\SZTUTeacherSignatureBlank}%
+    \hspace*{\SZTUSignatureRightInset}}\par
+}
+\newcommand{\TaskSignatureSlot}[1]{\hspace{1mm}\raisebox{0.4mm}{\rule{#1}{\SZTUFormRuleWidth}}}
+\newcommand{\TaskDateSlot}[1]{\raisebox{0.4mm}{\rule{#1}{\SZTUFormRuleWidth}}}
+\newcommand{\TaskTightJoin}{\par\nointerlineskip\vspace*{-\SZTUFormRuleWidth}\noindent}
+
+\tcbset{
+  taskflow/.style={
+    enhanced standard,
+    breakable,
+    width=\SZTUTableWidth,
+    colframe=black,
+    colback=white,
+    boxrule=\SZTUFormRuleWidth,
+    toprule at break=\SZTUFormRuleWidth,
+    bottomrule at break=\SZTUFormRuleWidth,
+    arc=0pt,
+    outer arc=0pt,
+    boxsep=0pt,
+    left=\SZTUCellHorizontalPadding,
+    right=\SZTUCellHorizontalPadding,
+    top=\SZTUFlowVerticalPadding,
+    bottom=\SZTUFlowVerticalPadding,
+    before skip=0pt,
+    after skip=0pt
+  },
+  taskfixed/.style={
+    enhanced standard,
+    width=\SZTUTableWidth,
+    colframe=black,
+    colback=white,
+    boxrule=\SZTUFormRuleWidth,
+    arc=0pt,
+    outer arc=0pt,
+    boxsep=0pt,
+    left=\SZTUCellHorizontalPadding,
+    right=\SZTUCellHorizontalPadding,
+    top=\SZTUFixedVerticalPadding,
+    bottom=\SZTUFixedVerticalPadding,
+    before skip=0pt,
+    after skip=0pt
+  }
+}
+
+\begin{document}
+
+% Page 1: measured cover anchors from the distilled official form.  Explicit
+% geometry replaces the source DOC's empty-paragraph positioning.
+\begin{tikzpicture}[remember picture,overlay]
+  \node[anchor=north west,inner sep=0pt] at
+    ([xshift=\SZTUPageLeftMargin,yshift=-\SZTUCoverNumberTop]current page.north west) {%
+    \makebox[\SZTUCoverContentWidth][l]{\CoverNumberText{\FixedCoverNumberLabel\StudentId}}%
+  };
+  \node[anchor=north,inner sep=0pt] at ([yshift=-\SZTUSchoolNameTop]current page.north) {%
+    \SchoolNameText{\FixedSchoolName}%
+  };
+  \node[anchor=north,inner sep=0pt] at ([yshift=-\SZTUDocumentTitleTop]current page.north) {%
+    \DocumentTitleText{\FixedDocumentTitle}%
+  };
+  \node[anchor=north,inner sep=0pt] at ([yshift=-\SZTUCohortTop]current page.north) {%
+    \CohortText{\FixedCohortText}%
+  };
+  \node[anchor=north west,inner sep=0pt] at
+    ([xshift=\SZTUPageLeftMargin,yshift=-\SZTUTitleFieldTop]current page.north west) {%
+    \TaskCoverTitleBlock
+  };
+  \node[anchor=north west,inner sep=0pt] at
+    ([xshift=\SZTUPageLeftMargin,yshift=-\SZTUMetadataRowOneTop]current page.north west) {%
+    \TaskCoverFullMetadataRow{\FixedCoverCollegeLabel}{\College}
+  };
+  \node[anchor=north west,inner sep=0pt] at
+    ([xshift=\SZTUPageLeftMargin,yshift=-\SZTUMetadataRowTwoTop]current page.north west) {%
+    \TaskCoverFullMetadataRow{\FixedCoverMajorLabel}{\Major}
+  };
+  \node[anchor=north west,inner sep=0pt] at
+    ([xshift=\SZTUPageLeftMargin,yshift=-\SZTUMetadataRowThreeTop]current page.north west) {%
+    \TaskCoverShortMetadataRow{\FixedCoverClassLabel}{\ClassName}{\FixedCoverStudentIdLabel}{\StudentIdBreakable}
+  };
+  \node[anchor=north west,inner sep=0pt] at
+    ([xshift=\SZTUPageLeftMargin,yshift=-\SZTUMetadataRowFourTop]current page.north west) {%
+    \TaskCoverShortMetadataRow{\FixedCoverStudentNameLabel}{\StudentName}{\FixedCoverAdvisorLabel}{\Advisor}
+  };
+\end{tikzpicture}
+\null
+\clearpage
+
+% Page 2: fixed official notice.  The Word form uses absolute page anchors for
+% the heading and the first list item; keep those anchors independent so the
+% compact list spacing cannot move the heading (or vice versa).
+\begin{tikzpicture}[remember picture,overlay]
+  \node[anchor=north,inner sep=0pt] at
+    ([yshift=-\SZTUNoticeTitleTop]current page.north) {%
+      \NoticeTitleText{\FixedNoticeTitle}%
+    };
+  \node[anchor=north west,inner sep=0pt,text width=\textwidth] at
+    ([xshift=\SZTUPageLeftMargin,yshift=-\SZTUNoticeFirstItemTop]current page.north west) {%
+      \begin{minipage}[t]{\textwidth}
+        \FixedNoticeItems
+      \end{minipage}%
+    };
+\end{tikzpicture}
+\null
+\clearpage
+
+% Page 3 onward: one continuous six-row form.  Every break fragment has a
+% complete rectangular border; adjacent rows overlap exactly one 0.5pt rule.
+\begin{adjustwidth}{0pt}{-\TaskTableExtraWidth}
+\noindent
+\begin{tcolorbox}[taskfixed,height from={\SZTUTitleRowMinHeight} to {\textheight}]
+  \SectionTitleText{\FixedTitleRowLabel}\TitleRowValueText{\TaskTitle}\par
+\end{tcolorbox}
+
+\TaskTightJoin
+\begin{tcolorbox}[taskflow]
+  \SectionTitleText{\FixedBasicSectionTitle}\par
+  \vspace{1mm}
+  \BasicContent
+\end{tcolorbox}
+
+\TaskTightJoin
+\begin{tcolorbox}[taskflow]
+  \SectionTitleText{\FixedScheduleSectionTitle}\par
+  \vspace{1mm}
+  \ScheduleContent
+\end{tcolorbox}
+
+\TaskTightJoin
+\begin{tcolorbox}[taskflow]
+  \SectionTitleText{\FixedMaterialsSectionTitle}\par
+  \vspace{1mm}
+  \RequiredMaterialsContent
+  \RequiredMaterialsReferenceGap
+  \ReferencesContent
+\end{tcolorbox}
+
+\TaskTightJoin
+\begin{tcolorbox}[taskfixed]
+  \SectionTitleText{\FixedTopicSectionTitle}\par
+  \vspace{1mm}
+  \begingroup\setstretch{\SZTUBodyLineSpacing}\raggedright\setlength{\parindent}{0pt}%
+  \TopicText{\FixedTopicNatureLabel\quad
+    \TaskTopicChoice{\FixedNatureDesignLabel}{\NatureDesignBox}\quad
+    \TaskTopicChoice{\FixedNatureThesisLabel}{\NatureThesisBox}}
+  \par\vspace{1mm}
+  \TopicText{\FixedTopicSourceLabel\quad
+    \FixedResearchProjectLabel\quad
+    \FixedNationalLabel\NationalProjectBox\quad
+    \FixedProvincialLabel\ProvincialProjectBox\quad
+    \FixedOtherLevelLabel\TaskUnderline{\SZTUTopicOtherBlank}{\OtherProjectLevel}}\par
+  \noindent\hspace*{\SZTUTopicIndent}%
+  \TopicText{\makebox[\SZTUTopicProjectLabelWidth][r]{\FixedProjectNumberLabel}}%
+  \TaskUnderline{\SZTUTopicProjectBlank}{\TopicText{\ProjectNumber}}\par
+  \noindent\hspace*{\SZTUTopicIndent}%
+  \TopicText{\TaskTopicChoice{\FixedPracticeProjectLabel}{\PracticeProjectBox}}\par
+  \TaskSelfOptionLine{\FixedSelfProposedLabel}
+  \TaskSelfOptionLine{\FixedTeacherProposedLabel\TeacherProposedBox}
+  \TaskSelfOptionLine{\FixedStudentProposedLabel\StudentProposedBox}
+  \TaskSelfSignatureLine{\FixedJointProposedLabel\JointProposedBox}
+  \par\endgroup
+\end{tcolorbox}
+
+\TaskTightJoin
+\begin{tcolorbox}[
+  taskfixed,
+  height=\SZTUCollegeOpinionHeight,
+  overlay unbroken and last={
+    \node[anchor=south east,align=right] at ([xshift=-\SZTUSignatureRightInset,yshift=2mm]frame.south east) {
+      \SignatureText{\FixedCollegeSignatureLabel\TaskSignatureSlot{\SZTUCollegeSignatureBlank}}\\[1mm]
+      \DateText{%
+        \TaskDateSlot{\SZTUDateYearBlank}\makebox[\SZTUDateLabelWidth][c]{年}%
+        \TaskDateSlot{\SZTUDateMonthBlank}\makebox[\SZTUDateLabelWidth][c]{月}%
+        \TaskDateSlot{\SZTUDateDayBlank}\makebox[\SZTUDateLabelWidth][c]{日}%
+      }
+    };
+  }
+]
+  \SignatureText{\FixedCollegeOpinionLabel}\par
+\end{tcolorbox}
+\end{adjustwidth}
+
+\end{document}
