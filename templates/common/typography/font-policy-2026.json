@@ -1,0 +1,61 @@
+{
+  "version": "2026.1",
+  "fallback_allowed": false,
+  "roles": {
+    "cjk_body": {
+      "word_family": "宋体",
+      "latex_family": "SimSun",
+      "font_file_keys": ["SimSun"]
+    },
+    "cjk_label": {
+      "word_family": "黑体",
+      "latex_family": "SimHei",
+      "font_file_keys": ["SimHei"]
+    },
+    "cjk_form_title": {
+      "word_family": "方正小标宋简体",
+      "latex_family": "FZXiaoBiaoSong-B05S",
+      "font_file_keys": ["FZXiaoBiaoSong"]
+    },
+    "latin": {
+      "word_family": "Times New Roman",
+      "latex_family": "Times New Roman",
+      "font_file_keys": [
+        "Times New Roman",
+        "Times New Roman Bold",
+        "Times New Roman Italic",
+        "Times New Roman Bold Italic"
+      ]
+    }
+  },
+  "font_files": {
+    "FZXiaoBiaoSong": {
+      "environment": "SZTU_FZXIAOBIAOSONG_FONT",
+      "candidates": ["方正小标宋简体.ttf", "FZXiaoBiaoSong-B05S.ttf"]
+    },
+    "SimSun": {
+      "environment": "SZTU_SIMSUN_FONT",
+      "candidates": ["simsun.ttf", "simsun.ttc"]
+    },
+    "SimHei": {
+      "environment": "SZTU_SIMHEI_FONT",
+      "candidates": ["simhei.ttf"]
+    },
+    "Times New Roman": {
+      "environment": "SZTU_TIMES_REGULAR_FONT",
+      "candidates": ["Times New Roman.ttf", "times.ttf"]
+    },
+    "Times New Roman Bold": {
+      "environment": "SZTU_TIMES_BOLD_FONT",
+      "candidates": ["Times New Roman Bold.ttf", "timesbd.ttf"]
+    },
+    "Times New Roman Italic": {
+      "environment": "SZTU_TIMES_ITALIC_FONT",
+      "candidates": ["Times New Roman Italic.ttf", "timesi.ttf"]
+    },
+    "Times New Roman Bold Italic": {
+      "environment": "SZTU_TIMES_BOLD_ITALIC_FONT",
+      "candidates": ["Times New Roman Bold Italic.ttf", "timesbi.ttf"]
+    }
+  }
+}

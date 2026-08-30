@@ -17,6 +17,23 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Mm, Pt
 
+TEMPLATES_DIR = Path(__file__).resolve().parents[2]
+if str(TEMPLATES_DIR) not in sys.path:
+    sys.path.insert(0, str(TEMPLATES_DIR))
+
+from common.python.content import (  # noqa: E402
+    ContentDataError as DataError,
+    display_width,
+    has_explicit_numbering,
+    normalize_paragraph,
+    plain_runs,
+    require_object,
+    require_text,
+    runs_text,
+    split_numbered_subitems,
+)
+from common.python.typography import load_document_layout  # noqa: E402
+
 
 SCHEMA_VERSION = "0.2"
 METADATA_LIMITS = {
@@ -36,74 +53,20 @@ SECTION_KEYS = (
 )
 ADVISOR_TITLE_PATTERN = re.compile(r"(?:老师|教授|副教授|讲师|博士|硕士|导师)$")
 TITLE_DISPLAY_WIDTH_LIMIT = 64.0
-
-
-class DataError(ValueError):
-    """Raised when input data does not match the proposal schema subset."""
-
-
-def _require_object(value: Any, path: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise DataError(f"{path} must be an object")
-    return value
-
-
-def _require_text(value: Any, path: str, max_length: int) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise DataError(f"{path} must be a non-empty string")
-    text = value.strip()
-    if len(text) > max_length:
-        raise DataError(f"{path} exceeds {max_length} characters")
-    return text
-
-
-def _display_width(text: str) -> float:
-    return sum(0.5 if ord(char) < 128 else 1.0 for char in text)
-
-
-def _runs_text(runs: list[dict[str, Any]]) -> str:
-    return "".join(run["text"] for run in runs)
-
-
-def _require_paragraph(value: Any, path: str, max_length: int) -> list[dict[str, Any]]:
-    if isinstance(value, str):
-        text = _require_text(value, path, max_length)
-        return [{"text": text, "script": "normal", "italic": False, "bold": False}]
-    paragraph = _require_object(value, path)
-    if set(paragraph) != {"runs"}:
-        raise DataError(f"{path} must contain only a non-empty runs array")
-    runs = paragraph["runs"]
-    if not isinstance(runs, list) or not runs or len(runs) > 100:
-        raise DataError(f"{path}.runs must contain 1 to 100 items")
-    clean_runs: list[dict[str, Any]] = []
-    for index, raw_run in enumerate(runs):
-        run_path = f"{path}.runs[{index}]"
-        run = _require_object(raw_run, run_path)
-        unknown = set(run) - {"text", "script", "italic", "bold"}
-        if unknown:
-            raise DataError(f"unknown fields in {run_path}: {sorted(unknown)}")
-        text = run.get("text")
-        if not isinstance(text, str) or not text.strip():
-            raise DataError(f"{run_path}.text must be a non-empty string")
-        if len(text) > max_length:
-            raise DataError(f"{run_path}.text exceeds {max_length} characters")
-        script = run.get("script", "normal")
-        if script not in {"normal", "sub", "super"}:
-            raise DataError(f"{run_path}.script must be normal, sub, or super")
-        italic = run.get("italic", False)
-        bold = run.get("bold", False)
-        if not isinstance(italic, bool) or not isinstance(bold, bool):
-            raise DataError(f"{run_path}.italic and .bold must be booleans")
-        clean_runs.append(
-            {"text": text, "script": script, "italic": italic, "bold": bold}
-        )
-    if sum(len(run["text"]) for run in clean_runs) > max_length:
-        raise DataError(f"{path} exceeds {max_length} characters")
-    return clean_runs
+LAYOUT = load_document_layout(Path(__file__).resolve().parents[1] / "spec" / "layout.json")
+BODY_STYLE = LAYOUT["typography"]["body"]
+BODY_SIZE_PT = BODY_STYLE["size_pt"]
+BODY_CJK_FONT = BODY_STYLE["cjk_word_family"]
+BODY_LATIN_FONT = BODY_STYLE["latin_word_family"]
+LINE_SPACING = LAYOUT["paragraphs"]["line_spacing"]
+FIRST_LINE_INDENT_PT = BODY_SIZE_PT * LAYOUT["paragraphs"]["first_line_indent_em"]
+NESTED_LIST_LEFT_INDENT_PT = (
+    BODY_SIZE_PT * LAYOUT["paragraphs"]["nested_list_left_indent_em"]
+)
 
 
 def validate_data(raw: Any) -> dict[str, Any]:
-    data = _require_object(raw, "root")
+    data = require_object(raw, "root")
     expected_root = {"schema_version", "metadata", "sections"}
     unknown_root = set(data) - expected_root
     if unknown_root:
@@ -111,7 +74,7 @@ def validate_data(raw: Any) -> dict[str, Any]:
     if data.get("schema_version") != SCHEMA_VERSION:
         raise DataError(f"schema_version must be {SCHEMA_VERSION!r}")
 
-    metadata = _require_object(data.get("metadata"), "metadata")
+    metadata = require_object(data.get("metadata"), "metadata")
     unknown_metadata = set(metadata) - set(METADATA_LIMITS)
     if unknown_metadata:
         raise DataError(f"unknown metadata fields: {sorted(unknown_metadata)}")
@@ -119,11 +82,11 @@ def validate_data(raw: Any) -> dict[str, Any]:
     for key, limit in METADATA_LIMITS.items():
         value = metadata.get(key)
         clean_metadata[key] = (
-            _require_paragraph(value, f"metadata.{key}", limit)
+            normalize_paragraph(value, f"metadata.{key}", limit)
             if key == "title"
-            else _require_text(value, f"metadata.{key}", limit)
+            else require_text(value, f"metadata.{key}", limit)
         )
-    if _display_width(_runs_text(clean_metadata["title"])) > TITLE_DISPLAY_WIDTH_LIMIT:
+    if display_width(runs_text(clean_metadata["title"])) > TITLE_DISPLAY_WIDTH_LIMIT:
         raise DataError(
             "metadata.title is too wide for the official two-line title cell "
             f"(limit {TITLE_DISPLAY_WIDTH_LIMIT:g} display units)"
@@ -131,7 +94,7 @@ def validate_data(raw: Any) -> dict[str, Any]:
     if ADVISOR_TITLE_PATTERN.search(clean_metadata["advisor"]):
         raise DataError("metadata.advisor must contain the name only, without a title")
 
-    sections = _require_object(data.get("sections"), "sections")
+    sections = require_object(data.get("sections"), "sections")
     unknown_sections = set(sections) - set(SECTION_KEYS)
     if unknown_sections:
         raise DataError(f"unknown section fields: {sorted(unknown_sections)}")
@@ -146,7 +109,7 @@ def validate_data(raw: Any) -> dict[str, Any]:
         if len(value) > 50:
             raise DataError(f"sections.{key} may contain at most 50 items")
         clean_sections[key] = [
-            _require_paragraph(item, f"sections.{key}[{index}]", max_length)
+            normalize_paragraph(item, f"sections.{key}[{index}]", max_length)
             for index, item in enumerate(value)
         ]
 
@@ -169,7 +132,7 @@ def _append_runs(paragraph, runs: list[dict[str, Any]], *, size_pt: float) -> No
         pieces = re.findall(r"[\x00-\x7f]+|[^\x00-\x7f]+", rich_run["text"])
         for piece in pieces:
             run = paragraph.add_run(piece)
-            font_name = "Times New Roman" if ord(piece[0]) < 128 else "宋体"
+            font_name = BODY_LATIN_FONT if ord(piece[0]) < 128 else BODY_CJK_FONT
             _set_run_font(run, name=font_name, size_pt=size_pt, bold=rich_run["bold"])
             run.italic = rich_run["italic"]
             run.font.subscript = rich_run["script"] == "sub"
@@ -186,7 +149,7 @@ def _fill_info_cell(
     cell,
     text: str | list[dict[str, Any]],
     *,
-    size_pt: float = 10.5,
+    size_pt: float = BODY_SIZE_PT,
     alignment: WD_ALIGN_PARAGRAPH = WD_ALIGN_PARAGRAPH.CENTER,
 ) -> None:
     while len(cell.paragraphs) > 1:
@@ -196,7 +159,7 @@ def _fill_info_cell(
     paragraph.alignment = alignment
     paragraph.paragraph_format.space_before = Pt(0)
     paragraph.paragraph_format.space_after = Pt(0)
-    paragraph.paragraph_format.line_spacing = 1
+    paragraph.paragraph_format.line_spacing = LINE_SPACING
     runs = (
         [{"text": text, "script": "normal", "italic": False, "bold": False}]
         if isinstance(text, str)
@@ -218,8 +181,10 @@ def _format_body_paragraph(paragraph, *, references: bool, indent: bool = True) 
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if references else WD_ALIGN_PARAGRAPH.JUSTIFY
     paragraph.paragraph_format.space_before = Pt(0)
     paragraph.paragraph_format.space_after = Pt(0)
-    paragraph.paragraph_format.line_spacing = 1
-    paragraph.paragraph_format.first_line_indent = None if references or not indent else Pt(21)
+    paragraph.paragraph_format.line_spacing = LINE_SPACING
+    paragraph.paragraph_format.first_line_indent = (
+        None if references or not indent else Pt(FIRST_LINE_INDENT_PT)
+    )
 
 
 def _fill_section(
@@ -239,95 +204,9 @@ def _fill_section(
         paragraph = slots[index] if index < len(slots) else cell.add_paragraph()
         paragraph.clear()
         _format_body_paragraph(paragraph, references=references)
-        _append_runs(paragraph, text, size_pt=10.5)
+        _append_runs(paragraph, text, size_pt=BODY_SIZE_PT)
     for paragraph in slots[len(paragraphs) :]:
         _remove_paragraph(paragraph)
-
-
-def _plain_runs(text: str) -> list[dict[str, Any]]:
-    return [{"text": text, "script": "normal", "italic": False, "bold": False}]
-
-
-def _has_explicit_numbering(runs: list[dict[str, Any]]) -> bool:
-    text = "".join(run["text"] for run in runs).lstrip()
-    return re.match(r"^(?:第[一二三四五六七八九十]+阶段|[（(]?\d+[）)、.])", text) is not None
-
-
-PARENTHESIZED_SUBITEM_PATTERN = re.compile(r"[（(](\d+)[）)]")
-
-
-def _slice_runs(
-    runs: list[dict[str, Any]], start: int, end: int
-) -> list[dict[str, Any]]:
-    """Return a style-preserving character slice of rich-text runs."""
-    result: list[dict[str, Any]] = []
-    cursor = 0
-    for run in runs:
-        text = run["text"]
-        run_end = cursor + len(text)
-        overlap_start = max(start, cursor)
-        overlap_end = min(end, run_end)
-        if overlap_start < overlap_end:
-            copied = dict(run)
-            copied["text"] = text[overlap_start - cursor : overlap_end - cursor]
-            result.append(copied)
-        cursor = run_end
-    while result and not result[0]["text"].strip():
-        result.pop(0)
-    while result and not result[-1]["text"].strip():
-        result.pop()
-    if result:
-        result[0]["text"] = result[0]["text"].lstrip()
-        result[-1]["text"] = result[-1]["text"].rstrip()
-    return [run for run in result if run["text"]]
-
-
-def split_numbered_subitems(
-    runs: list[dict[str, Any]],
-) -> tuple[
-    list[dict[str, Any]],
-    list[tuple[str, list[dict[str, Any]]]],
-    list[list[dict[str, Any]]],
-] | None:
-    """Split an inline （1）（2） sequence into semantic subparagraphs.
-
-    At least two consecutive markers starting at 1 are required, which avoids
-    treating an isolated parenthesized number as a nested list. A newline after
-    the final subitem starts an ordinary continuation paragraph.
-    """
-    text = "".join(run["text"] for run in runs)
-    matches = list(PARENTHESIZED_SUBITEM_PATTERN.finditer(text))
-    numbers = [int(match.group(1)) for match in matches]
-    if (
-        len(matches) < 2
-        or numbers != list(range(1, len(matches) + 1))
-        or not text[: matches[0].start()].strip()
-    ):
-        return None
-
-    lead = _slice_runs(runs, 0, matches[0].start())
-    subitems: list[tuple[str, list[dict[str, Any]]]] = []
-    continuations: list[list[dict[str, Any]]] = []
-    for index, match in enumerate(matches):
-        item_start = match.end()
-        item_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        if index == len(matches) - 1:
-            newline = text.find("\n", item_start, item_end)
-            if newline != -1:
-                item_end = newline
-                continuation_start = newline + 1
-                for line in text[continuation_start:].splitlines():
-                    line_start = text.find(line, continuation_start)
-                    line_end = line_start + len(line)
-                    continuation_start = line_end
-                    paragraph = _slice_runs(runs, line_start, line_end)
-                    if paragraph:
-                        continuations.append(paragraph)
-        item = _slice_runs(runs, item_start, item_end)
-        if not item:
-            return None
-        subitems.append((match.group(0), item))
-    return lead, subitems, continuations
 
 
 def _fill_methods_section(
@@ -347,29 +226,29 @@ def _fill_methods_section(
     for heading, items in groups:
         heading_paragraph = cell.add_paragraph()
         _format_body_paragraph(heading_paragraph, references=False)
-        _append_runs(heading_paragraph, _plain_runs(heading), size_pt=10.5)
+        _append_runs(heading_paragraph, plain_runs(heading), size_pt=BODY_SIZE_PT)
         for index, item in enumerate(items, start=1):
             split_item = split_numbered_subitems(item)
             paragraph = cell.add_paragraph()
             _format_body_paragraph(paragraph, references=False)
             lead = split_item[0] if split_item else item
-            if not _has_explicit_numbering(lead):
-                _append_runs(paragraph, _plain_runs(f"{index}、"), size_pt=10.5)
-            _append_runs(paragraph, lead, size_pt=10.5)
+            if not has_explicit_numbering(lead):
+                _append_runs(paragraph, plain_runs(f"{index}、"), size_pt=BODY_SIZE_PT)
+            _append_runs(paragraph, lead, size_pt=BODY_SIZE_PT)
             if split_item:
                 _, subitems, continuations = split_item
                 for marker, subitem in subitems:
                     nested = cell.add_paragraph()
                     _format_body_paragraph(nested, references=False)
-                    nested.paragraph_format.left_indent = Pt(10.5)
+                    nested.paragraph_format.left_indent = Pt(NESTED_LIST_LEFT_INDENT_PT)
                     _append_runs(
-                        nested, _plain_runs(f"{marker} "), size_pt=10.5
+                        nested, plain_runs(f"{marker} "), size_pt=BODY_SIZE_PT
                     )
-                    _append_runs(nested, subitem, size_pt=10.5)
+                    _append_runs(nested, subitem, size_pt=BODY_SIZE_PT)
                 for continuation in continuations:
                     trailing = cell.add_paragraph()
                     _format_body_paragraph(trailing, references=False)
-                    _append_runs(trailing, continuation, size_pt=10.5)
+                    _append_runs(trailing, continuation, size_pt=BODY_SIZE_PT)
 
 
 def _prevent_row_split(row) -> None:
@@ -434,7 +313,10 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
 
     # Keep handwritten signature and review regions together when they fit,
     # while allowing all preceding content to flow naturally across pages.
-    for row_index, height_mm in {7: 22, 8: 88}.items():
+    for row_index, height_mm in {
+        7: LAYOUT["signature_regions"]["student_min_height_mm"],
+        8: LAYOUT["signature_regions"]["review_min_height_mm"],
+    }.items():
         table.rows[row_index].height = Mm(height_mm)
         table.rows[row_index].height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
         _prevent_row_split(table.rows[row_index])

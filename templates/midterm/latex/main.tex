@@ -1,0 +1,198 @@
+\documentclass[UTF8,a4paper,fontset=none]{ctexart}
+
+\usepackage{adjustbox}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{changepage}
+\usepackage{fontspec}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{needspace}
+\usepackage{ragged2e}
+\usepackage{tabularray}
+\usepackage[most]{tcolorbox}
+\usepackage{xcolor}
+
+\input{midterm-typography.tex}
+\geometry{top=\SZTUPageTopMargin,bottom=\SZTUPageBottomMargin,left=\SZTUPageLeftMargin,right=\SZTUPageRightMargin,headheight=0pt,headsep=0pt}
+\pagestyle{empty}
+\setlength{\parskip}{0pt}
+\setlength{\parindent}{\SZTUFirstLineIndent}
+\setlength{\tabcolsep}{0pt}
+\setlength{\arrayrulewidth}{\SZTUFormRuleWidth}
+\input{midterm-fonts.tex}
+\input{midterm-data.tex}
+
+\newcommand{\FormTitle}[1]{{\formtitle\SZTUTitleSize #1}}
+\newcommand{\Label}[1]{{\songti\SZTULabelSize #1}}
+\newcommand{\Data}[1]{{\songti\SZTUDataSize #1}}
+\newcommand{\Body}[1]{{\songti\SZTUBodySize #1}}
+\newcommand{\TeacherHeader}[1]{{\songtiBold\bfseries\SZTUTeacherHeaderSize #1}}
+\newcommand{\TeacherBody}[1]{{\songti\SZTUTeacherBodySize #1}}
+\newcommand{\SignatureText}[1]{{\songti\SZTUSignatureSize #1}}
+\newcommand{\TightJoin}{\par\nointerlineskip\vspace*{-\SZTUFormRuleWidth}\noindent}
+\newlength{\MidtermOutlineLevelIndentLength}
+\setlength{\MidtermOutlineLevelIndentLength}{\SZTUOutlineLevelIndent}
+\newlength{\MidtermOutlineHangingIndentLength}
+\setlength{\MidtermOutlineHangingIndentLength}{\SZTUOutlineHangingIndent}
+
+\newcommand{\MidtermParagraph}[1]{%
+  \par\begingroup\setlength{\parindent}{\SZTUFirstLineIndent}\justifying\Body{#1}\par\endgroup
+}
+\newcommand{\MidtermListItem}[2]{%
+  \par\begingroup
+  \setlength{\leftskip}{\SZTUListHangingIndent}%
+  \setlength{\parindent}{-\SZTUListHangingIndent}%
+  \Body{#1\hspace{0.5em}#2}\par
+  \endgroup
+}
+\newcommand{\MidtermOutlineItem}[3]{%
+  \par\begingroup
+  \setlength{\leftskip}{#1\MidtermOutlineLevelIndentLength}%
+  \setlength{\parindent}{0pt}%
+  \hangindent=\MidtermOutlineHangingIndentLength
+  \hangafter=1
+  \Body{#2#3}\par
+  \endgroup
+}
+\newcommand{\MidtermFigure}[3]{%
+  \par\begin{center}
+    \includegraphics[width=#2]{#1}\par
+    \if\relax\detokenize{#3}\relax\else
+      \vspace{3pt}\Body{#3}\par\vspace{3pt}%
+    \fi
+  \end{center}\par
+}
+
+\tcbset{
+  midtermflow/.style={
+    enhanced standard,
+    breakable,
+    colframe=black,
+    colback=white,
+    boxrule=\SZTUFormRuleWidth,
+    toprule at break=\SZTUFormRuleWidth,
+    bottomrule at break=\SZTUFormRuleWidth,
+    arc=0pt,
+    outer arc=0pt,
+    boxsep=0pt,
+    left=\SZTUCellHorizontalPadding,
+    right=\SZTUCellHorizontalPadding,
+    top=\SZTUFlowVerticalPadding,
+    bottom=\SZTUFlowVerticalPadding,
+    before skip=0pt,
+    after skip=0pt
+  },
+  midtermfixed/.style={
+    enhanced standard,
+    colframe=black,
+    colback=white,
+    boxrule=\SZTUFormRuleWidth,
+    arc=0pt,
+    outer arc=0pt,
+    boxsep=0pt,
+    left=\SZTUCellHorizontalPadding,
+    right=\SZTUCellHorizontalPadding,
+    top=\SZTUFlowVerticalPadding,
+    bottom=\SZTUFlowVerticalPadding,
+    before skip=0pt,
+    after skip=0pt
+  }
+}
+
+\begin{document}
+
+{\centering
+  \FormTitle{深圳技术大学本科毕业论文（设计）}\par
+  \vspace{1.2mm}
+  \FormTitle{中期检查表}\par
+  \vspace{6.7mm}
+}
+
+\begin{adjustwidth}{-1.95mm}{-1.95mm}
+\noindent\begin{tblr}{
+  width=\SZTUTableWidth,
+  colspec={Q[c,m,wd=\SZTUColOneContent]Q[c,m,wd=\SZTUColTwoContent]Q[c,m,wd=\SZTUColThreeContent]Q[c,m,wd=\SZTUColFourContent]},
+  columns={colsep=\SZTUCellHorizontalPadding},
+  rows={valign=m,rowsep=0pt},
+  row{1-4}={ht=\SZTUMetadataRowHeight},
+  stretch=0,
+  hlines={\SZTUFormRuleWidth},
+  vlines={\SZTUFormRuleWidth}
+}
+  \Label{学生姓名} & \Data{\StudentName} & \Label{学院} & \Data{\College} \\
+  \Label{专业} & \Data{\Major} & \Label{班级} & \Data{\ClassName} \\
+  \Label{指导教师} & \Data{\Advisor} & \Label{中期检查时间} & \Data{\CheckDate} \\
+  \Label{论文题目} & \SetCell[c=3]{c,m}\parbox[c]{\SZTUTitleContentWidth}{\centering\Data{\ThesisTitle}\par} & & \\
+\end{tblr}
+
+\TightJoin
+\begin{tcolorbox}[midtermflow,height from={\SZTUMainMinHeight} to {\textheight}]
+  \Label{毕业论文（设计）的目录和主要研究内容：}\par
+  \MidtermParagraph{目录：}
+  \DirectoryContent
+  \MidtermParagraph{主要研究内容：}
+  \ResearchContent
+  \par\vspace*{\SZTUFlowEndSpace}
+\end{tcolorbox}
+
+\TightJoin
+\begin{tcolorbox}[midtermflow,height from={\SZTUProgressMinHeight} to {\textheight}]
+  \Label{毕业论文（设计）工作进展情况（详述）：}\par
+  \ProgressContent
+  \par\vspace*{\SZTUFlowEndSpace}
+\end{tcolorbox}
+
+\Needspace{\SZTUTeacherBundleNeedspace}
+\TightJoin
+\noindent\begin{tblr}{
+  width=\SZTUTableWidth,
+  colspec={Q[l,m,wd=\SZTUTableContentWidth]},
+  columns={colsep=\SZTUCellHorizontalPadding},
+  rows={valign=m,rowsep=0pt},
+  row{1}={ht=\SZTUTeacherHeaderHeight},
+  row{2}={ht=\SZTUTeacherFirstHeight},
+  row{3-7}={ht=\SZTUTeacherRowHeight},
+  stretch=0,
+  hlines={\SZTUFormRuleWidth},
+  vlines={\SZTUFormRuleWidth}
+}
+  \TeacherHeader{指导教师填写栏目（在正确项后方框内划√）} \\
+  \TeacherBody{1、毕业论文（设计）进展情况：\par（1）提前完成\(\square\)；\quad（2）正常进行\(\square\)；\quad（3）延期滞后\(\square\)} \\
+  \TeacherBody{2、学生对毕业论文（设计）的认真程度：\par（1）认真\(\square\)；\quad（2）较认真\(\square\)；\quad（3）不认真\(\square\)} \\
+  \TeacherBody{3、查阅文献资料的能力：\par（1）强\(\square\)；\quad（2）一般\(\square\)；\quad（3）差\(\square\)} \\
+  \TeacherBody{4、已完成的毕业论文（设计）中期质量评价：\par（1）好\(\square\)；\quad（2）中\(\square\)；\quad（3）差\(\square\)} \\
+  \TeacherBody{5、毕业论文（设计）方向有无更改：（1）有\(\square\)；\quad（2）无\(\square\)} \\
+  \TeacherBody{6、对能否按期完成毕业论文（设计）的评估：（1）能\(\square\)；\quad（2）否\(\square\)} \\
+\end{tblr}
+
+\TightJoin
+\begin{tcolorbox}[
+  midtermfixed,
+  height=\SZTUTeacherOpinionHeight,
+  overlay unbroken and last={
+    \node[anchor=south east,align=right] at ([xshift=-\SZTUSignatureRightInset,yshift=2mm]frame.south east) {
+      \SignatureText{指导教师签名：\hspace*{\SZTUTeacherSignatureBlank}}\\[1mm]
+      \SignatureText{年\hspace{6.35mm}月\hspace{6.35mm}日}
+    };
+  }
+]
+  \SignatureText{存在的问题及后期指导工作意见：}\par
+\end{tcolorbox}
+
+\TightJoin
+\begin{tcolorbox}[
+  midtermfixed,
+  height=\SZTUReviewOpinionHeight,
+  overlay unbroken and last={
+    \node[anchor=south east,align=right] at ([xshift=-\SZTUSignatureRightInset,yshift=2mm]frame.south east) {
+      \SignatureText{审查小组负责人签名：\hspace*{\SZTUReviewSignatureBlank}}\\[1mm]
+      \SignatureText{年\hspace{6.35mm}月\hspace{6.35mm}日}
+    };
+  }
+]
+  \SignatureText{审查小组检查意见：}\par
+\end{tcolorbox}
+\end{adjustwidth}
+
+\end{document}

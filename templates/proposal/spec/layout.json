@@ -1,0 +1,50 @@
+{
+  "version": "0.2",
+  "typography": {
+    "title": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "小二",
+      "bold": true
+    },
+    "label": {
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    },
+    "body": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "五号",
+      "bold": false
+    },
+    "signature": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    }
+  },
+  "paragraphs": {
+    "line_spacing": 1.0,
+    "first_line_indent_em": 2.0,
+    "nested_list_left_indent_em": 1.0,
+    "reference_first_line_indent_em": 0.0
+  },
+  "page": {
+    "top_margin_mm": 28.0,
+    "bottom_margin_mm": 20.0,
+    "left_margin_mm": 25.0,
+    "right_margin_mm": 25.0
+  },
+  "table": {
+    "border_pt": 0.48,
+    "horizontal_padding_mm": 2.0
+  },
+  "signature_regions": {
+    "student_min_height_mm": 22.0,
+    "review_min_height_mm": 88.0,
+    "signature_slot_width_mm": 49.5
+  }
+}

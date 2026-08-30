@@ -1,0 +1,454 @@
+#!/usr/bin/env python3
+"""Run structural and rendered regression checks for the midterm template."""
+
+from __future__ import annotations
+
+import argparse
+import copy
+import hashlib
+import importlib.util
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+import pdfplumber
+from docx import Document
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+
+TEMPLATES_DIR = Path(__file__).resolve().parents[1]
+if str(TEMPLATES_DIR) not in sys.path:
+    sys.path.insert(0, str(TEMPLATES_DIR))
+
+from common.python.typography import load_document_layout  # noqa: E402
+
+
+def run(command: list[str], *, cwd: Path) -> str:
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    return result.stdout
+
+
+def load_renderer(path: Path, module_name: str):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load renderer: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def paragraph_runs(cell) -> list:
+    return [run for paragraph in cell.paragraphs for run in paragraph.runs]
+
+
+def assert_run_role(run, *, cjk: str, latin: str, size: float, bold: bool) -> None:
+    rfonts = run._element.get_or_add_rPr().get_or_add_rFonts()
+    assert rfonts.get(qn("w:eastAsia")) == cjk
+    assert rfonts.get(qn("w:ascii")) == latin
+    assert run.font.size is not None and run.font.size.pt == size
+    assert bool(run.bold) is bold
+    assert run.font.color.rgb is not None
+    assert str(run.font.color.rgb) == "000000"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--skip-pdf", action="store_true")
+    args = parser.parse_args()
+
+    midterm_dir = Path(__file__).resolve().parent
+    project_dir = midterm_dir.parents[1]
+    output_root = project_dir / "tmp" / "midterm-tests"
+    output_root.mkdir(parents=True, exist_ok=True)
+    layout = load_document_layout(midterm_dir / "spec" / "layout.json")
+    word_renderer = load_renderer(midterm_dir / "word" / "render.py", "midterm_word_test")
+    latex_renderer = load_renderer(midterm_dir / "latex" / "render.py", "midterm_latex_test")
+
+    plain_run = {"text": "完成开题", "script": "normal", "italic": False, "bold": False}
+    assert latex_renderer.rich_runs([plain_run]) == r"完成开\nobreak{}题"
+    punctuated_run = dict(plain_run, text="完成开题。")
+    assert latex_renderer.rich_runs([punctuated_run]) == r"完成开\nobreak{}题。"
+    latin_ending_run = dict(plain_run, text="完成模型 CNN")
+    assert latex_renderer.rich_runs([latin_ending_run]) == "完成模型 CNN"
+
+    assert layout["typography"]["title"]["size_pt"] == 18.0
+    assert layout["typography"]["title"]["bold"] is False
+    assert layout["typography"]["label"]["size_pt"] == 12.0
+    assert layout["typography"]["data"]["size_pt"] == 10.5
+    assert layout["typography"]["teacher_header"]["bold"] is True
+    assert layout["table"]["border_pt"] == 0.5
+    assert layout["table"]["flow_vertical_padding_mm"] == 1.5
+    assert layout["table"]["flow_end_space_mm"] == 4.0
+    assert layout["signature"]["teacher_blank_width_mm"] == 45.0
+    assert layout["signature"]["review_blank_width_mm"] == 35.0
+    assert layout["latex_pagination"]["teacher_opinion_height_mm"] == 84.0
+    assert layout["latex_pagination"]["review_group_opinion_height_mm"] == 72.0
+    assert layout["latex_pagination"]["teacher_bundle_needspace_mm"] == 242.0
+    assert layout["required_font_files"] == [
+        "FZXiaoBiaoSong",
+        "SimSun",
+        "Times New Roman",
+        "Times New Roman Bold",
+        "Times New Roman Bold Italic",
+        "Times New Roman Italic",
+    ]
+
+    official_template = midterm_dir / "word" / "official-template.docx"
+    assert sha256(official_template) == "5411d1471ba1a30def0b8c945a11674cce4616a6b3c0d3a8953e3f45b88af1a2"
+    official = Document(official_template)
+    assert len(official.tables) == 1
+    assert len(official.tables[0].rows) == 15
+    title_runs = [run for paragraph in official.paragraphs[:2] for run in paragraph.runs]
+    title_runs = [run for run in title_runs if run.text.strip()]
+    assert title_runs
+    for title_run in title_runs:
+        assert title_run.font.size is not None and title_run.font.size.pt == 18.0
+        assert not bool(title_run.bold)
+        rfonts = title_run._element.get_or_add_rPr().get_or_add_rFonts()
+        assert rfonts.get(qn("w:eastAsia")) == "方正小标宋简体"
+
+    fixture_names = ("minimal", "normal", "layout-stress", "long-with-image")
+    for name in fixture_names:
+        fixture = midterm_dir / "fixtures" / f"{name}.json"
+        raw = json.loads(fixture.read_text(encoding="utf-8"))
+        normalized = word_renderer.validate_data(raw)
+        assert normalized["schema_version"] == "0.1"
+        assert normalized["sections"]["directory"][0]["level"] == 1
+
+        docx_output = output_root / f"{name}.docx"
+        run(
+            [
+                sys.executable,
+                str(midterm_dir / "word" / "render.py"),
+                "--data",
+                str(fixture),
+                "--output",
+                str(docx_output),
+                "--overwrite",
+            ],
+            cwd=project_dir,
+        )
+        document = Document(docx_output)
+        assert len(document.sections) == 1
+        section = document.sections[0]
+        assert abs(section.page_width.mm - 210.0) <= 0.02
+        assert abs(section.page_height.mm - 297.0) <= 0.02
+        assert round(section.top_margin.mm, 2) == 25.4
+        assert round(section.bottom_margin.mm, 2) == 25.4
+        assert round(section.left_margin.mm, 2) == 31.75
+        assert round(section.right_margin.mm, 2) == 31.75
+        assert len(document.tables) == 1
+        table = document.tables[0]
+        assert len(table.rows) == 15 and len(table.columns) == 4
+        assert "FF0000" not in document.element.xml.upper()
+        assert "导师应对论文完成进度" not in table.rows[13].cells[0].text
+        assert "导师手签" not in table.rows[13].cells[0].text
+        assert "存在的问题及后期指导工作意见：" in table.rows[13].cells[0].text
+        assert "审查小组负责人签名：" in table.rows[14].cells[0].text
+        assert "指导教师填写栏目（在正确项后方框内划√）" in table.rows[6].cells[0].text
+
+        for row_index, cell_index in (
+            (0, 0), (0, 1), (0, 2), (0, 3),
+            (1, 0), (1, 1), (1, 2), (1, 3),
+            (2, 0), (2, 1), (2, 2), (2, 3),
+            (3, 0), (3, 1),
+        ):
+            cell = table.rows[row_index].cells[cell_index]
+            assert cell.vertical_alignment == WD_CELL_VERTICAL_ALIGNMENT.CENTER
+            assert all(p.alignment == WD_ALIGN_PARAGRAPH.CENTER for p in cell.paragraphs)
+
+        for row_index, cell_index in ((0, 0), (0, 2), (1, 0), (1, 2), (2, 0), (2, 2), (3, 0)):
+            for run_item in paragraph_runs(table.rows[row_index].cells[cell_index]):
+                if run_item.text:
+                    assert_run_role(
+                        run_item,
+                        cjk="宋体",
+                        latin="Times New Roman",
+                        size=12.0,
+                        bold=False,
+                    )
+        for row_index, cell_index in ((0, 1), (0, 3), (1, 1), (1, 3), (2, 1), (2, 3), (3, 1)):
+            for run_item in paragraph_runs(table.rows[row_index].cells[cell_index]):
+                if run_item.text:
+                    assert_run_role(
+                        run_item,
+                        cjk="宋体",
+                        latin="Times New Roman",
+                        size=10.5,
+                        bold=False,
+                    )
+
+        directory_cell = table.rows[4].cells[0]
+        research_start = next(
+            index
+            for index, paragraph in enumerate(directory_cell.paragraphs)
+            if paragraph.text == "主要研究内容："
+        )
+        body_paragraphs = [
+            paragraph
+            for paragraph in directory_cell.paragraphs[research_start + 1 :]
+            if paragraph.text.strip()
+        ]
+        assert body_paragraphs
+        paragraph_blocks = [
+            block
+            for block in normalized["sections"]["main_research_content"]
+            if block["type"] == "paragraph"
+        ]
+        assert paragraph_blocks
+        assert any(
+            paragraph.paragraph_format.first_line_indent is not None
+            and paragraph.paragraph_format.first_line_indent.pt == 21.0
+            for paragraph in body_paragraphs
+        )
+        first_outline = directory_cell.paragraphs[2]
+        assert first_outline.paragraph_format.left_indent is not None
+        assert first_outline.paragraph_format.left_indent.pt == 36.75
+        assert first_outline.paragraph_format.first_line_indent is not None
+        assert first_outline.paragraph_format.first_line_indent.pt == -15.75
+
+        progress_cell = table.rows[5].cells[0]
+        progress_body = [p for p in progress_cell.paragraphs[1:] if p.text.strip()]
+        assert progress_body
+        assert any(
+            p.paragraph_format.first_line_indent is not None
+            and p.paragraph_format.first_line_indent.pt == 21.0
+            for p in progress_body
+        )
+        if any(block["type"] == "ordered_list" for block in normalized["sections"]["progress"]):
+            list_paragraphs = [p for p in progress_body if re.match(r"^(?:（\d+）|\d+、)", p.text)]
+            assert list_paragraphs
+            assert all(p.paragraph_format.first_line_indent.pt == -21.0 for p in list_paragraphs)
+            assert all(p.paragraph_format.left_indent.pt == 42.0 for p in list_paragraphs)
+
+        if name == "normal":
+            all_runs = [run_item for cell in (directory_cell, progress_cell) for run_item in paragraph_runs(cell)]
+            assert any(run_item.text == "i" and run_item.font.subscript for run_item in all_runs)
+        if name == "layout-stress":
+            title_cell = table.rows[3].cells[1]
+            assert len(title_cell.paragraphs[0].text) > 35
+            assert title_cell.paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.CENTER
+        if name == "long-with-image":
+            xml = document.element.xml
+            assert "统一数据模型驱动 Word 与 LaTeX 双路渲染流程示意图" in xml
+            all_runs = [run_item for cell in (directory_cell, progress_cell) for run_item in paragraph_runs(cell)]
+            assert any(run_item.text == "2" and run_item.font.subscript for run_item in all_runs)
+            assert any(run_item.text == "−" and run_item.font.superscript for run_item in all_runs)
+            assert any(run_item.text == "3" and run_item.font.superscript for run_item in all_runs)
+
+        if args.skip_pdf:
+            continue
+
+        latex_dir = output_root / f"latex-{name}"
+        build_output = run(
+            [
+                sys.executable,
+                str(midterm_dir / "latex" / "render.py"),
+                "--data",
+                str(fixture),
+                "--output-dir",
+                str(latex_dir),
+                "--overwrite",
+                "--compile",
+            ],
+            cwd=project_dir,
+        )
+        assert "Overfull" not in build_output
+        assert "Underfull" not in build_output
+        assert "Missing character" not in build_output
+        fonts_tex = (latex_dir / "midterm-fonts.tex").read_text(encoding="utf-8")
+        data_tex = (latex_dir / "midterm-data.tex").read_text(encoding="utf-8")
+        typography_tex = (latex_dir / "midterm-typography.tex").read_text(encoding="utf-8")
+        assert "FZXiaoBiaoSong" not in fonts_tex or "方正小标宋简体" in fonts_tex
+        assert "AutoFakeBold=3" in fonts_tex
+        assert r"\newcommand{\SZTUTitleSize}{\zihao{-2}}" in typography_tex
+        assert r"\newcommand{\SZTUDataSize}{\zihao{5}}" in typography_tex
+        assert r"\newcommand{\SZTUFormRuleWidth}{0.5pt}" in typography_tex
+        assert r"\newcommand{\SZTUFlowVerticalPadding}{1.5mm}" in typography_tex
+        assert r"\newcommand{\SZTUFlowEndSpace}{4mm}" in typography_tex
+        assert r"\newcommand{\SZTUTeacherOpinionHeight}{84mm}" in typography_tex
+        assert r"\newcommand{\SZTUReviewOpinionHeight}{72mm}" in typography_tex
+        assert r"\newcommand{\SZTUTeacherBundleNeedspace}{242mm}" in typography_tex
+        assert r"\newcommand{\SZTUTeacherSignatureBlank}{45mm}" in typography_tex
+        assert r"\newcommand{\SZTUReviewSignatureBlank}{35mm}" in typography_tex
+        assert r"\long\def\DirectoryContent" in data_tex
+        if name == "normal":
+            assert r"\textit{x}\textsubscript{i}" in data_tex
+            assert r"\MidtermListItem{（1）}" in data_tex
+        if name == "long-with-image":
+            assert r"H\textsubscript{2}O" in data_tex
+            assert r"10\textsuperscript{−3}" in data_tex
+            assert r"R\textsuperscript{2}" in data_tex
+            assert r"\MidtermFigure{assets/" in data_tex
+            assert len(list((latex_dir / "assets").glob("*.png"))) == 1
+
+        pdf_path = latex_dir / "main.pdf"
+        info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)
+        assert "Page size:       595.28 x 841.89 pts (A4)" in info
+        match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)
+        assert match is not None
+        page_count = int(match.group(1))
+        assert 3 <= page_count <= 8
+        fonts = run(["pdffonts", str(pdf_path)], cwd=project_dir)
+        assert "FZXBSJW" in fonts
+        assert "SimSun" in fonts
+        assert "TimesNewRoman" in fonts
+        assert all(
+            line.split()[-5:-2] == ["yes", "yes", "yes"]
+            for line in fonts.splitlines()[2:]
+            if line.strip()
+        )
+        extracted = run(["pdftotext", str(pdf_path), "-"], cwd=project_dir)
+        assert "深圳技术大学本科毕业论文（设计）" in extracted
+        assert raw["metadata"]["student_name"] in extracted
+        assert "存在的问题及后期指导工作意见" in extracted
+        gate = run(
+            [sys.executable, str(project_dir / "scripts" / "validate_cjk_render.py"), str(pdf_path)],
+            cwd=project_dir,
+        )
+        assert "PASS" in gate and "100.0%" in gate
+
+        with pdfplumber.open(pdf_path) as pdf:
+            first_page = pdf.pages[0]
+            teacher_bundle_pages = {}
+            for page_index, page in enumerate(pdf.pages, start=1):
+                page_text = page.extract_text() or ""
+                for label in (
+                    "指导教师填写栏目",
+                    "存在的问题及后期指导工作意见",
+                    "审查小组检查意见",
+                ):
+                    if label in page_text:
+                        teacher_bundle_pages[label] = page_index
+            assert set(teacher_bundle_pages) == {
+                "指导教师填写栏目",
+                "存在的问题及后期指导工作意见",
+                "审查小组检查意见",
+            }
+            assert len(set(teacher_bundle_pages.values())) == 1
+            chars = [char for page in pdf.pages for char in page.chars if char.get("text", "").strip()]
+            assert any("FZXBSJW" in char["fontname"] and round(float(char["size"]), 2) == 18.0 for char in chars)
+            assert any("SimSun" in char["fontname"] and round(float(char["size"]), 2) == 12.0 for char in chars)
+            assert any("SimSun" in char["fontname"] and round(float(char["size"]), 2) == 10.5 for char in chars)
+            vertical = [
+                edge
+                for edge in first_page.edges
+                if abs(float(edge["x1"]) - float(edge["x0"])) < 0.1
+                and float(edge["top"]) < 220
+                and float(edge["bottom"]) > 135
+            ]
+            x_values = sorted({round(float(edge["x0"]), 1) for edge in vertical})
+            assert x_values[0] <= 84.8 and x_values[-1] >= 510.2
+            table_top = min(float(edge["top"]) for edge in vertical)
+            assert abs(table_top - 134.4) <= 1.2
+
+            for page_index, page in enumerate(pdf.pages, start=1):
+                long_h = [
+                    edge
+                    for edge in page.edges
+                    if abs(float(edge["bottom"]) - float(edge["top"])) < 0.1
+                    and float(edge["x1"]) - float(edge["x0"]) > 420
+                ]
+                long_v = [
+                    edge
+                    for edge in page.edges
+                    if abs(float(edge["x1"]) - float(edge["x0"])) < 0.1
+                    and float(edge["bottom"]) - float(edge["top"]) > 20
+                ]
+                assert long_h, f"page {page_index} lacks a full-width closing rule"
+                assert long_v, f"page {page_index} lacks continuous side borders"
+                if page_index > 1:
+                    assert min(float(edge["top"]) for edge in long_h) <= 82.0
+
+            words_by_text = {
+                word["text"]: word
+                for page in pdf.pages
+                for word in page.extract_words()
+                if word["text"] in {"指导教师签名：", "审查小组负责人签名："}
+            }
+            assert set(words_by_text) == {"指导教师签名：", "审查小组负责人签名："}
+            form_right = max(
+                float(edge["x0"])
+                for page in pdf.pages
+                for edge in page.edges
+                if abs(float(edge["x1"]) - float(edge["x0"])) < 0.1
+            )
+            mm_to_pt = 72.0 / 25.4
+            teacher_gap = form_right - float(words_by_text["指导教师签名："]["x1"])
+            review_gap = form_right - float(words_by_text["审查小组负责人签名："]["x1"])
+            assert teacher_gap >= (45.0 + 7.5) * mm_to_pt - 2.0
+            assert review_gap >= (35.0 + 7.5) * mm_to_pt - 2.0
+        if name == "long-with-image":
+            with pdfplumber.open(pdf_path) as pdf:
+                assert any(page.images for page in pdf.pages)
+
+    invalid = json.loads((midterm_dir / "fixtures" / "minimal.json").read_text(encoding="utf-8"))
+    invalid_advisor = copy.deepcopy(invalid)
+    invalid_advisor["metadata"]["advisor"] = "李华教授"
+    try:
+        word_renderer.validate_data(invalid_advisor)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("advisor title must be rejected")
+    invalid_level = copy.deepcopy(invalid)
+    invalid_level["sections"]["directory"][1]["level"] = 3
+    try:
+        word_renderer.validate_data(invalid_level)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("skipped outline level must be rejected")
+    invalid_remote = copy.deepcopy(invalid)
+    invalid_remote["sections"]["progress"] = [
+        {"type": "image", "path": "https://example.com/a.png", "alt": "remote"}
+    ]
+    normalized_remote = word_renderer.validate_data(invalid_remote)
+    try:
+        word_renderer._resolve_image(
+            normalized_remote["sections"]["progress"][0]["path"],
+            midterm_dir,
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("remote image URL must be rejected")
+
+    unified_output = output_root / "unified-minimal"
+    run(
+        [
+            sys.executable,
+            str(midterm_dir / "render.py"),
+            "--data",
+            str(midterm_dir / "fixtures" / "minimal.json"),
+            "--output-dir",
+            str(unified_output),
+            "--format",
+            "all",
+            "--overwrite",
+        ],
+        cwd=project_dir,
+    )
+    assert (unified_output / "midterm.docx").is_file()
+    assert (unified_output / "latex" / "main.tex").is_file()
+
+    print("midterm template regression checks passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -16,6 +16,19 @@ from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from PIL import Image
 
+TEMPLATES_DIR = Path(__file__).resolve().parents[1]
+if str(TEMPLATES_DIR) not in sys.path:
+    sys.path.insert(0, str(TEMPLATES_DIR))
+
+from common.python.pdf_geometry import (  # noqa: E402
+    assert_centered,
+    assert_rule_has_raster_ink,
+    assert_vertically_centered,
+    cell_chars,
+    clustered,
+)
+from common.python.typography import load_document_layout  # noqa: E402
+
 
 def run(command: list[str], *, cwd: Path) -> str:
     result = subprocess.run(
@@ -29,85 +42,6 @@ def run(command: list[str], *, cwd: Path) -> str:
     return result.stdout
 
 
-def bbox(chars: list[dict]) -> tuple[float, float, float, float]:
-    return (
-        min(float(char["x0"]) for char in chars),
-        min(float(char["top"]) for char in chars),
-        max(float(char["x1"]) for char in chars),
-        max(float(char["bottom"]) for char in chars),
-    )
-
-
-def cell_chars(
-    chars: list[dict],
-    bounds: tuple[float, float, float, float],
-    *,
-    font: str,
-    size: float,
-) -> list[dict]:
-    x0, top, x1, bottom = bounds
-    return [
-        char
-        for char in chars
-        if x0 <= (float(char["x0"]) + float(char["x1"])) / 2 <= x1
-        and top <= (float(char["top"]) + float(char["bottom"])) / 2 <= bottom
-        and font in char["fontname"]
-        and round(float(char["size"]), 2) == size
-    ]
-
-
-def assert_centered(chars: list[dict], bounds: tuple[float, float, float, float]) -> None:
-    assert chars
-    x0, top, x1, bottom = bounds
-    bx0, btop, bx1, bbottom = bbox(chars)
-    horizontal_error = abs((bx0 + bx1) / 2 - (x0 + x1) / 2)
-    vertical_error = abs((btop + bbottom) / 2 - (top + bottom) / 2)
-    assert horizontal_error <= 1.7, (bounds, bbox(chars), horizontal_error)
-    assert vertical_error <= 1.7, (bounds, bbox(chars), vertical_error)
-
-
-def assert_vertically_centered(
-    chars: list[dict], bounds: tuple[float, float, float, float]
-) -> None:
-    assert chars
-    _, top, _, bottom = bounds
-    _, btop, _, bbottom = bbox(chars)
-    vertical_error = abs((btop + bbottom) / 2 - (top + bottom) / 2)
-    assert vertical_error <= 1.7, (bounds, bbox(chars), vertical_error)
-
-
-def clustered(values: list[float], *, tolerance: float = 1.0) -> list[float]:
-    result: list[float] = []
-    for value in sorted(values):
-        if not result or value - result[-1] > tolerance:
-            result.append(value)
-    return result
-
-
-def assert_rule_has_raster_ink(
-    image: Image.Image,
-    *,
-    page_width: float,
-    page_height: float,
-    x0: float,
-    x1: float,
-    top: float,
-) -> None:
-    grayscale = image.convert("L")
-    scale_x = grayscale.width / page_width
-    scale_y = grayscale.height / page_height
-    px0 = max(0, round(x0 * scale_x))
-    px1 = min(grayscale.width, round(x1 * scale_x))
-    py = round(top * scale_y)
-    ratios = []
-    for row in range(max(0, py - 3), min(grayscale.height, py + 4)):
-        dark = sum(grayscale.getpixel((column, row)) < 160 for column in range(px0, px1))
-        ratios.append(dark / max(1, px1 - px0))
-    # A parsed PDF edge is not sufficient evidence: the corresponding raster
-    # row must visibly contain the rule across almost the whole table width.
-    assert ratios and max(ratios) >= 0.75
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-pdf", action="store_true", help="skip XeLaTeX and CJK checks")
@@ -117,11 +51,19 @@ def main() -> int:
     project_dir = proposal_dir.parents[1]
     output_root = project_dir / "tmp" / "proposal-tests"
     output_root.mkdir(parents=True, exist_ok=True)
+    layout = load_document_layout(proposal_dir / "spec" / "layout.json")
+    assert layout["typography"]["title"]["size_pt"] == 18.0
+    assert layout["typography"]["label"]["size_pt"] == 12.0
+    assert layout["typography"]["body"]["size_pt"] == 10.5
+    assert layout["typography"]["title"]["bold"] is True
+    assert layout["typography"]["label"]["bold"] is False
+    assert layout["table"]["border_pt"] == 0.48
 
     latex_template = (proposal_dir / "latex" / "main.tex").read_text(encoding="utf-8")
-    assert r"{\heitiBold\bfseries\zihao{-2}深圳技术大学本科毕业论文（设计）\par}" in latex_template
-    assert r"\newcommand{\Label}[1]{{\heiti\zihao{-4}#1}}" in latex_template
-    assert r"\newcommand{\SignatureText}[1]{{\songti\zihao{-4}#1}}" in latex_template
+    assert r"\input{proposal-typography.tex}" in latex_template
+    assert r"{\heitiBold\bfseries\SZTUTitleSize 深圳技术大学本科毕业论文（设计）\par}" in latex_template
+    assert r"\newcommand{\Label}[1]{{\heiti\SZTULabelSize #1}}" in latex_template
+    assert r"\newcommand{\SignatureText}[1]{{\songti\SZTUSignatureSize #1}}" in latex_template
     assert r"\noindent 本课题研究方法、手段如下" not in latex_template
     assert r"\noindent 本课题研究步骤如下" not in latex_template
     assert r"\newcommand{\NestedOrderedItem}" in latex_template
@@ -167,7 +109,9 @@ def main() -> int:
         assert method_paragraphs
         assert all(
             paragraph.paragraph_format.first_line_indent is not None
-            and paragraph.paragraph_format.first_line_indent.pt == 21
+            and paragraph.paragraph_format.first_line_indent.pt
+            == layout["typography"]["body"]["size_pt"]
+            * layout["paragraphs"]["first_line_indent_em"]
             for paragraph in method_paragraphs
         )
         if name == "long":
@@ -214,7 +158,9 @@ def main() -> int:
             ]
             assert all(
                 paragraph.paragraph_format.left_indent is not None
-                and paragraph.paragraph_format.left_indent.pt == 10.5
+                and paragraph.paragraph_format.left_indent.pt
+                == layout["typography"]["body"]["size_pt"]
+                * layout["paragraphs"]["nested_list_left_indent_em"]
                 for paragraph in nested_paragraphs
             )
             continuation = next(
@@ -252,10 +198,17 @@ def main() -> int:
         assert "Missing character" not in latex_compile_output
         data_tex = (latex_dir / "proposal-data.tex").read_text(encoding="utf-8")
         fonts_tex = (latex_dir / "proposal-fonts.tex").read_text(encoding="utf-8")
+        typography_tex = (latex_dir / "proposal-typography.tex").read_text(
+            encoding="utf-8"
+        )
         assert "ProposalAdaptiveLayout" not in data_tex
         assert r"\long\def\MethodsAndMeans" in data_tex
         assert r"\long\def\ResearchSteps" in data_tex
         assert "AutoFakeBold=3" in fonts_tex
+        assert r"\newcommand{\SZTUTitleSize}{\zihao{-2}}" in typography_tex
+        assert r"\newcommand{\SZTULabelSize}{\zihao{-4}}" in typography_tex
+        assert r"\newcommand{\SZTUBodySize}{\zihao{5}}" in typography_tex
+        assert r"\newcommand{\SZTUFormRuleWidth}{0.48pt}" in typography_tex
         if name == "normal":
             assert r"\long\def\ProposalTitle" in data_tex
             assert r"H\textsubscript{2}O\textsubscript{2}" in data_tex

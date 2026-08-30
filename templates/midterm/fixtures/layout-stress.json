@@ -1,0 +1,36 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "欧阳明远",
+    "college": "城市交通与物流学院（未来交通学院）",
+    "major": "智能交通与智慧城市系统工程",
+    "class_name": "智能交通工程联合培养实验班",
+    "advisor": "赵文清",
+    "check_date": "2026-04-09",
+    "title": "面向多源异构城市交通感知数据的时空协同建模、可信融合与拥堵演化预测系统研究"
+  },
+  "sections": {
+    "directory": [
+      {"level": 1, "number": "1", "title": "绪论"},
+      {"level": 2, "number": "1.1", "title": "研究背景与问题定义"},
+      {"level": 3, "number": "1.1.1", "title": "多源异构交通数据特征"},
+      {"level": 4, "number": "1.1.1.1", "title": "采样频率与空间尺度差异"},
+      {"level": 1, "number": "2", "title": "时空协同建模方法"},
+      {"level": 2, "number": "2.1", "title": "动态图结构构建"},
+      {"level": 1, "number": "3", "title": "实验与分析"}
+    ],
+    "main_research_content": [
+      {"type": "paragraph", "runs": [{"text": "本课题建立统一时间轴和路网拓扑，将浮动车、地磁、视频和气象数据映射到可追溯的数据单元。"}]},
+      {"type": "paragraph", "runs": [{"text": "在模型层面研究跨模态注意力、动态图卷积和不确定性估计，损失函数记为 L"}, {"text": "total", "script": "sub"}, {"text": "＝L"}, {"text": "pred", "script": "sub"}, {"text": "＋λL"}, {"text": "cons", "script": "sub"}, {"text": "，并比较不同融合策略。"}]},
+      {"type": "ordered_list", "items": [
+        {"marker": "（1）", "content": "数据完整性与时间同步测试。"},
+        {"marker": "（2）", "content": "长字段、四级目录和两行题目排版测试。"},
+        {"marker": "（3）", "content": "中文、Latin 字符、数字和上下标混排测试。"}
+      ]}
+    ],
+    "progress": [
+      {"type": "paragraph", "runs": [{"text": "已完成多源样例数据的脱敏整理、数据字典定义和原型网络实现。"}]},
+      {"type": "paragraph", "runs": [{"text": "已验证训练流程能够稳定复现，正在补充异常场景和长时间跨度测试。"}]}
+    ]
+  }
+}

@@ -27,6 +27,55 @@ These rules apply whenever an agent reads, compares, creates, or reviews a Chine
 
 Detailed commands and the failure decision tree are in `docs/RENDERING_QA.md`.
 
+## Process-document template engineering rules
+
+These rules apply when creating or changing proposal, task-book, midterm,
+integrity-declaration, or thesis process-document templates.
+
+1. Treat the current official Word/PDF form as the format authority.
+   - Write or update the document-specific `spec/artifact.md` and
+     `spec/layout.json` before changing measured layout values.
+   - Historical student samples are stress-test inputs, not format authorities.
+2. Separate shared capabilities from document-specific measurements.
+   - Rich text, Chinese size mapping, font policy, paragraph/list semantics, and
+     reusable QA helpers belong in `templates/common/`.
+   - Column widths, row heights, borders, signature regions, and field mappings
+     belong in `templates/<document>/spec/`.
+   - A new template must import the shared implementation; do not copy and fork it.
+3. Use one structured data source for Word and LaTeX.
+   - Superscript, subscript, bold, and italic must be explicit run properties.
+   - Do not use Unicode subscript characters, spaces, tabs, or renderer-specific
+     source edits to approximate semantic formatting.
+   - Per-student work may change input data only. A renderer change means a generic
+     capability gap and requires a regression test.
+4. Make typography deterministic.
+   - Font family, Chinese size name, point size, and bold state are separate facts.
+   - Missing required fonts must stop rendering; silent substitution is forbidden.
+   - Never shrink official type, line spacing, margins, or signature space to fit
+     long content.
+5. Make table geometry explicit.
+   - Adjacent visual regions must share continuous borders without default gaps or
+     double-drawn rules.
+   - Page-break fragments must close according to the official form.
+   - Alignment, vertical centering, wrapping, and cell padding are specified per
+     field and verified from rendered geometry, not inferred from source settings.
+6. Make paragraph structure explicit.
+   - Independent body paragraphs, including introductory sentences, use the
+     document's two-character first-line indent unless the spec says otherwise.
+   - Ordered-list items are separate semantic blocks; continuation text returns to
+     the normal paragraph style. References use their own no-indent style.
+7. Every visual defect must produce four artifacts: a specification rule, a shared
+   or document-specific implementation fix, a fixture that exposes it, and an
+   automated assertion that prevents recurrence.
+8. Before declaring a template mature, run short, normal, long, layout-stress,
+   rich-text/list, page-break, and local real-sample cases. Keep Word/WPS visual
+   acceptance separate from structural and LaTeX/PDF checks.
+9. Never commit real student content, generated private outputs, commercial fonts,
+   signatures, or teacher comments. Respect `references/private/`,
+   `output/**/private/`, and `tmp/` boundaries.
+
+The rationale and full workflow are in `docs/TEMPLATE_ENGINEERING_GUIDE.md`.
+
 ## Local workbench frontend rules
 
 These rules apply to the local graduation-document workbench and to any frontend

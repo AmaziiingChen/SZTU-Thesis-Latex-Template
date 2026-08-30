@@ -1,0 +1,52 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "林海舟",
+    "college": "大数据与互联网学院",
+    "major": "数据科学与大数据技术",
+    "class_name": "大数据三班",
+    "advisor": "周思远",
+    "check_date": "2026-04-02",
+    "title": "基于统一数据模型的本科毕业论文过程文档生成与版式一致性验证系统"
+  },
+  "sections": {
+    "directory": [
+      {"level": 1, "number": "1", "title": "绪论"},
+      {"level": 2, "number": "1.1", "title": "研究背景"},
+      {"level": 2, "number": "1.2", "title": "研究内容与技术路线"},
+      {"level": 1, "number": "2", "title": "需求分析"},
+      {"level": 2, "number": "2.1", "title": "官方格式约束"},
+      {"level": 2, "number": "2.2", "title": "内容结构约束"},
+      {"level": 1, "number": "3", "title": "统一数据模型设计"},
+      {"level": 2, "number": "3.1", "title": "富文本与上下标"},
+      {"level": 2, "number": "3.2", "title": "有序列表与图片"},
+      {"level": 1, "number": "4", "title": "双路渲染器实现"},
+      {"level": 2, "number": "4.1", "title": "Word 模板填充"},
+      {"level": 2, "number": "4.2", "title": "LaTeX 模板生成"},
+      {"level": 1, "number": "5", "title": "测试与结果分析"},
+      {"level": 1, "number": "6", "title": "总结与展望"}
+    ],
+    "main_research_content": [
+      {"type": "paragraph", "runs": [{"text": "本研究以学校官方过程文档为版式权威，将学生填写内容与固定表格结构分离。统一数据模型只记录有语义的信息，渲染器负责字体、字号、边框、缩进、分页和签名空间，从而减少手工调整造成的差异。"}]},
+      {"type": "paragraph", "runs": [{"text": "系统同时生成 Word 和 LaTeX/PDF。两条路径共享同一组输入和排版令牌，并分别执行结构检查与视觉检查。对 H"}, {"text": "2", "script": "sub"}, {"text": "O、10"}, {"text": "−3", "script": "super"}, {"text": "、R"}, {"text": "2", "script": "super"}, {"text": " 等典型上下标进行专门回归，避免文本提取或格式转换后丢失语义。"}]},
+      {"type": "image", "path": "assets/research-workflow.png", "alt": "统一数据模型驱动 Word 与 LaTeX 双路渲染流程示意图", "width_mm": 118, "caption": "图 1  统一数据入口与双路渲染流程"},
+      {"type": "ordered_list", "items": [
+        {"marker": "（1）", "content": "解析官方模板中的页面、表格、字体和段落属性，形成可审计规格。"},
+        {"marker": "（2）", "content": "设计包含富文本、目录层级、有序列表、图片和题注的统一数据模型。"},
+        {"marker": "（3）", "content": "使用短、正常、长、图片和信息区压力数据执行回归并逐页检查。"}
+      ]},
+      {"type": "paragraph", "runs": [{"text": "除公开虚构测试外，开发阶段还会在本地使用历史材料验证内容承载能力，但真实姓名、学号、论文内容及其生成结果均不进入 Git 仓库。"}]}
+    ],
+    "progress": [
+      {"type": "paragraph", "runs": [{"text": "第一阶段已完成官方 DOCX、图像型 PDF 和空白 DOC 的结构取证，明确了页面尺寸、页边距、表格列宽、边框粗细、字体字号、固定字段及留空区域。"}]},
+      {"type": "ordered_list", "items": [
+        {"content": "已建立统一字体策略和字号映射，缺少官方字体时停止生成。"},
+        {"content": "已完成 JSON Schema 及 Word 渲染器的主体实现。"},
+        {"content": "正在完成 LaTeX 连续表格、跨页闭合边框和图片回归。"},
+        {"content": "后续将由项目负责人在 Word/WPS 中进行最终目标编辑器验收。"}
+      ]},
+      {"type": "paragraph", "runs": [{"text": "当前未发现会改变研究方向的重大问题。主要风险是不同编辑器的字体度量和跨页算法存在差异，因此保持官方 DOCX 为 Word 路径的固定基准，并把 LaTeX PDF 的中文渲染、逐页边框和签名空间作为独立门禁。"}]},
+      {"type": "paragraph", "runs": [{"text": "下一阶段将补齐自动测试，对结构、字体、颜色、段落缩进、上下标、图片替代文本和分页进行检查；随后使用正常数据与长内容数据开展教师审核。整体进度与任务书计划一致。"}]}
+    ]
+  }
+}

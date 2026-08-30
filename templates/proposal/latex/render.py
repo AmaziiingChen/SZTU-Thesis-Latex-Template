@@ -6,34 +6,24 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
-import os
-import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+TEMPLATES_DIR = Path(__file__).resolve().parents[2]
+if str(TEMPLATES_DIR) not in sys.path:
+    sys.path.insert(0, str(TEMPLATES_DIR))
 
-FONT_SPECS = {
-    "SimSun": ("SZTU_SIMSUN_FONT", ("simsun.ttf", "simsun.ttc")),
-    "SimHei": ("SZTU_SIMHEI_FONT", ("simhei.ttf",)),
-    "Times New Roman": (
-        "SZTU_TIMES_REGULAR_FONT",
-        ("Times New Roman.ttf", "times.ttf"),
-    ),
-    "Times New Roman Bold": (
-        "SZTU_TIMES_BOLD_FONT",
-        ("Times New Roman Bold.ttf", "timesbd.ttf"),
-    ),
-    "Times New Roman Italic": (
-        "SZTU_TIMES_ITALIC_FONT",
-        ("Times New Roman Italic.ttf", "timesi.ttf"),
-    ),
-    "Times New Roman Bold Italic": (
-        "SZTU_TIMES_BOLD_ITALIC_FONT",
-        ("Times New Roman Bold Italic.ttf", "timesbi.ttf"),
-    ),
-}
+from common.python.content import (  # noqa: E402
+    has_explicit_numbering,
+    split_numbered_subitems,
+)
+from common.python.font_files import (  # noqa: E402
+    resolve_font_files,
+    tex_font_parts,
+)
+from common.python.typography import load_document_layout  # noqa: E402
 
 
 def _load_word_renderer(script_dir: Path):
@@ -46,84 +36,13 @@ def _load_word_renderer(script_dir: Path):
     return module
 
 
-def _font_roots(script_dir: Path) -> list[Path]:
-    roots = [script_dir.parent / "fonts.local"]
-    extra = os.environ.get("SZTU_FONT_DIR")
-    if extra:
-        roots.extend(Path(item).expanduser() for item in extra.split(os.pathsep) if item)
-    if sys.platform == "darwin":
-        roots.extend(
-            [
-                Path.home() / "Library" / "Fonts",
-                Path("/Library/Fonts"),
-                Path("/System/Library/Fonts"),
-                Path("/System/Library/Fonts/Supplemental"),
-            ]
-        )
-    elif os.name == "nt":
-        roots.append(Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts")
-    else:
-        roots.extend(
-            [
-                Path.home() / ".local" / "share" / "fonts",
-                Path.home() / ".fonts",
-                Path("/usr/local/share/fonts"),
-                Path("/usr/share/fonts"),
-            ]
-        )
-    unique: list[Path] = []
-    for root in roots:
-        resolved = root.expanduser()
-        if resolved.is_dir() and resolved not in unique:
-            unique.append(resolved)
-    return unique
-
-
-def resolve_font_files(script_dir: Path) -> dict[str, Path]:
-    index: dict[str, Path] = {}
-    for root in _font_roots(script_dir):
-        for path in root.rglob("*"):
-            if path.is_file():
-                index.setdefault(path.name.casefold(), path.resolve())
-
-    resolved: dict[str, Path] = {}
-    missing: list[str] = []
-    for family, (environment_key, candidates) in FONT_SPECS.items():
-        override = os.environ.get(environment_key)
-        if override:
-            path = Path(override).expanduser().resolve()
-            if not path.is_file():
-                raise FileNotFoundError(f"{environment_key} does not point to a font file: {path}")
-            resolved[family] = path
-            continue
-        path = next((index[name.casefold()] for name in candidates if name.casefold() in index), None)
-        if path is None:
-            missing.append(f"{family} ({'/'.join(candidates)})")
-        else:
-            resolved[family] = path
-    if missing:
-        raise FileNotFoundError(
-            "required official fonts are missing; font substitution is forbidden: "
-            + ", ".join(missing)
-        )
-    return resolved
-
-
-def _font_parts(path: Path) -> tuple[str, str]:
-    directory = path.parent.as_posix().rstrip("/") + "/"
-    filename = path.name
-    if any(character in directory + filename for character in ("{", "}", "%", "#")):
-        raise ValueError(f"font path contains unsupported TeX characters: {path}")
-    return directory, filename
-
-
 def fonts_tex(fonts: dict[str, Path]) -> str:
-    simsun_dir, simsun = _font_parts(fonts["SimSun"])
-    simhei_dir, simhei = _font_parts(fonts["SimHei"])
-    times_dir, times = _font_parts(fonts["Times New Roman"])
-    times_bold_dir, times_bold = _font_parts(fonts["Times New Roman Bold"])
-    times_italic_dir, times_italic = _font_parts(fonts["Times New Roman Italic"])
-    times_bold_italic_dir, times_bold_italic = _font_parts(
+    simsun_dir, simsun = tex_font_parts(fonts["SimSun"])
+    simhei_dir, simhei = tex_font_parts(fonts["SimHei"])
+    times_dir, times = tex_font_parts(fonts["Times New Roman"])
+    times_bold_dir, times_bold = tex_font_parts(fonts["Times New Roman Bold"])
+    times_italic_dir, times_italic = tex_font_parts(fonts["Times New Roman Italic"])
+    times_bold_italic_dir, times_bold_italic = tex_font_parts(
         fonts["Times New Roman Bold Italic"]
     )
     if len({times_dir, times_bold_dir, times_italic_dir, times_bold_italic_dir}) != 1:
@@ -137,6 +56,37 @@ def fonts_tex(fonts: dict[str, Path]) -> str:
             rf"\newCJKfontfamily\heiti[Path={{{simhei_dir}}}]{{{simhei}}}",
             rf"\newCJKfontfamily\heitiBold[Path={{{simhei_dir}}},AutoFakeBold=3]{{{simhei}}}",
             rf"\setmainfont[Path={{{times_dir}}},BoldFont={{{times_bold}}},ItalicFont={{{times_italic}}},BoldItalicFont={{{times_bold_italic}}}]{{{times}}}",
+            "",
+        ]
+    )
+
+
+def typography_tex(layout: dict) -> str:
+    typography = layout["typography"]
+    paragraphs = layout["paragraphs"]
+    page = layout["page"]
+    table = layout["table"]
+    signatures = layout["signature_regions"]
+    padding = float(table["horizontal_padding_mm"])
+    return "\n".join(
+        [
+            "% Generated file. Shared size map plus proposal-specific layout tokens.",
+            rf"\newcommand{{\SZTUTitleSize}}{{\zihao{{{typography['title']['latex_zihao']}}}}}",
+            rf"\newcommand{{\SZTULabelSize}}{{\zihao{{{typography['label']['latex_zihao']}}}}}",
+            rf"\newcommand{{\SZTUBodySize}}{{\zihao{{{typography['body']['latex_zihao']}}}}}",
+            rf"\newcommand{{\SZTUSignatureSize}}{{\zihao{{{typography['signature']['latex_zihao']}}}}}",
+            rf"\newcommand{{\SZTUPageTopMargin}}{{{page['top_margin_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUPageBottomMargin}}{{{page['bottom_margin_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUPageLeftMargin}}{{{page['left_margin_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUPageRightMargin}}{{{page['right_margin_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUFormRuleWidth}}{{{table['border_pt']:g}pt}}",
+            rf"\newcommand{{\SZTUCellHorizontalPadding}}{{{padding:g}mm}}",
+            rf"\newcommand{{\SZTUCellHorizontalPaddingDouble}}{{{2 * padding:g}mm}}",
+            rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUNestedListLeftIndent}}{{{paragraphs['nested_list_left_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUStudentSignatureHeight}}{{{signatures['student_min_height_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUReviewSignatureHeight}}{{{signatures['review_min_height_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUSignatureSlotWidth}}{{{signatures['signature_slot_width_mm']:g}mm}}",
             "",
         ]
     )
@@ -179,17 +129,12 @@ def paragraphs(items: list[list[dict]], *, indent: bool = True) -> str:
     return ("\\par\n" + prefix).join(prefix + rich_runs(item) for item in items)
 
 
-def _has_explicit_numbering(runs: list[dict]) -> bool:
-    text = "".join(run["text"] for run in runs).lstrip()
-    return re.match(r"^(?:第[一二三四五六七八九十]+阶段|[（(]?\d+[）)、.])", text) is not None
-
-
-def numbered_paragraphs(items: list[list[dict]], *, shared) -> str:
+def numbered_paragraphs(items: list[list[dict]]) -> str:
     rendered_items = []
     for index, item in enumerate(items, start=1):
-        split_item = shared.split_numbered_subitems(item)
+        split_item = split_numbered_subitems(item)
         lead = split_item[0] if split_item else item
-        rendered = rich_runs(lead) if _has_explicit_numbering(lead) else rf"{index}、{rich_runs(lead)}"
+        rendered = rich_runs(lead) if has_explicit_numbering(lead) else rf"{index}、{rich_runs(lead)}"
         if split_item:
             _, subitems, continuations = split_item
             rendered += "\n" + "\n".join(
@@ -204,7 +149,7 @@ def numbered_paragraphs(items: list[list[dict]], *, shared) -> str:
     return "\\par\n".join(rendered_items)
 
 
-def data_tex(data: dict, *, shared) -> str:
+def data_tex(data: dict) -> str:
     metadata = data["metadata"]
     sections = data["sections"]
     macros = {
@@ -216,10 +161,8 @@ def data_tex(data: dict, *, shared) -> str:
         "Advisor": tex_escape(metadata["advisor"]),
         "SignificanceAndStatus": paragraphs(sections["significance_and_status"]),
         "ResearchContent": paragraphs(sections["research_content"]),
-        "MethodsAndMeans": numbered_paragraphs(
-            sections["methods_and_means"], shared=shared
-        ),
-        "ResearchSteps": numbered_paragraphs(sections["research_steps"], shared=shared),
+        "MethodsAndMeans": numbered_paragraphs(sections["methods_and_means"]),
+        "ResearchSteps": numbered_paragraphs(sections["research_steps"]),
         "ReferencesContent": paragraphs(sections["references"], indent=False),
     }
     lines = ["% Generated file. Edit the JSON source, not this file."]
@@ -231,15 +174,22 @@ def render(data_path: Path, output_dir: Path, *, overwrite: bool, compile_pdf: b
     script_dir = Path(__file__).resolve().parent
     shared = _load_word_renderer(script_dir)
     data = shared.validate_data(json.loads(data_path.read_text(encoding="utf-8")))
-    fonts = resolve_font_files(script_dir)
+    layout = load_document_layout(script_dir.parent / "spec" / "layout.json")
+    fonts = resolve_font_files(
+        layout["required_font_files"],
+        local_font_dir=script_dir.parent / "fonts.local",
+    )
 
     if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:
         raise FileExistsError(f"output directory is not empty; pass --overwrite: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "proposal-data.tex").write_text(
-        data_tex(data, shared=shared), encoding="utf-8"
+        data_tex(data), encoding="utf-8"
     )
     (output_dir / "proposal-fonts.tex").write_text(fonts_tex(fonts), encoding="utf-8")
+    (output_dir / "proposal-typography.tex").write_text(
+        typography_tex(layout), encoding="utf-8"
+    )
     shutil.copy2(script_dir / "main.tex", output_dir / "main.tex")
 
     if compile_pdf:
@@ -264,7 +214,12 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.check_fonts:
-            fonts = resolve_font_files(Path(__file__).resolve().parent)
+            script_dir = Path(__file__).resolve().parent
+            layout = load_document_layout(script_dir.parent / "spec" / "layout.json")
+            fonts = resolve_font_files(
+                layout["required_font_files"],
+                local_font_dir=script_dir.parent / "fonts.local",
+            )
             for family, path in fonts.items():
                 print(f"{family}: {path}")
             return 0

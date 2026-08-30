@@ -1,0 +1,25 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "张同学",
+    "college": "大数据与互联网学院",
+    "major": "计算机科学与技术",
+    "class_name": "计科一班",
+    "advisor": "李华",
+    "check_date": "2026-03-18",
+    "title": "面向毕业论文过程文档的规范化生成方法研究"
+  },
+  "sections": {
+    "directory": [
+      {"level": 1, "number": "1", "title": "绪论"},
+      {"level": 1, "number": "2", "title": "系统设计"},
+      {"level": 1, "number": "3", "title": "总结"}
+    ],
+    "main_research_content": [
+      {"type": "paragraph", "runs": [{"text": "本课题围绕规范化文档生成开展设计与验证。"}]}
+    ],
+    "progress": [
+      {"type": "paragraph", "runs": [{"text": "已完成需求分析和总体方案设计，当前进度符合任务书安排。"}]}
+    ]
+  }
+}

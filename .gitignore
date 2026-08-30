@@ -40,4 +40,4 @@ __pycache__/
 /references/private/*
 !/references/private/README.md
 /output/**/private/
-/templates/proposal/fonts.local/
+/templates/*/fonts.local/

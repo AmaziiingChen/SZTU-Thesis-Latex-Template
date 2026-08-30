@@ -1,0 +1,100 @@
+{
+  "version": "0.1",
+  "typography": {
+    "title": {
+      "cjk_font_role": "cjk_form_title",
+      "latin_font_role": "latin",
+      "size": "小二",
+      "bold": false
+    },
+    "label": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    },
+    "data": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "五号",
+      "bold": false
+    },
+    "body": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "五号",
+      "bold": false
+    },
+    "teacher_header": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": true
+    },
+    "teacher_body": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    },
+    "signature": {
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin",
+      "size": "小四",
+      "bold": false
+    }
+  },
+  "paragraphs": {
+    "line_spacing": 1.0,
+    "first_line_indent_em": 2.0,
+    "ordered_list_left_indent_em": 0.0,
+    "ordered_list_hanging_indent_em": 2.0,
+    "outline_level_indent_em": 2.0,
+    "outline_hanging_indent_em": 1.5,
+    "caption_space_before_pt": 3.0,
+    "caption_space_after_pt": 3.0
+  },
+  "page": {
+    "width_mm": 210.0,
+    "height_mm": 297.0,
+    "top_margin_mm": 25.4,
+    "bottom_margin_mm": 25.4,
+    "left_margin_mm": 31.75,
+    "right_margin_mm": 31.75
+  },
+  "table": {
+    "width_mm": 150.32,
+    "column_widths_mm": [25.03, 48.54, 29.9, 46.85],
+    "border_pt": 0.5,
+    "horizontal_padding_mm": 1.905,
+    "top_bottom_padding_mm": 0.0,
+    "flow_vertical_padding_mm": 1.5,
+    "flow_end_space_mm": 4.0
+  },
+  "row_min_heights_mm": {
+    "metadata": 9.4,
+    "teacher_header": 8.01,
+    "teacher_option_first": 12.1,
+    "teacher_option": 12.28
+  },
+  "section_min_heights_mm": {
+    "directory_and_research": 154.0,
+    "progress": 143.2,
+    "teacher_opinion": 88.2,
+    "review_group_opinion": 77.3
+  },
+  "latex_pagination": {
+    "teacher_opinion_height_mm": 84.0,
+    "review_group_opinion_height_mm": 72.0,
+    "teacher_bundle_needspace_mm": 242.0
+  },
+  "image": {
+    "default_width_mm": 120.0,
+    "max_width_mm": 146.0
+  },
+  "signature": {
+    "right_inset_mm": 7.5,
+    "teacher_blank_width_mm": 45.0,
+    "review_blank_width_mm": 35.0
+  }
+}

@@ -15,10 +15,14 @@ Schema 和确定性渲染器；签名与审核意见不由程序填写。
 - `word/official-template.docx`：Microsoft Word 从学校官方 `.doc` 原样转换的基准。
 - `references/official/…/2 2026届开题报告.pdf`：当前官方排版基准（仓库外本地参考）。
 - `schema/proposal.schema.json`：Agent 和渲染器共用的数据契约。
+- `spec/layout.json`：本模板专属字体角色、字号、段落、边框、页边距和签署区令牌。
 - `fixtures/`：短、正常、长内容及顶部信息表压力测试数据。
 - `spec/artifact.md`：从 OOXML 蒸馏出的版式与字段映射。
 - `word/render.py`：从 JSON 生成 DOCX 的确定性渲染器。
 - `latex/main.tex`、`latex/render.py`：读取同一份 JSON 的 XeLaTeX 原型。
+
+富文本校验、括号列表兼容解析、字号映射、字体文件政策和 PDF 几何断言来自
+`templates/common/`。任务书和中期检查必须复用同一公共层，不复制这些实现。
 
 ## 生成 Word 文档
 
@@ -110,9 +114,11 @@ LaTeX 路径当前是版式原型，使用 XeLaTeX。所有内容统一采用自
 请使用含 `python-docx` 的 Python 运行：
 
 ```bash
+python3 templates/common/test.py
 python3 templates/proposal/test.py
 ```
 
-测试会生成四组 Word 文档，编译四组 LaTeX/PDF，检查结构、自然分页、上下标、中文
-字体可见性，以及双倍长度题目、长专业、长学院和超长参考文献的换行与对齐。
+第一条命令检查公共富文本、字号与字体政策、括号列表拆分和 Schema 引用；第二条命令
+会生成四组 Word 文档，编译四组 LaTeX/PDF，检查结构、自然分页、上下标、中文字体
+可见性，以及双倍长度题目、长专业、长学院和超长参考文献的换行与对齐。
 Word/WPS 的最终分页与视觉检查仍需在对应办公软件中完成。
