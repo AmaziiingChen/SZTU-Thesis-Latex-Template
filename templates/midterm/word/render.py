@@ -462,7 +462,6 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
     for row_index in range(4):
         _set_row_min_height(table.rows[row_index], LAYOUT["row_min_heights_mm"]["metadata"])
     _fill_student_sections(table, data, data_dir=data_path.resolve().parent)
-    _set_row_min_height(table.rows[4], LAYOUT["section_min_heights_mm"]["directory_and_research"])
     _set_row_min_height(table.rows[5], LAYOUT["section_min_heights_mm"]["progress"])
     _fill_teacher_fixed_rows(table)
     _set_row_min_height(table.rows[6], LAYOUT["row_min_heights_mm"]["teacher_header"])

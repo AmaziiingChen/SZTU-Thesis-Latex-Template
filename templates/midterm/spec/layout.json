@@ -1,5 +1,5 @@
 {
-  "version": "0.3",
+  "version": "0.4",
   "typography": {
     "title": {
       "cjk_font_role": "cjk_form_title",
@@ -81,15 +81,13 @@
     "teacher_option": 12.28
   },
   "section_min_heights_mm": {
-    "directory_and_research": 154.0,
-    "progress": 143.2,
+    "progress": 55.12,
     "teacher_opinion": 88.2,
     "review_group_opinion": 77.3
   },
   "latex_pagination": {
     "teacher_opinion_height_mm": 84.0,
-    "review_group_opinion_height_mm": 72.0,
-    "teacher_bundle_needspace_mm": 242.0
+    "review_group_opinion_height_mm": 72.0
   },
   "image": {
     "default_width_mm": 120.0,

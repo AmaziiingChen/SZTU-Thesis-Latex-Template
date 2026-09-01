@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pdfplumber
 from docx import Document
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 
@@ -80,6 +80,10 @@ def main() -> int:
     latex_source = (midterm_dir / "latex" / "main.tex").read_text(encoding="utf-8")
     assert r"\input{sztu-process-form.tex}" in latex_source
     assert r"\newcommand{\TightJoin}" not in latex_source
+    assert r"\usepackage{needspace}" not in latex_source
+    assert r"\Needspace" not in latex_source
+    assert r"\SZTUMainMinHeight" not in latex_source
+    assert r"\SZTUTeacherBundleNeedspace" not in latex_source
 
     plain_run = {"text": "完成开题", "script": "normal", "italic": False, "bold": False}
     assert latex_renderer.rich_runs([plain_run]) == r"完成开\nobreak{}题"
@@ -128,7 +132,9 @@ def main() -> int:
     assert layout["signature"]["review_blank_width_mm"] == 35.0
     assert layout["latex_pagination"]["teacher_opinion_height_mm"] == 84.0
     assert layout["latex_pagination"]["review_group_opinion_height_mm"] == 72.0
-    assert layout["latex_pagination"]["teacher_bundle_needspace_mm"] == 242.0
+    assert "teacher_bundle_needspace_mm" not in layout["latex_pagination"]
+    assert "directory_and_research" not in layout["section_min_heights_mm"]
+    assert layout["section_min_heights_mm"]["progress"] == 55.12
     assert layout["required_font_files"] == [
         "FZXiaoBiaoSong",
         "SimSun",
@@ -143,6 +149,10 @@ def main() -> int:
     official = Document(official_template)
     assert len(official.tables) == 1
     assert len(official.tables[0].rows) == 15
+    assert official.tables[0].rows[4].height is None
+    assert official.tables[0].rows[4].height_rule is None
+    assert round(official.tables[0].rows[5].height.mm, 2) == 55.12
+    assert official.tables[0].rows[5].height_rule == WD_ROW_HEIGHT_RULE.AT_LEAST
     title_runs = [run for paragraph in official.paragraphs[:2] for run in paragraph.runs]
     title_runs = [run for run in title_runs if run.text.strip()]
     assert title_runs
@@ -192,6 +202,10 @@ def main() -> int:
         assert len(document.tables) == 1
         table = document.tables[0]
         assert len(table.rows) == 15 and len(table.columns) == 4
+        assert table.rows[4].height is None
+        assert table.rows[4].height_rule is None
+        assert round(table.rows[5].height.mm, 2) == 55.12
+        assert table.rows[5].height_rule == WD_ROW_HEIGHT_RULE.AT_LEAST
         assert "FF0000" not in document.element.xml.upper()
         assert "导师应对论文完成进度" not in table.rows[13].cells[0].text
         assert "导师手签" not in table.rows[13].cells[0].text
@@ -358,7 +372,9 @@ def main() -> int:
         assert r"\newcommand{\SZTUListHangingIndent}{2em}" in typography_tex
         assert r"\newcommand{\SZTUTeacherOpinionHeight}{84mm}" in typography_tex
         assert r"\newcommand{\SZTUReviewOpinionHeight}{72mm}" in typography_tex
-        assert r"\newcommand{\SZTUTeacherBundleNeedspace}{242mm}" in typography_tex
+        assert r"\newcommand{\SZTUProgressMinHeight}{55.12mm}" in typography_tex
+        assert r"\newcommand{\SZTUMainMinHeight}" not in typography_tex
+        assert r"\newcommand{\SZTUTeacherBundleNeedspace}" not in typography_tex
         assert r"\newcommand{\SZTUTeacherSignatureBlank}{45mm}" in typography_tex
         assert r"\newcommand{\SZTUReviewSignatureBlank}{35mm}" in typography_tex
         assert r"\long\def\DirectoryContent" in data_tex
@@ -383,7 +399,7 @@ def main() -> int:
         match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)
         assert match is not None
         page_count = int(match.group(1))
-        assert 3 <= page_count <= 8
+        assert 2 <= page_count <= 8
         fonts = run(["pdffonts", str(pdf_path)], cwd=project_dir)
         assert "FZXBSJW" in fonts
         assert "SimSun" in fonts
@@ -406,8 +422,15 @@ def main() -> int:
         with pdfplumber.open(pdf_path) as pdf:
             first_page = pdf.pages[0]
             teacher_bundle_pages = {}
+            student_section_pages = {}
             for page_index, page in enumerate(pdf.pages, start=1):
                 page_text = page.extract_text() or ""
+                for label in (
+                    "毕业论文（设计）的目录和主要研究内容：",
+                    "毕业论文（设计）工作进展情况（详述）：",
+                ):
+                    if label in page_text:
+                        student_section_pages[label] = page_index
                 for label in (
                     "指导教师填写栏目",
                     "存在的问题及后期指导工作意见",
@@ -420,7 +443,34 @@ def main() -> int:
                 "存在的问题及后期指导工作意见",
                 "审查小组检查意见",
             }
-            assert len(set(teacher_bundle_pages.values())) == 1
+            teacher_pages = [
+                teacher_bundle_pages["指导教师填写栏目"],
+                teacher_bundle_pages["存在的问题及后期指导工作意见"],
+                teacher_bundle_pages["审查小组检查意见"],
+            ]
+            assert teacher_pages == sorted(teacher_pages)
+            assert teacher_pages[1] - teacher_pages[0] <= 1
+            assert teacher_pages[2] - teacher_pages[1] <= 1
+            if name == "minimal":
+                assert student_section_pages == {
+                    "毕业论文（设计）的目录和主要研究内容：": 1,
+                    "毕业论文（设计）工作进展情况（详述）：": 1,
+                }
+                full_width_tops = sorted(
+                    {
+                        round(float(edge["top"]), 1)
+                        for edge in first_page.edges
+                        if abs(float(edge["bottom"]) - float(edge["top"])) < 0.1
+                        and float(edge["x1"]) - float(edge["x0"]) > 420
+                    }
+                )
+                boundaries = []
+                for top in full_width_tops:
+                    if not boundaries or top - boundaries[-1] > 1.0:
+                        boundaries.append(top)
+                assert len(boundaries) >= 3
+                progress_height_mm = (boundaries[-1] - boundaries[-2]) * 25.4 / 72.0
+                assert 54.5 <= progress_height_mm <= 56.5
             chars = [char for page in pdf.pages for char in page.chars if char.get("text", "").strip()]
             assert any("FZXBSJW" in char["fontname"] and round(float(char["size"]), 2) == 18.0 for char in chars)
             assert any("SimSun" in char["fontname"] and round(float(char["size"]), 2) == 12.0 for char in chars)
