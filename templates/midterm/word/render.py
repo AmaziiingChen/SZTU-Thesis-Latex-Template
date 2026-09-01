@@ -17,6 +17,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Mm, Pt, RGBColor
+from PIL import Image as PILImage
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2]
 if str(TEMPLATES_DIR) not in sys.path:
@@ -27,6 +28,7 @@ from common.python.content import (  # noqa: E402
     display_width,
     normalize_content_block,
     normalize_paragraph,
+    number_and_resolve_figures,
     plain_runs,
     require_object,
     require_text,
@@ -129,6 +131,10 @@ def validate_data(raw: Any) -> dict[str, Any]:
             normalize_content_block(block, f"sections.{key}[{index}]", 5000)
             for index, block in enumerate(raw_blocks)
         ]
+    number_and_resolve_figures(
+        clean_sections["main_research_content"],
+        clean_sections["progress"],
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "metadata": clean_metadata,
@@ -237,6 +243,18 @@ def _set_picture_alt(run, alt: str) -> None:
         doc_pr[0].set("descr", alt)
 
 
+def _fitted_picture_width(image_path: Path, requested_width_mm: float) -> float:
+    if image_path.suffix.lower() not in {".png", ".jpg", ".jpeg"}:
+        return requested_width_mm
+    with PILImage.open(image_path) as image:
+        width_px, height_px = image.size
+    if width_px <= 0 or height_px <= 0:
+        raise DataError(f"image dimensions are invalid: {image_path}")
+    maximum_height = float(LAYOUT["image"]["max_height_mm"])
+    rendered_height = requested_width_mm * height_px / width_px
+    return min(requested_width_mm, maximum_height * width_px / height_px) if rendered_height > maximum_height else requested_width_mm
+
+
 def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path) -> None:
     for block in blocks:
         if block["type"] == "paragraph":
@@ -256,20 +274,34 @@ def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path
                 _append_runs(paragraph, item["runs"], style=BODY)
         elif block["type"] == "image":
             paragraph = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+            paragraph.paragraph_format.keep_with_next = True
+            paragraph.paragraph_format.keep_together = True
             run = paragraph.add_run()
             _set_run_font(run, style=BODY)
             image_path = _resolve_image(block["path"], data_dir)
-            run.add_picture(str(image_path), width=Mm(block["width_mm"]))
+            run.add_picture(
+                str(image_path),
+                width=Mm(_fitted_picture_width(image_path, block["width_mm"])),
+            )
             _set_picture_alt(run, block["alt"])
+            caption = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+            caption.paragraph_format.keep_together = True
+            caption.paragraph_format.space_before = Pt(
+                LAYOUT["paragraphs"]["caption_space_before_pt"]
+            )
+            caption.paragraph_format.space_after = Pt(
+                LAYOUT["paragraphs"]["caption_space_after_pt"]
+            )
+            _append_runs(caption, plain_runs(block["figure_label"]), style=BODY)
             if block["caption_runs"]:
-                caption = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
-                caption.paragraph_format.space_before = Pt(
-                    LAYOUT["paragraphs"]["caption_space_before_pt"]
-                )
-                caption.paragraph_format.space_after = Pt(
-                    LAYOUT["paragraphs"]["caption_space_after_pt"]
-                )
+                _append_runs(caption, plain_runs(" "), style=BODY)
                 _append_runs(caption, block["caption_runs"], style=BODY)
+            if block["source_citation_key"]:
+                _append_runs(
+                    caption,
+                    plain_runs(f" [{block['source_citation_key']}]") ,
+                    style=BODY,
+                )
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
 

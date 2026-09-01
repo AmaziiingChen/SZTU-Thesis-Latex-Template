@@ -90,7 +90,8 @@
   },
   "image": {
     "default_width_mm": 120.0,
-    "max_width_mm": 146.0
+    "max_width_mm": 146.0,
+    "max_height_mm": 110.0
   },
   "signature": {
     "right_inset_mm": 7.5,

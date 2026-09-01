@@ -102,6 +102,7 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUCellHorizontalPaddingDouble}}{{{2 * padding:g}mm}}",
             rf"\newcommand{{\SZTUFlowVerticalPadding}}{{{table['flow_vertical_padding_mm']:g}mm}}",
             rf"\newcommand{{\SZTUFlowEndSpace}}{{{table['flow_end_space_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUFigureMaxHeight}}{{{layout['image']['max_height_mm']:g}mm}}",
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUOutlineLevelIndent}}{{{paragraphs['outline_level_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUOutlineHangingIndent}}{{{paragraphs['outline_hanging_indent_em']:g}em}}",
@@ -235,7 +236,11 @@ def render_blocks(
             asset_name = _safe_asset_name(source)
             assets_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, assets_dir / asset_name)
-            caption = rich_runs(block["caption_runs"]) if block["caption_runs"] else ""
+            caption = tex_escape(block["figure_label"])
+            if block["caption_runs"]:
+                caption += " " + rich_runs(block["caption_runs"])
+            if block["source_citation_key"]:
+                caption += " " + tex_escape(f"[{block['source_citation_key']}]")
             rendered.append(
                 rf"\MidtermFigure{{assets/{tex_escape(asset_name)}}}"
                 rf"{{{block['width_mm']:g}mm}}{{{caption}}}"

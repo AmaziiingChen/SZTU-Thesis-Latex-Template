@@ -10,6 +10,10 @@ class ContentDataError(ValueError):
     """Raised when shared process-document content is invalid."""
 
 
+FIGURE_REFERENCE_PATTERN = re.compile(r"\{\{fig:(fig-[A-Za-z0-9_-]{8,96})\}\}")
+FIGURE_ID_PATTERN = re.compile(r"^fig-[A-Za-z0-9_-]{8,96}$")
+
+
 def require_object(value: Any, path: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ContentDataError(f"{path} must be an object")
@@ -124,7 +128,10 @@ def normalize_content_block(
         }
     block = require_object(value, path)
     if block.get("type") == "image":
-        unknown = set(block) - {"type", "path", "alt", "width_mm", "caption"}
+        unknown = set(block) - {
+            "type", "id", "path", "alt", "chapter", "width_mm", "caption",
+            "source_citation_key",
+        }
         if unknown:
             raise ContentDataError(f"unknown fields in {path}: {sorted(unknown)}")
         image_path = require_text(block.get("path"), f"{path}.path", 1000)
@@ -137,16 +144,32 @@ def normalize_content_block(
         ):
             raise ContentDataError(f"{path}.width_mm must be between 20 and 146")
         caption = block.get("caption")
+        figure_id = block.get("id")
+        if figure_id is not None and (
+            not isinstance(figure_id, str) or FIGURE_ID_PATTERN.fullmatch(figure_id) is None
+        ):
+            raise ContentDataError(f"{path}.id must be a stable figure id")
+        chapter = block.get("chapter", 1)
+        if isinstance(chapter, bool) or not isinstance(chapter, int) or not 1 <= chapter <= 99:
+            raise ContentDataError(f"{path}.chapter must be an integer from 1 to 99")
+        source_key = block.get("source_citation_key")
+        if source_key is not None:
+            source_key = require_text(source_key, f"{path}.source_citation_key", 200)
+            if re.fullmatch(r"[A-Za-z0-9_:.+/-]+", source_key) is None:
+                raise ContentDataError(f"{path}.source_citation_key has invalid characters")
         return {
             "type": "image",
+            "id": figure_id,
             "path": image_path,
             "alt": alt,
+            "chapter": chapter,
             "width_mm": float(width_mm),
             "caption_runs": normalize_paragraph(
                 caption, f"{path}.caption", max_length
             )
             if caption is not None
             else None,
+            "source_citation_key": source_key,
         }
     if block.get("type") != "ordered_list":
         raise ContentDataError(
@@ -179,6 +202,48 @@ def normalize_content_block(
             }
         )
     return {"type": "ordered_list", "items": clean_items}
+
+
+def number_and_resolve_figures(*block_groups: list[dict[str, Any]]) -> dict[str, str]:
+    """Assign deterministic chapter-local numbers and resolve stable reference tokens."""
+    counters: dict[int, int] = {}
+    labels: dict[str, str] = {}
+    legacy_index = 0
+    for blocks in block_groups:
+        for block in blocks:
+            if block["type"] != "image":
+                continue
+            legacy_index += 1
+            figure_id = block.get("id") or f"fig-legacy-{legacy_index:04d}"
+            if figure_id in labels:
+                raise ContentDataError(f"duplicate figure id: {figure_id}")
+            chapter = block.get("chapter", 1)
+            counters[chapter] = counters.get(chapter, 0) + 1
+            label = f"图 {chapter}-{counters[chapter]}"
+            block["id"] = figure_id
+            block["figure_label"] = label
+            labels[figure_id] = label
+
+    def resolve_runs(runs: list[dict[str, Any]], path: str) -> None:
+        for run in runs:
+            def replacement(match: re.Match[str]) -> str:
+                figure_id = match.group(1)
+                if figure_id not in labels:
+                    raise ContentDataError(f"{path} references unknown figure id: {figure_id}")
+                return labels[figure_id]
+            run["text"] = FIGURE_REFERENCE_PATTERN.sub(replacement, run["text"])
+
+    for group_index, blocks in enumerate(block_groups):
+        for block_index, block in enumerate(blocks):
+            base = f"figure_groups[{group_index}][{block_index}]"
+            if block["type"] == "paragraph":
+                resolve_runs(block["runs"], base)
+            elif block["type"] == "ordered_list":
+                for item_index, item in enumerate(block["items"]):
+                    resolve_runs(item["runs"], f"{base}.items[{item_index}]")
+            elif block["type"] == "image" and block.get("caption_runs"):
+                resolve_runs(block["caption_runs"], f"{base}.caption")
+    return labels
 
 
 def has_explicit_numbering(runs: list[dict[str, Any]]) -> bool:

@@ -245,6 +245,18 @@ def main() -> int:
         if name == "long-with-image":
             xml = document.element.xml
             assert "统一数据模型驱动 Word 与 LaTeX 双路渲染流程示意图" in xml
+            assert "整体流程见图 3-1。" in directory_cell.text
+            caption_index = next(
+                index
+                for index, paragraph in enumerate(directory_cell.paragraphs)
+                if paragraph.text == "图 3-1 统一数据入口与双路渲染流程 [fixture2026]"
+            )
+            assert caption_index > 0
+            image_paragraph = directory_cell.paragraphs[caption_index - 1]
+            caption_paragraph = directory_cell.paragraphs[caption_index]
+            assert image_paragraph.paragraph_format.keep_with_next
+            assert image_paragraph.paragraph_format.keep_together
+            assert caption_paragraph.paragraph_format.keep_together
             all_runs = [run_item for cell in (directory_cell, progress_cell) for run_item in paragraph_runs(cell)]
             assert any(run_item.text == "2" and run_item.font.subscript for run_item in all_runs)
             assert any(run_item.text == "−" and run_item.font.superscript for run_item in all_runs)
@@ -280,6 +292,7 @@ def main() -> int:
         assert r"\newcommand{\SZTUFormRuleWidth}{0.5pt}" in typography_tex
         assert r"\newcommand{\SZTUFlowVerticalPadding}{1.5mm}" in typography_tex
         assert r"\newcommand{\SZTUFlowEndSpace}{4mm}" in typography_tex
+        assert r"\newcommand{\SZTUFigureMaxHeight}{110mm}" in typography_tex
         assert r"\newcommand{\SZTUTeacherOpinionHeight}{84mm}" in typography_tex
         assert r"\newcommand{\SZTUReviewOpinionHeight}{72mm}" in typography_tex
         assert r"\newcommand{\SZTUTeacherBundleNeedspace}{242mm}" in typography_tex
@@ -294,6 +307,10 @@ def main() -> int:
             assert r"10\textsuperscript{−3}" in data_tex
             assert r"R\textsuperscript{2}" in data_tex
             assert r"\MidtermFigure{assets/" in data_tex
+            assert "整体流程见图 3-1。" in data_tex
+            assert "图 3-1 统一数据入口与双路渲染流" in data_tex
+            assert "[fixture2026]" in data_tex
+            assert r"\begin{minipage}{\linewidth}" in (latex_dir / "main.tex").read_text(encoding="utf-8")
             assert len(list((latex_dir / "assets").glob("*.png"))) == 1
 
         pdf_path = latex_dir / "main.pdf"
@@ -427,6 +444,31 @@ def main() -> int:
         pass
     else:
         raise AssertionError("remote image URL must be rejected")
+
+    invalid_reference = copy.deepcopy(invalid)
+    invalid_reference["sections"]["progress"] = [
+        "结果见{{fig:fig-missing_0001}}。"
+    ]
+    try:
+        word_renderer.validate_data(invalid_reference)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("unknown figure references must be rejected")
+
+    duplicate_figure = copy.deepcopy(invalid)
+    duplicate_figure["sections"]["main_research_content"] = [
+        {"type": "image", "id": "fig-duplicate_01", "path": "a.png", "alt": "A", "caption": "A"}
+    ]
+    duplicate_figure["sections"]["progress"] = [
+        {"type": "image", "id": "fig-duplicate_01", "path": "b.png", "alt": "B", "caption": "B"}
+    ]
+    try:
+        word_renderer.validate_data(duplicate_figure)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("duplicate figure ids must be rejected")
 
     unified_output = output_root / "unified-minimal"
     run(

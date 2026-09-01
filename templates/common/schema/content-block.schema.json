@@ -63,10 +63,18 @@
       "required": ["type", "path", "alt"],
       "properties": {
         "type": {"const": "image"},
+        "id": {"type": "string", "pattern": "^fig-[A-Za-z0-9_-]{8,96}$"},
         "path": {"type": "string", "minLength": 1, "maxLength": 1000},
         "alt": {"type": "string", "minLength": 1, "maxLength": 500},
+        "chapter": {"type": "integer", "minimum": 1, "maximum": 99},
         "width_mm": {"type": "number", "minimum": 20, "maximum": 146},
-        "caption": {"$ref": "#/$defs/paragraph"}
+        "caption": {"$ref": "#/$defs/paragraph"},
+        "source_citation_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_:.+/-]+$"
+        }
       }
     },
     "contentBlock": {

@@ -56,12 +56,11 @@
   \endgroup
 }
 \newcommand{\MidtermFigure}[3]{%
-  \par\begin{center}
-    \includegraphics[width=#2]{#1}\par
-    \if\relax\detokenize{#3}\relax\else
-      \vspace{3pt}\Body{#3}\par\vspace{3pt}%
-    \fi
-  \end{center}\par
+  \par\noindent\begin{minipage}{\linewidth}
+    \centering
+    \includegraphics[width=#2,height=\SZTUFigureMaxHeight,keepaspectratio]{#1}\par
+    \vspace{3pt}\Body{#3}\par\vspace{3pt}%
+  \end{minipage}\par
 }
 
 \tcbset{

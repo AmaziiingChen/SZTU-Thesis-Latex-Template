@@ -27,9 +27,9 @@
       {"level": 1, "number": "6", "title": "总结与展望"}
     ],
     "main_research_content": [
-      {"type": "paragraph", "runs": [{"text": "本研究以学校官方过程文档为版式权威，将学生填写内容与固定表格结构分离。统一数据模型只记录有语义的信息，渲染器负责字体、字号、边框、缩进、分页和签名空间，从而减少手工调整造成的差异。"}]},
+      {"type": "paragraph", "runs": [{"text": "本研究以学校官方过程文档为版式权威，将学生填写内容与固定表格结构分离。统一数据模型只记录有语义的信息，渲染器负责字体、字号、边框、缩进、分页和签名空间，从而减少手工调整造成的差异，整体流程见{{fig:fig-workflow_2026}}。"}]},
       {"type": "paragraph", "runs": [{"text": "系统同时生成 Word 和 LaTeX/PDF。两条路径共享同一组输入和排版令牌，并分别执行结构检查与视觉检查。对 H"}, {"text": "2", "script": "sub"}, {"text": "O、10"}, {"text": "−3", "script": "super"}, {"text": "、R"}, {"text": "2", "script": "super"}, {"text": " 等典型上下标进行专门回归，避免文本提取或格式转换后丢失语义。"}]},
-      {"type": "image", "path": "assets/research-workflow.png", "alt": "统一数据模型驱动 Word 与 LaTeX 双路渲染流程示意图", "width_mm": 118, "caption": "图 1  统一数据入口与双路渲染流程"},
+      {"type": "image", "id": "fig-workflow_2026", "path": "assets/research-workflow.png", "alt": "统一数据模型驱动 Word 与 LaTeX 双路渲染流程示意图", "chapter": 3, "width_mm": 118, "caption": "统一数据入口与双路渲染流程", "source_citation_key": "fixture2026"},
       {"type": "ordered_list", "items": [
         {"marker": "（1）", "content": "解析官方模板中的页面、表格、字体和段落属性，形成可审计规格。"},
         {"marker": "（2）", "content": "设计包含富文本、目录层级、有序列表、图片和题注的统一数据模型。"},
