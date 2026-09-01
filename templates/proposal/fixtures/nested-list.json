@@ -1,0 +1,92 @@
+{
+  "schema_version": "0.2",
+  "metadata": {
+    "title": "面向毕业论文的层级内容模板生成方法研究",
+    "student_name": "张三",
+    "student_id": "202200000001",
+    "major": "光源与照明",
+    "college": "大数据与互联网学院",
+    "advisor": "李明"
+  },
+  "sections": {
+    "significance_and_status": [
+      "本课题研究统一结构化内容对过程文档一致性的作用。",
+      "相关方法能够减少人工使用空格和制表符模拟层级造成的版式偏差。"
+    ],
+    "research_content": [
+      "研究内容按照以下层级展开。",
+      {
+        "type": "unordered_list",
+        "items": [
+          {
+            "content": "一级无序：建立公共内容模型",
+            "children": {
+              "type": "ordered_list",
+              "items": [
+                {
+                  "marker": "（1）",
+                  "content": {
+                    "type": "paragraph",
+                    "runs": [
+                      {"text": "二级有序：表达 H"},
+                      {"text": "2", "script": "sub"},
+                      {"text": "O 富文本"}
+                    ]
+                  },
+                  "children": {
+                    "type": "unordered_list",
+                    "items": [
+                      {
+                        "content": "三级无序：保持双路渲染一致",
+                        "children": {
+                          "type": "ordered_list",
+                          "items": [
+                            {"marker": "A.", "content": "四级有序：验证深度上限"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {"content": "一级无序：验证同级项目连续排列"}
+        ]
+      },
+      "列表结束后，本段恢复为普通正文首行缩进。"
+    ],
+    "methods_and_means": [
+      "先说明方法选择依据。",
+      {
+        "type": "ordered_list",
+        "items": [
+          {"content": "建立结构化测试数据"},
+          {
+            "content": "比较 Word 与 LaTeX 输出",
+            "children": {
+              "type": "unordered_list",
+              "items": [
+                {"content": "检查项目符号"},
+                {"content": "检查缩进层级"}
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "research_steps": [
+      {
+        "type": "unordered_list",
+        "items": [
+          {"content": "完成公共语义实现"},
+          {"content": "完成模板回归验证"}
+        ]
+      },
+      "完成验证后整理验收记录。"
+    ],
+    "references": [
+      "[1] ECMA International. Office Open XML File Formats."
+    ]
+  }
+}

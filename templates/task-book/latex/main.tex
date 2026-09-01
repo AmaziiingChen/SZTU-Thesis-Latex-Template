@@ -16,6 +16,7 @@
 \usetikzlibrary{calc}
 
 \input{task-book-typography.tex}
+\input{sztu-process-form.tex}
 \geometry{top=\SZTUPageTopMargin,bottom=\SZTUPageBottomMargin,left=\SZTUPageLeftMargin,right=\SZTUPageRightMargin,headheight=0pt,headsep=0pt}
 \pagestyle{empty}
 \setlength{\parskip}{0pt}
@@ -55,28 +56,54 @@
 \newsavebox{\TaskCoverInlineMeasure}
 
 \newcommand{\TaskCoverOneLineTitle}{%
-  \makebox[\TaskCoverTitleLabelWidth][l]{\CoverLabelText{\FixedCoverTitleLabel}}%
-  \begin{minipage}[t]{\TaskCoverTitleValueWidth}
-    \centering\CoverTitleValueText{\TaskCoverTitleLineOne}\par
-    \vspace{1mm}\hrule height \SZTUCoverUnderlineWidth
-  \end{minipage}%
-}
-\newcommand{\TaskCoverTwoLineTitle}{%
+  \ifnum\TaskCoverTitleLineOneHasSubscript=1\relax
+    \def\TaskCoverLineOneOffset{\SZTUTitleSingleLineSubscriptUnderlineOffset}%
+  \else
+    \def\TaskCoverLineOneOffset{\SZTUTitleSingleLineUnderlineOffset}%
+  \fi
   \begin{tikzpicture}[baseline=(label.north)]
     \node[anchor=north west,inner sep=0pt,outer sep=0pt] (label) at (0,0) {%
       \makebox[\TaskCoverTitleLabelWidth][l]{\CoverLabelText{\FixedCoverTitleLabel}}%
     };
-    \node[anchor=north west,inner sep=0pt,outer sep=0pt] at (label.north east) {%
+    \node[anchor=north west,inner sep=0pt,outer sep=0pt] (line-one) at (label.north east) {%
       \makebox[\TaskCoverTitleValueWidth][c]{\CoverTitleValueText{\TaskCoverTitleLineOne}}%
     };
-    \node[anchor=north west,inner sep=0pt,outer sep=0pt] at (0,-11mm) {%
+    \draw[line width=\SZTUCoverUnderlineWidth]
+      ([yshift=-\TaskCoverLineOneOffset]line-one.south west) --
+      ([yshift=-\TaskCoverLineOneOffset]line-one.south east);
+    \path[use as bounding box] (0,0) rectangle
+      ([yshift=-\TaskCoverLineOneOffset]line-one.south east);
+  \end{tikzpicture}%
+}
+\newcommand{\TaskCoverTwoLineTitle}{%
+  \ifnum\TaskCoverTitleLineOneHasSubscript=1\relax
+    \def\TaskCoverLineOneOffset{\SZTUTitleTwoLineSubscriptUnderlineOffset}%
+  \else
+    \def\TaskCoverLineOneOffset{\SZTUTitleTwoLineUnderlineOffset}%
+  \fi
+  \ifnum\TaskCoverTitleLineTwoHasSubscript=1\relax
+    \def\TaskCoverLineTwoOffset{\SZTUTitleTwoLineSubscriptUnderlineOffset}%
+  \else
+    \def\TaskCoverLineTwoOffset{\SZTUTitleTwoLineUnderlineOffset}%
+  \fi
+  \begin{tikzpicture}[baseline=(label.north)]
+    \node[anchor=north west,inner sep=0pt,outer sep=0pt] (label) at (0,0) {%
+      \makebox[\TaskCoverTitleLabelWidth][l]{\CoverLabelText{\FixedCoverTitleLabel}}%
+    };
+    \node[anchor=north west,inner sep=0pt,outer sep=0pt] (line-one) at (label.north east) {%
+      \makebox[\TaskCoverTitleValueWidth][c]{\CoverTitleValueText{\TaskCoverTitleLineOne}}%
+    };
+    \node[anchor=north west,inner sep=0pt,outer sep=0pt] (line-two) at (0,-11mm) {%
       \makebox[\SZTUCoverContentWidth][l]{\CoverTitleValueText{\TaskCoverTitleLineTwo}}%
     };
     \draw[line width=\SZTUCoverUnderlineWidth]
-      (\TaskCoverTitleLabelWidth,-5.5mm) -- (\SZTUCoverContentWidth,-5.5mm);
+      ([yshift=-\TaskCoverLineOneOffset]line-one.south west) --
+      ([yshift=-\TaskCoverLineOneOffset]line-one.south east);
     \draw[line width=\SZTUCoverUnderlineWidth]
-      (0,-16.5mm) -- (\SZTUCoverContentWidth,-16.5mm);
-    \path[use as bounding box] (0,0) rectangle (\SZTUCoverContentWidth,-17mm);
+      ([yshift=-\TaskCoverLineTwoOffset]line-two.south west) --
+      ([yshift=-\TaskCoverLineTwoOffset]line-two.south east);
+    \path[use as bounding box] (0,0) rectangle
+      ([yshift=-\TaskCoverLineTwoOffset]line-two.south east);
   \end{tikzpicture}%
 }
 \newcommand{\TaskCoverTitleBlock}{%
@@ -134,14 +161,15 @@
   #1\par
   \endgroup
 }
-\newcommand{\TaskOrderedItem}[2]{%
+\newcommand{\TaskListItem}[3]{%
   \par\begingroup
   \setstretch{\SZTUBodyLineSpacing}%
   \songti\SZTUBodyStyle
   \justifying
-  \setlength{\leftskip}{\SZTUOrderedListHangingIndent}%
-  \setlength{\parindent}{-\SZTUOrderedListHangingIndent}%
-  \makebox[\SZTUOrderedListHangingIndent][l]{#1}#2\par
+  \setlength{\leftskip}{#1em}%
+  \addtolength{\leftskip}{\SZTUListHangingIndent}%
+  \setlength{\parindent}{-\SZTUListHangingIndent}%
+  \makebox[\SZTUListHangingIndent][l]{#2}#3\par
   \endgroup
 }
 \newcommand{\TaskScheduleDateParagraph}[1]{%
@@ -209,43 +237,14 @@
 }
 \newcommand{\TaskSignatureSlot}[1]{\hspace{1mm}\raisebox{0.4mm}{\rule{#1}{\SZTUFormRuleWidth}}}
 \newcommand{\TaskDateSlot}[1]{\raisebox{0.4mm}{\rule{#1}{\SZTUFormRuleWidth}}}
-\newcommand{\TaskTightJoin}{\par\nointerlineskip\vspace*{-\SZTUFormRuleWidth}\noindent}
-
 \tcbset{
   taskflow/.style={
-    enhanced standard,
-    breakable,
-    width=\SZTUTableWidth,
-    colframe=black,
-    colback=white,
-    boxrule=\SZTUFormRuleWidth,
-    toprule at break=\SZTUFormRuleWidth,
-    bottomrule at break=\SZTUFormRuleWidth,
-    arc=0pt,
-    outer arc=0pt,
-    boxsep=0pt,
-    left=\SZTUCellHorizontalPadding,
-    right=\SZTUCellHorizontalPadding,
-    top=\SZTUFlowVerticalPadding,
-    bottom=\SZTUFlowVerticalPadding,
-    before skip=0pt,
-    after skip=0pt
+    sztuformflow,
+    width=\SZTUTableWidth
   },
   taskfixed/.style={
-    enhanced standard,
-    width=\SZTUTableWidth,
-    colframe=black,
-    colback=white,
-    boxrule=\SZTUFormRuleWidth,
-    arc=0pt,
-    outer arc=0pt,
-    boxsep=0pt,
-    left=\SZTUCellHorizontalPadding,
-    right=\SZTUCellHorizontalPadding,
-    top=\SZTUFixedVerticalPadding,
-    bottom=\SZTUFixedVerticalPadding,
-    before skip=0pt,
-    after skip=0pt
+    sztuformfixed,
+    width=\SZTUTableWidth
   }
 }
 
@@ -317,33 +316,33 @@
   \SectionTitleText{\FixedTitleRowLabel}\TitleRowValueText{\TaskTitle}\par
 \end{tcolorbox}
 
-\TaskTightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[taskflow]
   \SectionTitleText{\FixedBasicSectionTitle}\par
-  \vspace{1mm}
+  \SZTUFormSectionTitleGap
   \BasicContent
 \end{tcolorbox}
 
-\TaskTightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[taskflow]
   \SectionTitleText{\FixedScheduleSectionTitle}\par
-  \vspace{1mm}
+  \SZTUFormSectionTitleGap
   \ScheduleContent
 \end{tcolorbox}
 
-\TaskTightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[taskflow]
   \SectionTitleText{\FixedMaterialsSectionTitle}\par
-  \vspace{1mm}
+  \SZTUFormSectionTitleGap
   \RequiredMaterialsContent
   \RequiredMaterialsReferenceGap
   \ReferencesContent
 \end{tcolorbox}
 
-\TaskTightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[taskfixed]
   \SectionTitleText{\FixedTopicSectionTitle}\par
-  \vspace{1mm}
+  \SZTUFormSectionTitleGap
   \begingroup\setstretch{\SZTUBodyLineSpacing}\raggedright\setlength{\parindent}{0pt}%
   \TopicText{\FixedTopicNatureLabel\quad
     \TaskTopicChoice{\FixedNatureDesignLabel}{\NatureDesignBox}\quad
@@ -366,7 +365,7 @@
   \par\endgroup
 \end{tcolorbox}
 
-\TaskTightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[
   taskfixed,
   height=\SZTUCollegeOpinionHeight,

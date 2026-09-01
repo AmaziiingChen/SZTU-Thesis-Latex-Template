@@ -20,10 +20,22 @@ from common.python.content import (  # noqa: E402
     split_numbered_subitems,
 )
 from common.python.font_files import (  # noqa: E402
+    cjk_emphasis_options,
     resolve_font_files,
     tex_font_parts,
 )
-from common.python.typography import load_document_layout  # noqa: E402
+from common.python.process_form import (  # noqa: E402
+    copy_process_form_latex_support,
+    load_process_document_layout,
+    process_form_latex_tokens,
+)
+
+
+LAYOUT = load_process_document_layout(
+    Path(__file__).resolve().parents[1] / "spec" / "layout.json"
+)
+LIST_MAX_DEPTH = LAYOUT["paragraphs"]["list_max_depth"]
+UNORDERED_LIST_MARKERS = LAYOUT["paragraphs"]["unordered_list_markers"]
 
 
 def _load_word_renderer(script_dir: Path):
@@ -47,14 +59,16 @@ def fonts_tex(fonts: dict[str, Path]) -> str:
     )
     if len({times_dir, times_bold_dir, times_italic_dir, times_bold_italic_dir}) != 1:
         raise ValueError("all Times New Roman style files must be in the same directory")
+    simsun_options = cjk_emphasis_options(simsun_dir)
+    simhei_options = cjk_emphasis_options(simhei_dir)
     return "\n".join(
         [
             "% Generated file. Exact official fonts; do not replace with fallback fonts.",
-            rf"\setCJKmainfont[Path={{{simsun_dir}}}]{{{simsun}}}",
-            rf"\setCJKsansfont[Path={{{simhei_dir}}}]{{{simhei}}}",
-            rf"\newCJKfontfamily\songti[Path={{{simsun_dir}}}]{{{simsun}}}",
-            rf"\newCJKfontfamily\heiti[Path={{{simhei_dir}}}]{{{simhei}}}",
-            rf"\newCJKfontfamily\heitiBold[Path={{{simhei_dir}}},AutoFakeBold=3]{{{simhei}}}",
+            rf"\setCJKmainfont[{simsun_options}]{{{simsun}}}",
+            rf"\setCJKsansfont[{simhei_options}]{{{simhei}}}",
+            rf"\newCJKfontfamily\songti[{simsun_options}]{{{simsun}}}",
+            rf"\newCJKfontfamily\heiti[{simhei_options}]{{{simhei}}}",
+            rf"\newCJKfontfamily\heitiBold[{simhei_options}]{{{simhei}}}",
             rf"\setmainfont[Path={{{times_dir}}},BoldFont={{{times_bold}}},ItalicFont={{{times_italic}}},BoldItalicFont={{{times_bold_italic}}}]{{{times}}}",
             "",
         ]
@@ -67,7 +81,6 @@ def typography_tex(layout: dict) -> str:
     page = layout["page"]
     table = layout["table"]
     signatures = layout["signature_regions"]
-    padding = float(table["horizontal_padding_mm"])
     return "\n".join(
         [
             "% Generated file. Shared size map plus proposal-specific layout tokens.",
@@ -79,14 +92,16 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUPageBottomMargin}}{{{page['bottom_margin_mm']:g}mm}}",
             rf"\newcommand{{\SZTUPageLeftMargin}}{{{page['left_margin_mm']:g}mm}}",
             rf"\newcommand{{\SZTUPageRightMargin}}{{{page['right_margin_mm']:g}mm}}",
-            rf"\newcommand{{\SZTUFormRuleWidth}}{{{table['border_pt']:g}pt}}",
-            rf"\newcommand{{\SZTUCellHorizontalPadding}}{{{padding:g}mm}}",
-            rf"\newcommand{{\SZTUCellHorizontalPaddingDouble}}{{{2 * padding:g}mm}}",
+            *process_form_latex_tokens(layout),
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUNestedListLeftIndent}}{{{paragraphs['nested_list_left_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUListLevelIndent}}{{{paragraphs['list_level_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUListHangingIndent}}{{{paragraphs['list_hanging_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUStudentSignatureHeight}}{{{signatures['student_min_height_mm']:g}mm}}",
             rf"\newcommand{{\SZTUReviewSignatureHeight}}{{{signatures['review_min_height_mm']:g}mm}}",
             rf"\newcommand{{\SZTUSignatureSlotWidth}}{{{signatures['signature_slot_width_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUTeacherOpinionRegionHeight}}{{{signatures['teacher_opinion_region_height_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUOpinionTransitionGap}}{{{signatures['opinion_transition_gap_mm']:g}mm}}",
             "",
         ]
     )
@@ -129,6 +144,38 @@ def paragraphs(items: list[list[dict]], *, indent: bool = True) -> str:
     return ("\\par\n" + prefix).join(prefix + rich_runs(item) for item in items)
 
 
+def _list_marker(block: dict, item: dict, index: int, depth: int) -> str:
+    if block["type"] == "ordered_list":
+        return item["marker"] or f"{index}、"
+    return UNORDERED_LIST_MARKERS[depth - 1]
+
+
+def render_list_block(block: dict, *, depth: int = 1) -> str:
+    if not 1 <= depth <= LIST_MAX_DEPTH:
+        raise AssertionError(f"normalized list depth escaped bounds: {depth}")
+    rendered = []
+    for index, item in enumerate(block["items"], start=1):
+        marker = tex_escape(_list_marker(block, item, index, depth))
+        rendered.append(
+            rf"\ProposalListItem{{{depth}}}{{{marker}}}{{{rich_runs(item['runs'])}}}"
+        )
+        if item["children"]:
+            rendered.append(render_list_block(item["children"], depth=depth + 1))
+    return "\n".join(rendered)
+
+
+def render_text_blocks(items: list[dict]) -> str:
+    rendered = []
+    for block in items:
+        if block["type"] == "paragraph":
+            rendered.append(rf"\ProposalParagraph{{{rich_runs(block['runs'])}}}")
+        elif block["type"] in {"ordered_list", "unordered_list"}:
+            rendered.append(render_list_block(block))
+        else:
+            raise AssertionError(f"unsupported normalized block: {block['type']}")
+    return "\n".join(rendered)
+
+
 def numbered_paragraphs(items: list[list[dict]]) -> str:
     rendered_items = []
     for index, item in enumerate(items, start=1):
@@ -149,6 +196,12 @@ def numbered_paragraphs(items: list[list[dict]]) -> str:
     return "\\par\n".join(rendered_items)
 
 
+def render_method_blocks(items: list[dict]) -> str:
+    if all(item["type"] == "paragraph" for item in items):
+        return numbered_paragraphs([item["runs"] for item in items])
+    return render_text_blocks(items)
+
+
 def data_tex(data: dict) -> str:
     metadata = data["metadata"]
     sections = data["sections"]
@@ -160,9 +213,9 @@ def data_tex(data: dict) -> str:
         "College": tex_escape(metadata["college"]),
         "Advisor": tex_escape(metadata["advisor"]),
         "SignificanceAndStatus": paragraphs(sections["significance_and_status"]),
-        "ResearchContent": paragraphs(sections["research_content"]),
-        "MethodsAndMeans": numbered_paragraphs(sections["methods_and_means"]),
-        "ResearchSteps": numbered_paragraphs(sections["research_steps"]),
+        "ResearchContent": render_text_blocks(sections["research_content"]),
+        "MethodsAndMeans": render_method_blocks(sections["methods_and_means"]),
+        "ResearchSteps": render_method_blocks(sections["research_steps"]),
         "ReferencesContent": paragraphs(sections["references"], indent=False),
     }
     lines = ["% Generated file. Edit the JSON source, not this file."]
@@ -174,7 +227,7 @@ def render(data_path: Path, output_dir: Path, *, overwrite: bool, compile_pdf: b
     script_dir = Path(__file__).resolve().parent
     shared = _load_word_renderer(script_dir)
     data = shared.validate_data(json.loads(data_path.read_text(encoding="utf-8")))
-    layout = load_document_layout(script_dir.parent / "spec" / "layout.json")
+    layout = load_process_document_layout(script_dir.parent / "spec" / "layout.json")
     fonts = resolve_font_files(
         layout["required_font_files"],
         local_font_dir=script_dir.parent / "fonts.local",
@@ -190,6 +243,7 @@ def render(data_path: Path, output_dir: Path, *, overwrite: bool, compile_pdf: b
     (output_dir / "proposal-typography.tex").write_text(
         typography_tex(layout), encoding="utf-8"
     )
+    copy_process_form_latex_support(output_dir)
     shutil.copy2(script_dir / "main.tex", output_dir / "main.tex")
 
     if compile_pdf:
@@ -215,7 +269,9 @@ def main() -> int:
     try:
         if args.check_fonts:
             script_dir = Path(__file__).resolve().parent
-            layout = load_document_layout(script_dir.parent / "spec" / "layout.json")
+            layout = load_process_document_layout(
+                script_dir.parent / "spec" / "layout.json"
+            )
             fonts = resolve_font_files(
                 layout["required_font_files"],
                 local_font_dir=script_dir.parent / "fonts.local",

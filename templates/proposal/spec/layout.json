@@ -1,5 +1,5 @@
 {
-  "version": "0.2",
+  "version": "0.6",
   "typography": {
     "title": {
       "cjk_font_role": "cjk_label",
@@ -30,6 +30,10 @@
     "line_spacing": 1.0,
     "first_line_indent_em": 2.0,
     "nested_list_left_indent_em": 1.0,
+    "list_level_indent_em": 2.0,
+    "list_hanging_indent_em": 2.0,
+    "list_max_depth": 4,
+    "unordered_list_markers": ["•", "◦", "▪", "▫"],
     "reference_first_line_indent_em": 0.0
   },
   "page": {
@@ -40,11 +44,17 @@
   },
   "table": {
     "border_pt": 0.48,
-    "horizontal_padding_mm": 2.0
+    "horizontal_padding_mm": 2.0,
+    "top_bottom_padding_mm": 1.0,
+    "flow_vertical_padding_mm": 0.8,
+    "flow_end_space_mm": 0.0,
+    "section_title_content_gap_mm": 1.0
   },
   "signature_regions": {
     "student_min_height_mm": 22.0,
     "review_min_height_mm": 88.0,
-    "signature_slot_width_mm": 49.5
+    "signature_slot_width_mm": 49.5,
+    "teacher_opinion_region_height_mm": 50.0,
+    "opinion_transition_gap_mm": 1.0
   }
 }

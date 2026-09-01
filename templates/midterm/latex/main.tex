@@ -14,6 +14,7 @@
 \usepackage{xcolor}
 
 \input{midterm-typography.tex}
+\input{sztu-process-form.tex}
 \geometry{top=\SZTUPageTopMargin,bottom=\SZTUPageBottomMargin,left=\SZTUPageLeftMargin,right=\SZTUPageRightMargin,headheight=0pt,headsep=0pt}
 \pagestyle{empty}
 \setlength{\parskip}{0pt}
@@ -30,7 +31,6 @@
 \newcommand{\TeacherHeader}[1]{{\songtiBold\bfseries\SZTUTeacherHeaderSize #1}}
 \newcommand{\TeacherBody}[1]{{\songti\SZTUTeacherBodySize #1}}
 \newcommand{\SignatureText}[1]{{\songti\SZTUSignatureSize #1}}
-\newcommand{\TightJoin}{\par\nointerlineskip\vspace*{-\SZTUFormRuleWidth}\noindent}
 \newlength{\MidtermOutlineLevelIndentLength}
 \setlength{\MidtermOutlineLevelIndentLength}{\SZTUOutlineLevelIndent}
 \newlength{\MidtermOutlineHangingIndentLength}
@@ -39,11 +39,16 @@
 \newcommand{\MidtermParagraph}[1]{%
   \par\begingroup\setlength{\parindent}{\SZTUFirstLineIndent}\justifying\Body{#1}\par\endgroup
 }
-\newcommand{\MidtermListItem}[2]{%
+\newlength{\MidtermListLevelIndentLength}
+\setlength{\MidtermListLevelIndentLength}{\SZTUListLevelIndent}
+\newlength{\MidtermListHangingIndentLength}
+\setlength{\MidtermListHangingIndentLength}{\SZTUListHangingIndent}
+\newcommand{\MidtermListItem}[3]{%
   \par\begingroup
-  \setlength{\leftskip}{\SZTUListHangingIndent}%
-  \setlength{\parindent}{-\SZTUListHangingIndent}%
-  \Body{#1\hspace{0.5em}#2}\par
+  \setlength{\leftskip}{#1\MidtermListLevelIndentLength}%
+  \addtolength{\leftskip}{\MidtermListHangingIndentLength}%
+  \setlength{\parindent}{-\MidtermListHangingIndentLength}%
+  \Body{#2\hspace{0.5em}#3}\par
   \endgroup
 }
 \newcommand{\MidtermOutlineItem}[3]{%
@@ -66,37 +71,12 @@
 
 \tcbset{
   midtermflow/.style={
-    enhanced standard,
-    breakable,
-    colframe=black,
-    colback=white,
-    boxrule=\SZTUFormRuleWidth,
-    toprule at break=\SZTUFormRuleWidth,
-    bottomrule at break=\SZTUFormRuleWidth,
-    arc=0pt,
-    outer arc=0pt,
-    boxsep=0pt,
-    left=\SZTUCellHorizontalPadding,
-    right=\SZTUCellHorizontalPadding,
-    top=\SZTUFlowVerticalPadding,
-    bottom=\SZTUFlowVerticalPadding,
-    before skip=0pt,
-    after skip=0pt
+    sztuformflow
   },
   midtermfixed/.style={
-    enhanced standard,
-    colframe=black,
-    colback=white,
-    boxrule=\SZTUFormRuleWidth,
-    arc=0pt,
-    outer arc=0pt,
-    boxsep=0pt,
-    left=\SZTUCellHorizontalPadding,
-    right=\SZTUCellHorizontalPadding,
+    sztuformfixed,
     top=\SZTUFlowVerticalPadding,
-    bottom=\SZTUFlowVerticalPadding,
-    before skip=0pt,
-    after skip=0pt
+    bottom=\SZTUFlowVerticalPadding
   }
 }
 
@@ -126,9 +106,10 @@
   \Label{论文题目} & \SetCell[c=3]{c,m}\parbox[c]{\SZTUTitleContentWidth}{\centering\Data{\ThesisTitle}\par} & & \\
 \end{tblr}
 
-\TightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[midtermflow,height from={\SZTUMainMinHeight} to {\textheight}]
   \Label{毕业论文（设计）的目录和主要研究内容：}\par
+  \SZTUFormSectionTitleGap
   \MidtermParagraph{目录：}
   \DirectoryContent
   \MidtermParagraph{主要研究内容：}
@@ -136,15 +117,16 @@
   \par\vspace*{\SZTUFlowEndSpace}
 \end{tcolorbox}
 
-\TightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[midtermflow,height from={\SZTUProgressMinHeight} to {\textheight}]
   \Label{毕业论文（设计）工作进展情况（详述）：}\par
+  \SZTUFormSectionTitleGap
   \ProgressContent
   \par\vspace*{\SZTUFlowEndSpace}
 \end{tcolorbox}
 
 \Needspace{\SZTUTeacherBundleNeedspace}
-\TightJoin
+\SZTUFormTightJoin
 \noindent\begin{tblr}{
   width=\SZTUTableWidth,
   colspec={Q[l,m,wd=\SZTUTableContentWidth]},
@@ -166,7 +148,7 @@
   \TeacherBody{6、对能否按期完成毕业论文（设计）的评估：（1）能\(\square\)；\quad（2）否\(\square\)} \\
 \end{tblr}
 
-\TightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[
   midtermfixed,
   height=\SZTUTeacherOpinionHeight,
@@ -180,7 +162,7 @@
   \SignatureText{存在的问题及后期指导工作意见：}\par
 \end{tcolorbox}
 
-\TightJoin
+\SZTUFormTightJoin
 \begin{tcolorbox}[
   midtermfixed,
   height=\SZTUReviewOpinionHeight,

@@ -23,7 +23,7 @@ TEMPLATES_DIR = Path(__file__).resolve().parents[1]
 if str(TEMPLATES_DIR) not in sys.path:
     sys.path.insert(0, str(TEMPLATES_DIR))
 
-from common.python.typography import load_document_layout  # noqa: E402
+from common.python.process_form import load_process_document_layout  # noqa: E402
 
 
 def run(command: list[str], *, cwd: Path) -> str:
@@ -74,9 +74,12 @@ def main() -> int:
     project_dir = midterm_dir.parents[1]
     output_root = project_dir / "tmp" / "midterm-tests"
     output_root.mkdir(parents=True, exist_ok=True)
-    layout = load_document_layout(midterm_dir / "spec" / "layout.json")
+    layout = load_process_document_layout(midterm_dir / "spec" / "layout.json")
     word_renderer = load_renderer(midterm_dir / "word" / "render.py", "midterm_word_test")
     latex_renderer = load_renderer(midterm_dir / "latex" / "render.py", "midterm_latex_test")
+    latex_source = (midterm_dir / "latex" / "main.tex").read_text(encoding="utf-8")
+    assert r"\input{sztu-process-form.tex}" in latex_source
+    assert r"\newcommand{\TightJoin}" not in latex_source
 
     plain_run = {"text": "完成开题", "script": "normal", "italic": False, "bold": False}
     assert latex_renderer.rich_runs([plain_run]) == r"完成开\nobreak{}题"
@@ -84,6 +87,31 @@ def main() -> int:
     assert latex_renderer.rich_runs([punctuated_run]) == r"完成开\nobreak{}题。"
     latin_ending_run = dict(plain_run, text="完成模型 CNN")
     assert latex_renderer.rich_runs([latin_ending_run]) == "完成模型 CNN"
+    emphasis_runs = [
+        {"text": "中文加粗", "bold": True, "italic": False, "script": "normal"},
+        {"text": "中文倾斜", "bold": False, "italic": True, "script": "normal"},
+        {"text": "中文加粗倾斜", "bold": True, "italic": True, "script": "normal"},
+    ]
+    emphasis_tex = latex_renderer.rich_runs(emphasis_runs)
+    emphasis_tex = emphasis_tex.replace(r"\nobreak{}", "")
+    assert r"\textbf{中文加粗}" in emphasis_tex
+    assert r"\textit{中文倾斜}" in emphasis_tex
+    assert latex_renderer._render_rich_run(
+        emphasis_runs[2], "中文加粗倾斜"
+    ) == r"\textbf{\textit{中文加粗倾斜}}"
+    font_dir = output_root / "synthetic-fonts"
+    font_tex = latex_renderer.fonts_tex(
+        {
+            "FZXiaoBiaoSong": font_dir / "form-title.ttf",
+            "SimSun": font_dir / "simsun.ttf",
+            "Times New Roman": font_dir / "times.ttf",
+            "Times New Roman Bold": font_dir / "timesbd.ttf",
+            "Times New Roman Italic": font_dir / "timesi.ttf",
+            "Times New Roman Bold Italic": font_dir / "timesbi.ttf",
+        }
+    )
+    assert "AutoFakeBold=3,AutoFakeSlant=0.2" in font_tex
+    assert font_tex.count("AutoFakeSlant=0.2") >= 3
 
     assert layout["typography"]["title"]["size_pt"] == 18.0
     assert layout["typography"]["title"]["bold"] is False
@@ -93,6 +121,9 @@ def main() -> int:
     assert layout["table"]["border_pt"] == 0.5
     assert layout["table"]["flow_vertical_padding_mm"] == 1.5
     assert layout["table"]["flow_end_space_mm"] == 4.0
+    assert layout["table"]["section_title_content_gap_mm"] == 0.0
+    assert layout["paragraphs"]["list_max_depth"] == 4
+    assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
     assert layout["signature"]["teacher_blank_width_mm"] == 45.0
     assert layout["signature"]["review_blank_width_mm"] == 35.0
     assert layout["latex_pagination"]["teacher_opinion_height_mm"] == 84.0
@@ -121,7 +152,14 @@ def main() -> int:
         rfonts = title_run._element.get_or_add_rPr().get_or_add_rFonts()
         assert rfonts.get(qn("w:eastAsia")) == "方正小标宋简体"
 
-    fixture_names = ("minimal", "normal", "layout-stress", "long-with-image")
+    fixture_names = (
+        "minimal",
+        "normal",
+        "layout-stress",
+        "long-with-image",
+        "nested-list",
+        "outline-numbering",
+    )
     for name in fixture_names:
         fixture = midterm_dir / "fixtures" / f"{name}.json"
         raw = json.loads(fixture.read_text(encoding="utf-8"))
@@ -249,8 +287,39 @@ def main() -> int:
             assert any(run_item.text == "2" and run_item.font.subscript for run_item in all_runs)
             assert any(run_item.text == "−" and run_item.font.superscript for run_item in all_runs)
             assert any(run_item.text == "3" and run_item.font.superscript for run_item in all_runs)
+        if name == "nested-list":
+            by_prefix = {
+                prefix: next(p for p in body_paragraphs if p.text.startswith(prefix))
+                for prefix in ("•", "（1）", "▪", "A.", "列表结束后")
+            }
+            for depth, prefix in enumerate(("•", "（1）", "▪", "A."), start=1):
+                paragraph = by_prefix[prefix]
+                assert paragraph.paragraph_format.left_indent is not None
+                assert paragraph.paragraph_format.left_indent.pt == (
+                    depth * layout["typography"]["body"]["size_pt"]
+                    * layout["paragraphs"]["list_level_indent_em"]
+                    + layout["typography"]["body"]["size_pt"]
+                    * layout["paragraphs"]["list_hanging_indent_em"]
+                )
+                assert paragraph.paragraph_format.first_line_indent.pt == -21.0
+            trailing = by_prefix["列表结束后"]
+            assert trailing.paragraph_format.left_indent is None
+            assert trailing.paragraph_format.first_line_indent.pt == 21.0
+            nested_runs = [run_item for paragraph in body_paragraphs for run_item in paragraph.runs]
+            assert any(run_item.text == "2" and run_item.font.subscript for run_item in nested_runs)
+            assert normalized["sections"]["main_research_content"][1]["type"] == "unordered_list"
 
         if args.skip_pdf:
+            if name == "nested-list":
+                data_tex = latex_renderer.data_tex(
+                    normalized,
+                    data_dir=fixture.parent,
+                    assets_dir=output_root / "nested-list-assets",
+                )
+                for depth, marker in ((1, "•"), (2, "（1）"), (3, "▪"), (4, "A.")):
+                    assert rf"\MidtermListItem{{{depth}}}{{{marker}}}" in data_tex
+                assert r"\MidtermParagraph{列表结束后" in data_tex
+                assert r"H\textsubscript{2}O" in data_tex
             continue
 
         latex_dir = output_root / f"latex-{name}"
@@ -273,6 +342,9 @@ def main() -> int:
         fonts_tex = (latex_dir / "midterm-fonts.tex").read_text(encoding="utf-8")
         data_tex = (latex_dir / "midterm-data.tex").read_text(encoding="utf-8")
         typography_tex = (latex_dir / "midterm-typography.tex").read_text(encoding="utf-8")
+        process_form_tex = (latex_dir / "sztu-process-form.tex").read_text(
+            encoding="utf-8"
+        )
         assert "FZXiaoBiaoSong" not in fonts_tex or "方正小标宋简体" in fonts_tex
         assert "AutoFakeBold=3" in fonts_tex
         assert r"\newcommand{\SZTUTitleSize}{\zihao{-2}}" in typography_tex
@@ -280,6 +352,10 @@ def main() -> int:
         assert r"\newcommand{\SZTUFormRuleWidth}{0.5pt}" in typography_tex
         assert r"\newcommand{\SZTUFlowVerticalPadding}{1.5mm}" in typography_tex
         assert r"\newcommand{\SZTUFlowEndSpace}{4mm}" in typography_tex
+        assert r"\newcommand{\SZTUSectionTitleContentGap}{0mm}" in typography_tex
+        assert "sztuformflow/.style" in process_form_tex
+        assert r"\newcommand{\SZTUListLevelIndent}{2em}" in typography_tex
+        assert r"\newcommand{\SZTUListHangingIndent}{2em}" in typography_tex
         assert r"\newcommand{\SZTUTeacherOpinionHeight}{84mm}" in typography_tex
         assert r"\newcommand{\SZTUReviewOpinionHeight}{72mm}" in typography_tex
         assert r"\newcommand{\SZTUTeacherBundleNeedspace}{242mm}" in typography_tex
@@ -288,13 +364,18 @@ def main() -> int:
         assert r"\long\def\DirectoryContent" in data_tex
         if name == "normal":
             assert r"\textit{x}\textsubscript{i}" in data_tex
-            assert r"\MidtermListItem{（1）}" in data_tex
+            assert r"\MidtermListItem{1}{（1）}" in data_tex
         if name == "long-with-image":
             assert r"H\textsubscript{2}O" in data_tex
             assert r"10\textsuperscript{−3}" in data_tex
             assert r"R\textsuperscript{2}" in data_tex
             assert r"\MidtermFigure{assets/" in data_tex
             assert len(list((latex_dir / "assets").glob("*.png"))) == 1
+        if name == "nested-list":
+            for depth, marker in ((1, "•"), (2, "（1）"), (3, "▪"), (4, "A.")):
+                assert rf"\MidtermListItem{{{depth}}}{{{marker}}}" in data_tex
+            assert r"\MidtermParagraph{列表结束后" in data_tex
+            assert r"H\textsubscript{2}O" in data_tex
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)
@@ -397,6 +478,28 @@ def main() -> int:
                 assert any(page.images for page in pdf.pages)
 
     invalid = json.loads((midterm_dir / "fixtures" / "minimal.json").read_text(encoding="utf-8"))
+    numbered = copy.deepcopy(invalid)
+    numbered["sections"]["numbering_style"] = "chapter_section_hierarchy"
+    numbered["sections"]["directory"] = [
+        {"level": 1, "number": "旧编号", "title": "一级"},
+        {"level": 2, "number": "旧编号", "title": "二级"},
+        {"level": 3, "number": "旧编号", "title": "三级"},
+        {"level": 4, "number": "旧编号", "title": "四级"},
+        {"level": 5, "number": "旧编号", "title": "五级"},
+        {"level": 6, "number": "旧编号", "title": "六级"},
+    ]
+    normalized_numbered = word_renderer.validate_data(numbered)
+    assert [
+        item["number"] for item in normalized_numbered["sections"]["directory"]
+    ] == ["第一章", "第一节", "一、", "（一）", "1.", "(1)"]
+    numbered_tex = latex_renderer.data_tex(
+        normalized_numbered,
+        data_dir=midterm_dir / "fixtures",
+        assets_dir=output_root / "numbered-assets",
+    )
+    for expected_number in ("第一章", "第一节", "一、", "（一）", "1.", "(1)"):
+        assert expected_number in numbered_tex
+
     invalid_advisor = copy.deepcopy(invalid)
     invalid_advisor["metadata"]["advisor"] = "李华教授"
     try:

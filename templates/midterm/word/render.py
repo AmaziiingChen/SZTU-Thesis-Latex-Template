@@ -32,11 +32,18 @@ from common.python.content import (  # noqa: E402
     require_text,
     runs_text,
 )
-from common.python.typography import load_document_layout  # noqa: E402
+from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.outline_numbering import (  # noqa: E402
+    number_outline_levels,
+    require_numbering_style,
+    style_max_depth,
+)
 
 
 SCHEMA_VERSION = "0.1"
-LAYOUT = load_document_layout(Path(__file__).resolve().parents[1] / "spec" / "layout.json")
+LAYOUT = load_process_document_layout(
+    Path(__file__).resolve().parents[1] / "spec" / "layout.json"
+)
 BODY = LAYOUT["typography"]["body"]
 LABEL = LAYOUT["typography"]["label"]
 DATA = LAYOUT["typography"]["data"]
@@ -44,6 +51,10 @@ TEACHER_HEADER = LAYOUT["typography"]["teacher_header"]
 TEACHER_BODY = LAYOUT["typography"]["teacher_body"]
 SIGNATURE = LAYOUT["typography"]["signature"]
 LINE_SPACING = LAYOUT["paragraphs"]["line_spacing"]
+LIST_LEVEL_INDENT_PT = BODY["size_pt"] * LAYOUT["paragraphs"]["list_level_indent_em"]
+LIST_HANGING_INDENT_PT = BODY["size_pt"] * LAYOUT["paragraphs"]["list_hanging_indent_em"]
+LIST_MAX_DEPTH = LAYOUT["paragraphs"]["list_max_depth"]
+UNORDERED_LIST_MARKERS = LAYOUT["paragraphs"]["unordered_list_markers"]
 ADVISOR_TITLE_PATTERN = re.compile(r"(?:老师|教授|副教授|讲师|博士|硕士|导师)$")
 METADATA_LIMITS = {
     "student_name": 20,
@@ -85,10 +96,24 @@ def validate_data(raw: Any) -> dict[str, Any]:
     clean_metadata.update({"check_date": parsed_date.isoformat(), "title": title})
 
     sections = require_object(data.get("sections"), "sections")
-    expected_sections = {"directory", "main_research_content", "progress"}
+    expected_sections = {
+        "numbering_style",
+        "directory",
+        "main_research_content",
+        "progress",
+    }
     unknown_sections = set(sections) - expected_sections
     if unknown_sections:
         raise DataError(f"unknown section fields: {sorted(unknown_sections)}")
+
+    numbering_style = sections.get("numbering_style")
+    if numbering_style is not None:
+        numbering_style = require_numbering_style(
+            numbering_style, "sections.numbering_style"
+        )
+    maximum_outline_depth = (
+        style_max_depth(numbering_style) if numbering_style is not None else 6
+    )
 
     raw_directory = sections.get("directory")
     if not isinstance(raw_directory, list) or not 1 <= len(raw_directory) <= 150:
@@ -102,8 +127,14 @@ def validate_data(raw: Any) -> dict[str, Any]:
         if unknown:
             raise DataError(f"unknown fields in {path}: {sorted(unknown)}")
         level = item.get("level")
-        if isinstance(level, bool) or not isinstance(level, int) or not 1 <= level <= 4:
-            raise DataError(f"{path}.level must be an integer from 1 to 4")
+        if (
+            isinstance(level, bool)
+            or not isinstance(level, int)
+            or not 1 <= level <= maximum_outline_depth
+        ):
+            raise DataError(
+                f"{path}.level must be an integer from 1 to {maximum_outline_depth}"
+            )
         if index == 0 and level != 1:
             raise DataError("the first directory item must be level 1")
         if level > previous_level + 1:
@@ -120,13 +151,27 @@ def validate_data(raw: Any) -> dict[str, Any]:
             }
         )
 
+    if numbering_style is not None:
+        canonical_numbers = number_outline_levels(
+            [item["level"] for item in clean_directory], numbering_style
+        )
+        for item, number in zip(clean_directory, canonical_numbers, strict=True):
+            item["number"] = number
+
     clean_sections: dict[str, Any] = {"directory": clean_directory}
+    if numbering_style is not None:
+        clean_sections["numbering_style"] = numbering_style
     for key in ("main_research_content", "progress"):
         raw_blocks = sections.get(key)
         if not isinstance(raw_blocks, list) or not 1 <= len(raw_blocks) <= 80:
             raise DataError(f"sections.{key} must contain 1 to 80 blocks")
         clean_sections[key] = [
-            normalize_content_block(block, f"sections.{key}[{index}]", 5000)
+            normalize_content_block(
+                block,
+                f"sections.{key}[{index}]",
+                5000,
+                max_list_depth=LIST_MAX_DEPTH,
+            )
             for index, block in enumerate(raw_blocks)
         ]
     return {
@@ -237,23 +282,36 @@ def _set_picture_alt(run, alt: str) -> None:
         doc_pr[0].set("descr", alt)
 
 
+def _list_marker(block_type: str, item: dict[str, Any], index: int, depth: int) -> str:
+    if block_type == "ordered_list":
+        return item["marker"] or f"{index}、"
+    return UNORDERED_LIST_MARKERS[depth - 1]
+
+
+def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
+    if not 1 <= depth <= LIST_MAX_DEPTH:
+        raise AssertionError(f"normalized list depth escaped bounds: {depth}")
+    for index, item in enumerate(block["items"], start=1):
+        paragraph = cell.add_paragraph()
+        _format_paragraph(
+            paragraph,
+            left_indent_pt=depth * LIST_LEVEL_INDENT_PT + LIST_HANGING_INDENT_PT,
+            first_line_indent_pt=-LIST_HANGING_INDENT_PT,
+        )
+        marker = _list_marker(block["type"], item, index, depth)
+        _append_runs(paragraph, plain_runs(f"{marker} "), style=BODY)
+        _append_runs(paragraph, item["runs"], style=BODY)
+        if item["children"]:
+            _append_list_block(cell, item["children"], depth=depth + 1)
+
+
 def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path) -> None:
     for block in blocks:
         if block["type"] == "paragraph":
             paragraph = _new_paragraph(cell, indent=True)
             _append_runs(paragraph, block["runs"], style=BODY)
-        elif block["type"] == "ordered_list":
-            for index, item in enumerate(block["items"], start=1):
-                marker = item["marker"] or f"{index}、"
-                paragraph = cell.add_paragraph()
-                hanging = BODY["size_pt"] * LAYOUT["paragraphs"]["ordered_list_hanging_indent_em"]
-                _format_paragraph(
-                    paragraph,
-                    left_indent_pt=hanging * 2,
-                    first_line_indent_pt=-hanging,
-                )
-                _append_runs(paragraph, plain_runs(marker), style=BODY)
-                _append_runs(paragraph, item["runs"], style=BODY)
+        elif block["type"] in {"ordered_list", "unordered_list"}:
+            _append_list_block(cell, block)
         elif block["type"] == "image":
             paragraph = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
             run = paragraph.add_run()

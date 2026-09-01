@@ -46,9 +46,9 @@
       ],
       "properties": {
         "significance_and_status": {"$ref": "#/$defs/significanceParagraphs"},
-        "research_content": {"$ref": "#/$defs/paragraphs"},
-        "methods_and_means": {"$ref": "#/$defs/paragraphs"},
-        "research_steps": {"$ref": "#/$defs/paragraphs"},
+        "research_content": {"$ref": "#/$defs/textContentBlocks"},
+        "methods_and_means": {"$ref": "#/$defs/textContentBlocks"},
+        "research_steps": {"$ref": "#/$defs/textContentBlocks"},
         "references": {"$ref": "#/$defs/referenceParagraphs"}
       }
     }
@@ -60,11 +60,20 @@
     "paragraph": {
       "$ref": "../../common/schema/content-block.schema.json#/$defs/paragraph"
     },
+    "textContentBlock": {
+      "$ref": "../../common/schema/content-block.schema.json#/$defs/textContentBlock"
+    },
     "paragraphs": {
       "type": "array",
       "minItems": 1,
       "maxItems": 50,
       "items": {"$ref": "#/$defs/paragraph"}
+    },
+    "textContentBlocks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {"$ref": "#/$defs/textContentBlock"}
     },
     "significanceParagraphs": {
       "type": "array",

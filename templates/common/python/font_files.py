@@ -9,6 +9,10 @@ from pathlib import Path
 from .typography import load_font_policy
 
 
+CJK_FAKE_BOLD_STRENGTH = 3
+CJK_FAKE_SLANT_FACTOR = 0.2
+
+
 def font_roots(local_font_dir: Path | None = None) -> list[Path]:
     roots: list[Path] = []
     if local_font_dir is not None:
@@ -23,6 +27,10 @@ def font_roots(local_font_dir: Path | None = None) -> list[Path]:
                 Path("/Library/Fonts"),
                 Path("/System/Library/Fonts"),
                 Path("/System/Library/Fonts/Supplemental"),
+                Path("/Applications/Microsoft Word.app/Contents/Resources/DFonts"),
+                Path("/Applications/Microsoft Excel.app/Contents/Resources/DFonts"),
+                Path("/Applications/Microsoft PowerPoint.app/Contents/Resources/DFonts"),
+                Path("/Applications/wpsoffice.app/Contents/Resources/office6/fonts"),
             ]
         )
     elif os.name == "nt":
@@ -98,3 +106,15 @@ def tex_font_parts(path: Path) -> tuple[str, str]:
     if any(character in directory + filename for character in ("{", "}", "%", "#")):
         raise ValueError(f"font path contains unsupported TeX characters: {path}")
     return directory, filename
+
+
+def cjk_emphasis_options(directory: str) -> str:
+    """Return deterministic xeCJK options for regular-only official CJK fonts."""
+
+    return ",".join(
+        [
+            f"Path={{{directory}}}",
+            f"AutoFakeBold={CJK_FAKE_BOLD_STRENGTH:g}",
+            f"AutoFakeSlant={CJK_FAKE_SLANT_FACTOR:g}",
+        ]
+    )

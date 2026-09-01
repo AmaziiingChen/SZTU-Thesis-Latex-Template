@@ -1,0 +1,31 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "测试同学",
+    "college": "测试学院",
+    "major": "测试专业",
+    "class_name": "测试一班",
+    "advisor": "示例教师",
+    "check_date": "2026-03-18",
+    "title": "六级目录编号格式的结构化生成测试"
+  },
+  "sections": {
+    "numbering_style": "chapter_section_hierarchy",
+    "directory": [
+      {"level": 1, "title": "总体研究"},
+      {"level": 2, "title": "研究范围"},
+      {"level": 3, "title": "结构化输入"},
+      {"level": 4, "title": "目录层级"},
+      {"level": 5, "title": "编号生成"},
+      {"level": 6, "title": "规范输出"},
+      {"level": 3, "title": "渲染验证"},
+      {"level": 1, "title": "总结"}
+    ],
+    "main_research_content": [
+      {"type": "paragraph", "runs": [{"text": "本样例验证学校允许的目录编号格式可以根据层级自动生成。"}]}
+    ],
+    "progress": [
+      {"type": "paragraph", "runs": [{"text": "已完成六级目录在 Word 与 LaTeX 渲染链路中的一致性检查。"}]}
+    ]
+  }
+}

@@ -21,9 +21,12 @@ from common.python.content import (  # noqa: E402
     require_text,
     runs_text,
 )
+from common.python.typography import load_document_layout  # noqa: E402
 
 
 SCHEMA_VERSION = "0.1"
+LAYOUT = load_document_layout(Path(__file__).resolve().parents[1] / "spec" / "layout.json")
+LIST_MAX_DEPTH = LAYOUT["paragraphs"]["list_max_depth"]
 TITLE_DISPLAY_WIDTH_LIMIT = 80.0
 GRADUATION_YEAR_MIN = 2000
 GRADUATION_YEAR_MAX = 2100
@@ -82,7 +85,12 @@ def _normalize_blocks(
             f"{path} must contain {min_items} to {max_items} content blocks"
         )
     return [
-        normalize_content_block(block, f"{path}[{index}]", max_length)
+        normalize_content_block(
+            block,
+            f"{path}[{index}]",
+            max_length,
+            max_list_depth=LIST_MAX_DEPTH,
+        )
         for index, block in enumerate(value)
     ]
 

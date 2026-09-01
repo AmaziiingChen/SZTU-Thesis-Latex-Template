@@ -63,7 +63,13 @@
         "type": "paragraph",
         "runs": [
           {"text": "实验要求：", "bold": true},
-          {"text": "学生应保存原始谱图、实验记录、处理脚本和统计结果，图表必须标明单位、误差和样本数量。"}
+          {"text": "学生应保存原始谱图、实验记录、处理脚本和统计结果。"},
+          {"text": "中文加粗", "bold": true},
+          {"text": "、"},
+          {"text": "中文倾斜", "italic": true},
+          {"text": "、"},
+          {"text": "中文加粗倾斜", "bold": true, "italic": true},
+          {"text": "均须在 Word 与 PDF 中保持，图表必须标明单位、误差和样本数量。"}
         ]
       }
     ],

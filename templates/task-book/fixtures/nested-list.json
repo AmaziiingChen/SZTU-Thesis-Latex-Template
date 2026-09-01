@@ -1,0 +1,87 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": "面向过程文档的层级内容生成方法",
+    "student_name": "张明远",
+    "student_id": "202600100001",
+    "college": "大数据与互联网学院",
+    "major": "计算机科学与技术",
+    "class_name": "计科一班",
+    "advisor": "李华"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "任务内容按照以下层级展开。",
+      {
+        "type": "unordered_list",
+        "items": [
+          {
+            "content": "一级无序：建立公共内容模型",
+            "children": {
+              "type": "ordered_list",
+              "items": [
+                {
+                  "marker": "（1）",
+                  "content": {
+                    "type": "paragraph",
+                    "runs": [
+                      {"text": "二级有序：表达 H"},
+                      {"text": "2", "script": "sub"},
+                      {"text": "O 富文本"}
+                    ]
+                  },
+                  "children": {
+                    "type": "unordered_list",
+                    "items": [
+                      {
+                        "content": "三级无序：保持双路渲染一致",
+                        "children": {
+                          "type": "ordered_list",
+                          "items": [
+                            {"marker": "A.", "content": "四级有序：验证深度上限"}
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {"content": "一级无序：验证同级项目连续排列"}
+        ]
+      },
+      "列表结束后，本段恢复为普通正文首行缩进。"
+    ],
+    "schedule": [
+      {"period": "第1—4周", "content": "完成调研、需求分析和总体方案设计。"}
+    ],
+    "required_materials": [
+      {
+        "type": "ordered_list",
+        "items": [
+          {"content": "收集官方模板与规范"},
+          {
+            "content": "整理结构化验收记录",
+            "children": {
+              "type": "unordered_list",
+              "items": [
+                {"content": "记录 Word 结果"},
+                {"content": "记录 LaTeX 结果"}
+              ]
+            }
+          }
+        ]
+      },
+      "资料列表结束后继续填写普通段落。"
+    ],
+    "references": [
+      "[1] 张华. 文档自动生成方法研究[J]. 软件工程实践, 2025, 12(3): 1-8."
+    ],
+    "topic_information": {
+      "nature": "graduation_design",
+      "source": {"type": "practice_project"}
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": {
+      "type": "paragraph",
+      "runs": [
+        {"text": "g-C"},
+        {"text": "3", "script": "sub"},
+        {"text": "N"},
+        {"text": "4", "script": "sub"},
+        {"text": "/Ni(OH)"},
+        {"text": "2", "script": "sub"},
+        {"text": " 复合光催化材料的制备及其光催化CO"},
+        {"text": "2", "script": "sub"},
+        {"text": "转化机理与性能研究"}
+      ]
+    },
+    "student_name": "林清越",
+    "student_id": "202600100026",
+    "college": "新材料与新能源学院",
+    "major": "新能源科学与工程",
+    "class_name": "新能源二班",
+    "advisor": "周明远"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "完成材料制备、结构表征、性能测试和数据分析。"
+    ],
+    "schedule": [
+      {"period": "第1—4周", "content": "完成文献调研和实验方案设计。"}
+    ],
+    "required_materials": [],
+    "references": [
+      "[1] 陈明, 林雨. 光催化材料制备与性能研究[J]. 材料导报, 2025, 39(8): 20-28."
+    ],
+    "topic_information": {
+      "nature": "graduation_design",
+      "source": {"type": "practice_project"}
+    }
+  }
+}

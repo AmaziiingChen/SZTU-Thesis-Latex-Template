@@ -1,0 +1,42 @@
+% Shared process-document form skin.
+% Measurements are generated from each document's spec/layout.json.
+\tcbset{
+  sztuformflow/.style={
+    enhanced standard,
+    breakable,
+    colframe=black,
+    colback=white,
+    boxrule=\SZTUFormRuleWidth,
+    toprule at break=\SZTUFormRuleWidth,
+    bottomrule at break=\SZTUFormRuleWidth,
+    arc=0pt,
+    outer arc=0pt,
+    boxsep=0pt,
+    left=\SZTUCellHorizontalPadding,
+    right=\SZTUCellHorizontalPadding,
+    top=\SZTUFlowVerticalPadding,
+    bottom=\SZTUFlowVerticalPadding,
+    before skip=0pt,
+    after skip=0pt
+  },
+  sztuformfixed/.style={
+    enhanced standard,
+    colframe=black,
+    colback=white,
+    boxrule=\SZTUFormRuleWidth,
+    arc=0pt,
+    outer arc=0pt,
+    boxsep=0pt,
+    left=\SZTUCellHorizontalPadding,
+    right=\SZTUCellHorizontalPadding,
+    top=\SZTUFixedVerticalPadding,
+    bottom=\SZTUFixedVerticalPadding,
+    before skip=0pt,
+    after skip=0pt
+  }
+}
+
+\newcommand{\SZTUFormTightJoin}{%
+  \par\nointerlineskip\vspace*{-\SZTUFormRuleWidth}\noindent
+}
+\newcommand{\SZTUFormSectionTitleGap}{\vspace{\SZTUSectionTitleContentGap}}

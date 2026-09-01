@@ -34,7 +34,7 @@ from common.python.content import (  # noqa: E402
     runs_text,
     starts_with_calendar_date,
 )
-from common.python.typography import load_document_layout  # noqa: E402
+from common.python.process_form import load_process_document_layout  # noqa: E402
 
 
 FIXTURE_NAMES = (
@@ -45,6 +45,8 @@ FIXTURE_NAMES = (
     "long",
     "page-break",
     "rich-text-list",
+    "nested-list",
+    "cover-subscript",
 )
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 MM_TO_PT = 72.0 / 25.4
@@ -287,6 +289,9 @@ def assert_cover_structure(
         assert value_cell.paragraphs[0].alignment == expected_alignment
         assert value_cell.vertical_alignment == WD_CELL_VERTICAL_ALIGNMENT.CENTER
         assert_bottom_rule(value_cell)
+        assert cell_margin_dxa(value_cell, "bottom") >= twips_from_mm(
+            layout["cover"]["title_underline_clearance_mm"]
+        )
         rendered_title_parts.append(value_cell.text)
     assert "".join(rendered_title_parts) == runs_text(normalized["metadata"]["title"])
 
@@ -497,9 +502,37 @@ def assert_word_indents(
     main = document.tables[-1]
     body_size = float(layout["typography"]["body"]["size_pt"])
     first_line = body_size * float(layout["paragraphs"]["first_line_indent_em"])
-    ordered_hanging = body_size * float(
-        layout["paragraphs"]["ordered_list_hanging_indent_em"]
+    list_first = body_size * float(
+        layout["paragraphs"]["list_first_level_indent_em"]
     )
+    list_level = body_size * float(layout["paragraphs"]["list_level_indent_em"])
+    list_hanging = body_size * float(
+        layout["paragraphs"]["list_hanging_indent_em"]
+    )
+    unordered_markers = layout["paragraphs"]["unordered_list_markers"]
+
+    def assert_list(block: dict[str, Any], cell, *, depth: int = 1) -> None:
+        for index, item in enumerate(block["items"], start=1):
+            if block["type"] == "ordered_list":
+                marker = item.get("marker") or f"（{index}）"
+                text = marker + runs_text(item["runs"])
+            else:
+                marker = unordered_markers[depth - 1]
+                text = f"{marker} {runs_text(item['runs'])}"
+            paragraph = next(item for item in cell.paragraphs if item.text == text)
+            marker_indent = list_first + (depth - 1) * list_level
+            assert abs(
+                points_or_zero(paragraph.paragraph_format.left_indent)
+                - marker_indent
+                - list_hanging
+            ) <= 0.01
+            assert abs(
+                points_or_zero(paragraph.paragraph_format.first_line_indent)
+                + list_hanging
+            ) <= 0.01
+            if item["children"]:
+                assert_list(item["children"], cell, depth=depth + 1)
+
     for title in main.rows[0].cells[0].paragraphs[:2]:
         assert abs(points_or_zero(title.paragraph_format.first_line_indent)) <= 0.01
         assert abs(points_or_zero(title.paragraph_format.left_indent)) <= 0.01
@@ -512,14 +545,8 @@ def assert_word_indents(
         paragraph = next(item for item in basic_cell.paragraphs if item.text == text)
         assert abs(points_or_zero(paragraph.paragraph_format.first_line_indent) - first_line) <= 0.01
     for block in normalized["sections"]["basic_content_and_requirements"]:
-        if block["type"] != "ordered_list":
-            continue
-        for index, item in enumerate(block["items"], start=1):
-            marker = item.get("marker") or f"（{index}）"
-            text = marker + runs_text(item["runs"])
-            paragraph = next(item for item in basic_cell.paragraphs if item.text == text)
-            assert abs(points_or_zero(paragraph.paragraph_format.left_indent) - ordered_hanging) <= 0.01
-            assert abs(points_or_zero(paragraph.paragraph_format.first_line_indent) + ordered_hanging) <= 0.01
+        if block["type"] in {"ordered_list", "unordered_list"}:
+            assert_list(block, basic_cell)
 
     schedule_paragraphs = [
         item for item in main.rows[2].cells[0].paragraphs[1:] if item.text.strip()
@@ -544,6 +571,9 @@ def assert_word_indents(
         text = runs_text(block["runs"])
         paragraph = next(item for item in materials_cell.paragraphs if item.text == text)
         assert abs(points_or_zero(paragraph.paragraph_format.first_line_indent) - first_line) <= 0.01
+    for block in normalized["sections"]["required_materials"]:
+        if block["type"] in {"ordered_list", "unordered_list"}:
+            assert_list(block, materials_cell)
 
     reference_texts = [runs_text(item) for item in normalized["sections"]["references"]]
     rendered_references = [
@@ -780,12 +810,18 @@ def content_texts(normalized: dict[str, Any]) -> list[str]:
     ]
 
     def add_blocks(blocks: list[dict[str, Any]]) -> None:
+        def add_list(block: dict[str, Any]) -> None:
+            for item in block["items"]:
+                marker = item.get("marker") if block["type"] == "ordered_list" else ""
+                values.append((marker or "") + runs_text(item["runs"]))
+                if item["children"]:
+                    add_list(item["children"])
+
         for block in blocks:
             if block["type"] == "paragraph":
                 values.append(runs_text(block["runs"]))
-            elif block["type"] == "ordered_list":
-                for item in block["items"]:
-                    values.append((item.get("marker") or "") + runs_text(item["runs"]))
+            elif block["type"] in {"ordered_list", "unordered_list"}:
+                add_list(block)
             elif block["type"] == "image" and block.get("caption_runs"):
                 values.append(runs_text(block["caption_runs"]))
 
@@ -997,6 +1033,30 @@ def assert_pdf_cover_geometry(
         assert abs(float(full_rule["width"]) - full_width) <= 0.6
         assert abs(spans[1][0] - float(full_rule["x0"])) <= 0.5
 
+    rules = [short_rule]
+    if title_line_count == 2:
+        rules.append(full_rule)
+    minimum_clearance = (
+        float(cover["title_underline_clearance_mm"]) * MM_TO_PT
+    )
+    previous_rule_top = title_top - 4.0
+    for rule in rules:
+        rule_top = float(rule["top"])
+        line_chars = [
+            char
+            for char in page.chars
+            if char.get("text", "").strip()
+            and float(char["x0"]) >= float(rule["x0"]) - 0.5
+            and float(char["x1"]) <= float(rule["x1"]) + 0.5
+            and float(char["top"]) >= previous_rule_top
+            and float(char["top"]) < rule_top
+        ]
+        assert line_chars
+        lowest_glyph = max(float(char["bottom"]) for char in line_chars)
+        visible_rule_top = rule_top - float(rule["linewidth"]) / 2
+        assert visible_rule_top - lowest_glyph >= minimum_clearance - 0.2
+        previous_rule_top = rule_top + 0.2
+
     cohort_top = float(cover["cohort_top_mm"]) * MM_TO_PT
     cohort_chars = [
         char
@@ -1104,6 +1164,32 @@ def assert_negative_model_cases(
         "research_project": {"level": "national", "project_number": "X"},
     }
     expect_invalid(lambda: word_renderer.validate_data(mixed_source), "mutually exclusive source")
+
+    too_deep_list: dict[str, Any] = {
+        "type": "unordered_list",
+        "items": [{"content": "第五级"}],
+    }
+    for level in ("第四级", "第三级", "第二级", "第一级"):
+        too_deep_list = {
+            "type": "ordered_list",
+            "items": [{"content": level, "children": too_deep_list}],
+        }
+    too_deep = copy.deepcopy(minimal)
+    too_deep["sections"]["basic_content_and_requirements"] = [too_deep_list]
+    expect_invalid(lambda: word_renderer.validate_data(too_deep), "fifth list level")
+    expect_invalid(lambda: latex_renderer._load_model(task_dir / "latex").validate_data(too_deep), "fifth list level in LaTeX model")
+
+    unordered_marker = copy.deepcopy(minimal)
+    unordered_marker["sections"]["basic_content_and_requirements"] = [
+        {
+            "type": "unordered_list",
+            "items": [{"marker": "-", "content": "无序列表不能自定义标记"}],
+        }
+    ]
+    expect_invalid(
+        lambda: word_renderer.validate_data(unordered_marker),
+        "marker on unordered list",
+    )
 
     remote = copy.deepcopy(minimal)
     remote["sections"]["basic_content_and_requirements"] = [
@@ -1220,28 +1306,76 @@ def main() -> int:
     project_dir = task_dir.parents[1]
     output_root = project_dir / "tmp" / "task-book-tests"
     output_root.mkdir(parents=True, exist_ok=True)
-    layout = load_document_layout(task_dir / "spec" / "layout.json")
+    layout = load_process_document_layout(task_dir / "spec" / "layout.json")
     word_renderer = load_renderer(task_dir / "word" / "render.py", "task_book_word_test")
     latex_renderer = load_renderer(task_dir / "latex" / "render.py", "task_book_latex_test")
     fixed = word_renderer._fixed_content()
     latex_source = (task_dir / "latex" / "main.tex").read_text(encoding="utf-8")
     assert r"\newcommand{\CohortText}[1]{{\heitiBold\heitiLatin" in latex_source
     assert r"\newcommand{\TaskCheckbox}" in latex_source
+    assert r"\newcommand{\TaskListItem}[3]" in latex_source
+    assert r"\input{sztu-process-form.tex}" in latex_source
+    assert r"\newcommand{\TaskTightJoin}" not in latex_source
     assert r"\RequiredMaterialsReferenceGap" in latex_source
     assert r"rectangle (\SZTUCheckboxSize,\SZTUCheckboxSize)" in latex_source
     assert r"\TaskCoverTitleValueWidth][c]" in latex_source
     assert r"\SZTUCoverContentWidth][l]" in latex_source
     for forbidden in (r"\blacksquare", "TaskNoticeLongItem", "3.25"):
         assert forbidden not in latex_source
+    emphasis_tex = latex_renderer.rich_runs(
+        [
+            {"text": "中文加粗", "bold": True, "italic": False, "script": "normal"},
+            {"text": "中文倾斜", "bold": False, "italic": True, "script": "normal"},
+            {"text": "中文加粗倾斜", "bold": True, "italic": True, "script": "normal"},
+        ]
+    )
+    emphasis_tex = emphasis_tex.replace(r"\nobreak{}", "")
+    assert r"\textbf{中文加粗}" in emphasis_tex
+    assert r"\textit{中文倾斜}" in emphasis_tex
+    assert latex_renderer._render_rich_run(
+        {
+            "text": "中文加粗倾斜",
+            "bold": True,
+            "italic": True,
+            "script": "normal",
+        },
+        "中文加粗倾斜",
+    ) == r"\textbf{\textit{中文加粗倾斜}}"
+    font_dir = output_root / "synthetic-fonts"
+    font_tex = latex_renderer.fonts_tex(
+        {
+            "STXingkai": font_dir / "school.ttf",
+            "SimHei": font_dir / "simhei.ttf",
+            "SimSun": font_dir / "simsun.ttf",
+            "Times New Roman": font_dir / "times.ttf",
+            "Times New Roman Bold": font_dir / "timesbd.ttf",
+            "Times New Roman Italic": font_dir / "timesi.ttf",
+            "Times New Roman Bold Italic": font_dir / "timesbi.ttf",
+        }
+    )
+    assert "AutoFakeBold=3,AutoFakeSlant=0.2" in font_tex
+    assert font_tex.count("AutoFakeSlant=0.2") >= 8
 
     assert tuple(layout["table"]["column_widths_mm"]) == (150.32,)
     assert layout["table"]["border_pt"] == 0.5
     assert layout["table"]["flow_vertical_padding_mm"] == 1.0
     assert layout["table"]["top_bottom_padding_mm"] == 1.0
     assert layout["table"]["flow_end_space_mm"] == 0.0
+    assert layout["table"]["section_title_content_gap_mm"] == 1.0
     assert layout["cover"]["title_max_lines"] == 2
     assert layout["cover"]["title_second_line_alignment"] == "left"
+    assert layout["cover"]["title_underline_clearance_mm"] == 0.3
+    assert layout["cover"]["title_latex_single_line_rule_offset_mm"] == 1.1
+    assert layout["cover"]["title_latex_single_line_subscript_rule_offset_mm"] == 1.4
+    assert layout["cover"]["title_latex_two_line_rule_offset_mm"] == 0.6
+    assert layout["cover"]["title_latex_two_line_subscript_rule_offset_mm"] == 1.5
+    assert layout["cover"]["title_cell_vertical_padding_mm"] == 0.5
     assert layout["paragraphs"]["notice_line_spacing"] == 1.5
+    assert layout["paragraphs"]["list_first_level_indent_em"] == 0.0
+    assert layout["paragraphs"]["list_level_indent_em"] == 2.0
+    assert layout["paragraphs"]["list_hanging_indent_em"] == 2.0
+    assert layout["paragraphs"]["list_max_depth"] == 4
+    assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
     assert layout["notice"]["item_space_after_pt"] == 0.0
     assert layout["section_min_heights_mm"]["title"] == 12.0
     assert layout["checkbox"]["style"] == "outline_with_tick"
@@ -1431,6 +1565,70 @@ def main() -> int:
             assert "−1" in superscript_text
             assert any(item.text == "k" and item.bold and item.italic for item in all_runs)
             assert any(item.text == "实验要求：" and item.bold for item in all_runs)
+            assert any(item.text == "中文加粗" and item.bold for item in all_runs)
+            assert any(item.text == "中文倾斜" and item.italic for item in all_runs)
+            assert any(
+                item.text == "中文加粗倾斜" and item.bold and item.italic
+                for item in all_runs
+            )
+
+        if name == "nested-list":
+            basic_paragraphs = main_table.rows[1].cells[0].paragraphs
+            basic_texts = [item.text for item in basic_paragraphs if item.text.strip()]
+            for expected in (
+                "• 一级无序：建立公共内容模型",
+                "（1）二级有序：表达 H2O 富文本",
+                "▪ 三级无序：保持双路渲染一致",
+                "A.四级有序：验证深度上限",
+                "• 一级无序：验证同级项目连续排列",
+                "列表结束后，本段恢复为普通正文首行缩进。",
+            ):
+                assert expected in basic_texts
+            nested_runs = [
+                item
+                for paragraph in basic_paragraphs
+                for item in visible_runs(paragraph)
+            ]
+            assert any(item.text == "2" and item.font.subscript for item in nested_runs)
+            trailing = next(
+                item
+                for item in basic_paragraphs
+                if item.text == "列表结束后，本段恢复为普通正文首行缩进。"
+            )
+            assert abs(points_or_zero(trailing.paragraph_format.left_indent)) <= 0.01
+            assert abs(
+                points_or_zero(trailing.paragraph_format.first_line_indent)
+                - layout["typography"]["body"]["size_pt"]
+                * layout["paragraphs"]["first_line_indent_em"]
+            ) <= 0.01
+
+            materials_texts = [
+                item.text
+                for item in main_table.rows[3].cells[0].paragraphs
+                if item.text.strip()
+            ]
+            for expected in (
+                "（1）收集官方模板与规范",
+                "（2）整理结构化验收记录",
+                "◦ 记录 Word 结果",
+                "◦ 记录 LaTeX 结果",
+                "资料列表结束后继续填写普通段落。",
+            ):
+                assert expected in materials_texts
+
+            rendered_blocks = latex_renderer.render_blocks(
+                normalized["sections"]["basic_content_and_requirements"],
+                data_dir=fixture.parent,
+                assets_dir=output_root / name / "latex-structure-assets",
+            ).replace(r"\nobreak{}", "")
+            for expected in (
+                r"\TaskListItem{0}{•}{一级无序：建立公共内容模型",
+                r"\TaskListItem{2}{（1）}{二级有序：表达 H\textsubscript{2}O",
+                r"\TaskListItem{4}{▪}{三级无序：保持双路渲染一致",
+                r"\TaskListItem{6}{A.}{四级有序：验证深度上限",
+                r"\TaskBodyParagraph{列表结束后",
+            ):
+                assert expected in rendered_blocks
 
         if args.skip_pdf:
             continue
@@ -1463,15 +1661,25 @@ def main() -> int:
         typography_tex = (latex_dir / "task-book-typography.tex").read_text(encoding="utf-8")
         fonts_tex = (latex_dir / "task-book-fonts.tex").read_text(encoding="utf-8")
         data_tex = (latex_dir / "task-book-data.tex").read_text(encoding="utf-8")
+        process_form_tex = (latex_dir / "sztu-process-form.tex").read_text(
+            encoding="utf-8"
+        )
         assert r"\newfontfamily\heitiLatin" in fonts_tex
         assert r"\newCJKfontfamily\heiti[" in fonts_tex
         assert r"\newCJKfontfamily\songti[" in fonts_tex
         assert fonts_tex.count("AutoFakeBold=3") >= 5
         assert r"\newcommand{\SZTUFormRuleWidth}{0.5pt}" in typography_tex
+        assert r"\newcommand{\SZTUTitleSingleLineUnderlineOffset}{1.1mm}" in typography_tex
+        assert r"\newcommand{\SZTUTitleSingleLineSubscriptUnderlineOffset}{1.4mm}" in typography_tex
+        assert r"\newcommand{\SZTUTitleTwoLineUnderlineOffset}{0.6mm}" in typography_tex
+        assert r"\newcommand{\SZTUTitleTwoLineSubscriptUnderlineOffset}{1.5mm}" in typography_tex
         assert r"\newcommand{\SZTUFlowVerticalPadding}{1mm}" in typography_tex
         assert r"\newcommand{\SZTUFixedVerticalPadding}{1mm}" in typography_tex
+        assert r"\newcommand{\SZTUSectionTitleContentGap}{1mm}" in typography_tex
+        assert "sztuformflow/.style" in process_form_tex
         assert r"\newcommand{\SZTUTitleRowMinHeight}{12mm}" in typography_tex
         assert r"\newcommand{\SZTUNoticeItemGap}{0pt}" in typography_tex
+        assert r"\newcommand{\SZTUListHangingIndent}{2em}" in typography_tex
         assert r"\newcommand{\SZTUTeacherSignatureBlank}{45mm}" in typography_tex
         assert r"\newcommand{\SZTUCollegeSignatureBlank}{50mm}" in typography_tex
         assert r"\newcommand{\SZTUSignatureRightInset}{7.5mm}" in typography_tex
@@ -1483,6 +1691,21 @@ def main() -> int:
         if name == "minimal":
             assert r"\long\def\RequiredMaterialsContent{}" in data_tex
             assert r"\long\def\RequiredMaterialsReferenceGap{}" in data_tex
+        if name == "nested-list":
+            nested_data_tex = data_tex.replace(r"\nobreak{}", "")
+            for expected in (
+                r"\TaskListItem{0}{•}{一级无序：建立公共内容模型",
+                r"\TaskListItem{2}{（1）}{二级有序：表达 H\textsubscript{2}O",
+                r"\TaskListItem{4}{▪}{三级无序：保持双路渲染一致",
+                r"\TaskListItem{6}{A.}{四级有序：验证深度上限",
+                r"\TaskBodyParagraph{列表结束后",
+            ):
+                assert expected in nested_data_tex
+        if name == "cover-subscript":
+            assert r"\TaskCoverTitleLineCount{2}" in data_tex
+            assert r"\TaskCoverTitleLineOneHasSubscript{1}" in data_tex
+            assert r"\TaskCoverTitleLineTwoHasSubscript{1}" in data_tex
+            assert data_tex.count(r"\textsubscript{") >= 4
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)

@@ -10,6 +10,84 @@ class ContentDataError(ValueError):
     """Raised when shared process-document content is invalid."""
 
 
+UNICODE_SCRIPT_CHARACTERS: dict[str, tuple[str, str]] = {
+    "⁰": ("0", "super"),
+    "¹": ("1", "super"),
+    "²": ("2", "super"),
+    "³": ("3", "super"),
+    "⁴": ("4", "super"),
+    "⁵": ("5", "super"),
+    "⁶": ("6", "super"),
+    "⁷": ("7", "super"),
+    "⁸": ("8", "super"),
+    "⁹": ("9", "super"),
+    "⁺": ("+", "super"),
+    "⁻": ("−", "super"),
+    "⁼": ("=", "super"),
+    "⁽": ("(", "super"),
+    "⁾": (")", "super"),
+    "ⁱ": ("i", "super"),
+    "ⁿ": ("n", "super"),
+    "₀": ("0", "sub"),
+    "₁": ("1", "sub"),
+    "₂": ("2", "sub"),
+    "₃": ("3", "sub"),
+    "₄": ("4", "sub"),
+    "₅": ("5", "sub"),
+    "₆": ("6", "sub"),
+    "₇": ("7", "sub"),
+    "₈": ("8", "sub"),
+    "₉": ("9", "sub"),
+    "₊": ("+", "sub"),
+    "₋": ("−", "sub"),
+    "₌": ("=", "sub"),
+    "₍": ("(", "sub"),
+    "₎": (")", "sub"),
+    "ₐ": ("a", "sub"),
+    "ₑ": ("e", "sub"),
+    "ₒ": ("o", "sub"),
+    "ₓ": ("x", "sub"),
+    "ₕ": ("h", "sub"),
+    "ₖ": ("k", "sub"),
+    "ₗ": ("l", "sub"),
+    "ₘ": ("m", "sub"),
+    "ₙ": ("n", "sub"),
+    "ₚ": ("p", "sub"),
+    "ₛ": ("s", "sub"),
+    "ₜ": ("t", "sub"),
+}
+
+PLAIN_SCIENTIFIC_CHARACTER_REPLACEMENTS = {"℃": "°C"}
+
+
+def _expand_legacy_scientific_run(run: dict[str, Any]) -> list[dict[str, Any]]:
+    """Convert compatibility glyphs into semantic run properties."""
+
+    expanded: list[dict[str, Any]] = []
+    explicit_script = run["script"]
+    for character in run["text"]:
+        mapped = UNICODE_SCRIPT_CHARACTERS.get(character)
+        if mapped is not None:
+            text, inferred_script = mapped
+            script = explicit_script if explicit_script != "normal" else inferred_script
+        else:
+            text = PLAIN_SCIENTIFIC_CHARACTER_REPLACEMENTS.get(character, character)
+            script = explicit_script
+        style = {
+            "script": script,
+            "italic": run["italic"],
+            "bold": run["bold"],
+        }
+        previous = expanded[-1] if expanded else None
+        if previous is not None and all(
+            previous[key] == value for key, value in style.items()
+        ):
+            previous["text"] += text
+        else:
+            expanded.append({"text": text, **style})
+    return expanded
+
+
 def require_object(value: Any, path: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ContentDataError(f"{path} must be an object")
@@ -68,7 +146,9 @@ def normalize_paragraph(
 ) -> list[dict[str, Any]]:
     if isinstance(value, str):
         text = require_text(value, path, max_length)
-        return [{"text": text, "script": "normal", "italic": False, "bold": False}]
+        return _expand_legacy_scientific_run(
+            {"text": text, "script": "normal", "italic": False, "bold": False}
+        )
     paragraph = require_object(value, path)
     unknown_paragraph = set(paragraph) - {"type", "runs"}
     if unknown_paragraph or "runs" not in paragraph:
@@ -97,9 +177,13 @@ def normalize_paragraph(
         bold = run.get("bold", False)
         if not isinstance(italic, bool) or not isinstance(bold, bool):
             raise ContentDataError(f"{run_path}.italic and .bold must be booleans")
-        clean_runs.append(
-            {"text": text, "script": script, "italic": italic, "bold": bold}
+        clean_runs.extend(
+            _expand_legacy_scientific_run(
+                {"text": text, "script": script, "italic": italic, "bold": bold}
+            )
         )
+    if len(clean_runs) > max_runs:
+        raise ContentDataError(f"{path}.runs exceeds {max_runs} normalized items")
     if sum(len(run["text"]) for run in clean_runs) > max_length:
         raise ContentDataError(f"{path} exceeds {max_length} characters")
     return clean_runs
@@ -115,8 +199,13 @@ def normalize_content_block(
     max_length: int,
     *,
     max_list_items: int = 100,
+    max_list_depth: int = 4,
 ) -> dict[str, Any]:
-    """Normalize a paragraph or explicit ordered list into one stable shape."""
+    """Normalize a paragraph, list, or image into one stable shape.
+
+    Legacy flat ``ordered_list`` blocks remain valid. New list items may carry
+    one ``children`` list block, with the root list counted as depth one.
+    """
     if not isinstance(value, dict) or value.get("type", "paragraph") == "paragraph":
         return {
             "type": "paragraph",
@@ -148,37 +237,87 @@ def normalize_content_block(
             if caption is not None
             else None,
         }
-    if block.get("type") != "ordered_list":
+    if block.get("type") not in {"ordered_list", "unordered_list"}:
         raise ContentDataError(
-            f"{path}.type must be paragraph, ordered_list, or image"
+            f"{path}.type must be paragraph, ordered_list, unordered_list, or image"
+        )
+    return normalize_list_block(
+        block,
+        path,
+        max_length,
+        max_list_items=max_list_items,
+        max_list_depth=max_list_depth,
+    )
+
+
+def normalize_list_block(
+    value: Any,
+    path: str,
+    max_length: int,
+    *,
+    max_list_items: int = 100,
+    max_list_depth: int = 4,
+    _depth: int = 1,
+) -> dict[str, Any]:
+    """Normalize one ordered or unordered list tree, capped at four levels."""
+    if max_list_depth < 1:
+        raise ContentDataError("max_list_depth must be at least 1")
+    if _depth > max_list_depth:
+        raise ContentDataError(
+            f"{path} exceeds the maximum list depth of {max_list_depth}"
+        )
+    block = require_object(value, path)
+    list_type = block.get("type")
+    if list_type not in {"ordered_list", "unordered_list"}:
+        raise ContentDataError(
+            f"{path}.type must be ordered_list or unordered_list"
         )
     unknown = set(block) - {"type", "items"}
     items = block.get("items")
     if unknown or not isinstance(items, list) or not items or len(items) > max_list_items:
         raise ContentDataError(
-            f"{path} ordered_list must contain only type and 1 to {max_list_items} items"
+            f"{path} {list_type} must contain only type and 1 to {max_list_items} items"
         )
     clean_items = []
     for index, raw_item in enumerate(items):
         item_path = f"{path}.items[{index}]"
         item = require_object(raw_item, item_path)
-        item_unknown = set(item) - {"marker", "content"}
+        allowed = {"content", "children"}
+        if list_type == "ordered_list":
+            allowed.add("marker")
+        item_unknown = set(item) - allowed
         if item_unknown or "content" not in item:
+            marker_clause = "optional marker, " if list_type == "ordered_list" else ""
             raise ContentDataError(
-                f"{item_path} must contain only optional marker and content"
+                f"{item_path} must contain only {marker_clause}content, and optional children"
             )
         marker = item.get("marker")
         if marker is not None:
             marker = require_text(marker, f"{item_path}.marker", 20)
+        children = None
+        if "children" in item:
+            if _depth >= max_list_depth:
+                raise ContentDataError(
+                    f"{item_path}.children exceeds the maximum list depth of {max_list_depth}"
+                )
+            children = normalize_list_block(
+                item["children"],
+                f"{item_path}.children",
+                max_length,
+                max_list_items=max_list_items,
+                max_list_depth=max_list_depth,
+                _depth=_depth + 1,
+            )
         clean_items.append(
             {
                 "marker": marker,
                 "runs": normalize_paragraph(
                     item["content"], f"{item_path}.content", max_length
                 ),
+                "children": children,
             }
         )
-    return {"type": "ordered_list", "items": clean_items}
+    return {"type": list_type, "items": clean_items}
 
 
 def has_explicit_numbering(runs: list[dict[str, Any]]) -> bool:

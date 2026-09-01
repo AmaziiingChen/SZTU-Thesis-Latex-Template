@@ -35,7 +35,8 @@ data = module.validate_data(raw)
 ## 数据规则
 
 - `metadata.title` 和正文支持显式 `runs`，每个 run 可设置 `script`、`bold`、`italic`；
-- 基本内容和需收集资料支持段落、有序列表和本地图片；
+- 基本内容和需收集资料支持段落、有序/无序列表、最多四级 `children` 嵌套和本地图片；
+- 列表层级来自结构而非空格或 Tab；旧式扁平 `ordered_list` 与自定义 `marker` 继续有效；
 - 进度安排由 `period` 与富文本 `content` 组成，不用空格或 Tab 分列；
 - 进度渲染为普通段落；以日期开头时可不缩进，其他情况首行缩进两个字符；
 - 参考文献每条独立，使用无首行缩进的专属样式；
@@ -92,9 +93,9 @@ PY=/Users/chen/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/b
 "$PY" templates/task-book/test.py
 ```
 
-测试覆盖七类 fixture、模型负向约束、封面四行字段与一行/两行题目对齐、Word 结构与字体、
+测试覆盖八类 fixture、模型负向约束、封面四行字段与一行/两行题目对齐、Word 结构与字体、
 须知 1.5 倍行距、连续表格与上下内边距、空心框内勾选、项目编号横线、自拟题目纵列、
-签名与日期横线、富文本、上下标、图片、长短字段、LaTeX 跨页闭口、字体嵌入、
+签名与日期横线、富文本、上下标、图片、四级有序/无序混合列表、长短字段、LaTeX 跨页闭口、字体嵌入、
 A4 几何、文本顺序和中文字形门禁。
 测试通过不等于 Microsoft Word 或 WPS 目标编辑器验收通过。
 

@@ -31,7 +31,7 @@ from common.python.content import (  # noqa: E402
     starts_with_calendar_date,
 )
 from common.python.font_files import font_roots, resolve_font_files  # noqa: E402
-from common.python.typography import load_document_layout  # noqa: E402
+from common.python.process_form import load_process_document_layout  # noqa: E402
 
 
 def _load_model():
@@ -47,7 +47,19 @@ def _load_model():
 MODEL = _load_model()
 DataError = MODEL.DataError
 validate_data = MODEL.validate_data
-LAYOUT = load_document_layout(TASK_BOOK_DIR / "spec" / "layout.json")
+LAYOUT = load_process_document_layout(TASK_BOOK_DIR / "spec" / "layout.json")
+BODY_STYLE = LAYOUT["typography"]["body"]
+LIST_FIRST_LEVEL_INDENT_PT = (
+    BODY_STYLE["size_pt"] * LAYOUT["paragraphs"]["list_first_level_indent_em"]
+)
+LIST_LEVEL_INDENT_PT = (
+    BODY_STYLE["size_pt"] * LAYOUT["paragraphs"]["list_level_indent_em"]
+)
+LIST_HANGING_INDENT_PT = (
+    BODY_STYLE["size_pt"] * LAYOUT["paragraphs"]["list_hanging_indent_em"]
+)
+LIST_MAX_DEPTH = LAYOUT["paragraphs"]["list_max_depth"]
+UNORDERED_LIST_MARKERS = LAYOUT["paragraphs"]["unordered_list_markers"]
 CHECKBOX_SYMBOL_FONT = "Wingdings 2"
 CHECKBOX_SYMBOL_CODES = {
     "outline_box": "00A3",
@@ -447,9 +459,18 @@ def _add_cover(document: Document, data: dict[str, Any], fixed: dict[str, Any]) 
     _set_table_geometry(title_table, (title_label, title_underline))
     _remove_table_borders(title_table)
     title_line_height = float(LAYOUT["cover"].get("title_line_height_mm", 9.0))
+    title_cell_vertical_padding = float(
+        LAYOUT["cover"].get("title_cell_vertical_padding_mm", 0.5)
+    )
     for index, (row, line_runs) in enumerate(zip(title_table.rows, title_lines)):
         for cell in row.cells:
-            _set_cell_margins(cell, left=1.5, right=1.5, top=0.5, bottom=0.5)
+            _set_cell_margins(
+                cell,
+                left=1.5,
+                right=1.5,
+                top=title_cell_vertical_padding,
+                bottom=title_cell_vertical_padding,
+            )
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
         if index == 0:
             _clear_cell(row.cells[0])
@@ -633,6 +654,33 @@ def _set_picture_alt(run, alt: str) -> None:
         items[0].set("descr", alt)
 
 
+def _list_marker(block_type: str, item: dict[str, Any], index: int, depth: int) -> str:
+    if block_type == "ordered_list":
+        return item["marker"] or f"（{index}）"
+    return UNORDERED_LIST_MARKERS[depth - 1]
+
+
+def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
+    if not 1 <= depth <= LIST_MAX_DEPTH:
+        raise AssertionError(f"normalized list depth escaped bounds: {depth}")
+    style = LAYOUT["typography"]["body"]
+    marker_indent = LIST_FIRST_LEVEL_INDENT_PT + (depth - 1) * LIST_LEVEL_INDENT_PT
+    for index, item in enumerate(block["items"], start=1):
+        paragraph = cell.add_paragraph()
+        _format_paragraph(
+            paragraph,
+            alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
+            left_indent_pt=marker_indent + LIST_HANGING_INDENT_PT,
+            first_line_indent_pt=-LIST_HANGING_INDENT_PT,
+        )
+        marker = _list_marker(block["type"], item, index, depth)
+        marker_text = marker if block["type"] == "ordered_list" else f"{marker} "
+        _append_runs(paragraph, plain_runs(marker_text), style=style)
+        _append_runs(paragraph, item["runs"], style=style)
+        if item["children"]:
+            _append_list_block(cell, item["children"], depth=depth + 1)
+
+
 def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path) -> None:
     style = LAYOUT["typography"]["body"]
     indent = style["size_pt"] * LAYOUT["paragraphs"]["first_line_indent_em"]
@@ -645,18 +693,8 @@ def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path
                 first_line_indent_pt=indent,
             )
             _append_runs(paragraph, block["runs"], style=style)
-        elif block["type"] == "ordered_list":
-            hanging = style["size_pt"] * LAYOUT["paragraphs"]["ordered_list_hanging_indent_em"]
-            for index, item in enumerate(block["items"], start=1):
-                paragraph = cell.add_paragraph()
-                _format_paragraph(
-                    paragraph,
-                    alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-                    left_indent_pt=hanging,
-                    first_line_indent_pt=-hanging,
-                )
-                _append_runs(paragraph, plain_runs(item["marker"] or f"（{index}）"), style=style)
-                _append_runs(paragraph, item["runs"], style=style)
+        elif block["type"] in {"ordered_list", "unordered_list"}:
+            _append_list_block(cell, block)
         elif block["type"] == "image":
             paragraph = cell.add_paragraph()
             _format_paragraph(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)

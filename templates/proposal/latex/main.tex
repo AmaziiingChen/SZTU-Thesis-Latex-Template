@@ -11,6 +11,7 @@
 
 % Generated from templates/common typography policy and proposal/spec/layout.json.
 \input{proposal-typography.tex}
+\input{sztu-process-form.tex}
 
 \geometry{top=\SZTUPageTopMargin,bottom=\SZTUPageBottomMargin,left=\SZTUPageLeftMargin,right=\SZTUPageRightMargin,headheight=0pt,headsep=0pt}
 \pagestyle{empty}
@@ -30,6 +31,12 @@
 \newcommand{\Label}[1]{{\heiti\SZTULabelSize #1}}
 \newcommand{\Info}[1]{{\songti\SZTUBodySize #1}}
 \newcommand{\SignatureText}[1]{{\songti\SZTUSignatureSize #1}}
+\newlength{\ProposalStudentSignatureContentHeight}
+\setlength{\ProposalStudentSignatureContentHeight}{\dimexpr\SZTUStudentSignatureHeight-\SZTUFixedVerticalPadding-\SZTUFixedVerticalPadding-\SZTUFormRuleWidth-\SZTUFormRuleWidth\relax}
+\newlength{\ProposalReviewContentHeight}
+\setlength{\ProposalReviewContentHeight}{\dimexpr\SZTUReviewSignatureHeight-\SZTUFixedVerticalPadding-\SZTUFixedVerticalPadding-\SZTUFormRuleWidth-\SZTUFormRuleWidth\relax}
+\newlength{\ProposalCollegeOpinionRegionHeight}
+\setlength{\ProposalCollegeOpinionRegionHeight}{\dimexpr\ProposalReviewContentHeight-\SZTUTeacherOpinionRegionHeight\relax}
 \newsavebox{\ProposalInlineMeasure}
 \newcommand{\InfoPaddedLeft}[1]{%
   \hspace*{\SZTUCellHorizontalPadding}%
@@ -46,25 +53,15 @@
 }
 \tcbset{
   proposalflow/.style={
-    % Use a complete rectangular skin for every break fragment.  The usual
-    % first/middle/last skins deliberately leave page-break edges open.
-    enhanced standard,
-    breakable,
-    colframe=black,
-    boxrule=\SZTUFormRuleWidth,
-    toprule at break=\SZTUFormRuleWidth,
-    bottomrule at break=\SZTUFormRuleWidth,
-    colback=white,
-    arc=0pt,
-    outer arc=0pt,
-    boxsep=0pt,
-    left=\SZTUCellHorizontalPadding,right=\SZTUCellHorizontalPadding,top=1.5mm,bottom=1.5mm,
-    before skip=0pt,after skip=0pt
+    sztuformflow
+  },
+  proposalfixed/.style={
+    sztuformfixed
   }
 }
 \newcommand{\FlowSection}[2]{%
   {\heiti\SZTULabelSize #1}\par
-  \vspace{1mm}%
+  \SZTUFormSectionTitleGap
   {\songti\SZTUBodySize\justifying #2\par}%
 }
 \newcommand{\NestedOrderedItem}[2]{%
@@ -75,9 +72,24 @@
   #1\hspace{0.5em}#2\par
   \endgroup
 }
+\newlength{\ProposalListLevelIndentLength}
+\setlength{\ProposalListLevelIndentLength}{\SZTUListLevelIndent}
+\newlength{\ProposalListHangingIndentLength}
+\setlength{\ProposalListHangingIndentLength}{\SZTUListHangingIndent}
+\newcommand{\ProposalParagraph}[1]{%
+  \par\begingroup\setlength{\parindent}{\SZTUFirstLineIndent}\justifying #1\par\endgroup
+}
+\newcommand{\ProposalListItem}[3]{%
+  \par\begingroup
+  \setlength{\leftskip}{#1\ProposalListLevelIndentLength}%
+  \addtolength{\leftskip}{\ProposalListHangingIndentLength}%
+  \setlength{\parindent}{-\ProposalListHangingIndentLength}%
+  \justifying #2\hspace{0.5em}#3\par
+  \endgroup
+}
 \newcommand{\MethodsSection}{%
   {\heiti\SZTULabelSize 研究方法、手段及步骤：}\par
-  \vspace{1mm}%
+  \SZTUFormSectionTitleGap
   {\songti\SZTUBodySize\justifying
     本课题研究方法、手段如下：\par
     \MethodsAndMeans\par
@@ -87,13 +99,8 @@
 }
 \newcommand{\FlowReferences}[1]{%
   {\heiti\SZTULabelSize 参考文献：}\par
-  \vspace{1mm}%
+  \SZTUFormSectionTitleGap
   {\songti\SZTUBodySize\setlength{\parindent}{0pt}#1\par}%
-}
-\newcommand{\ProposalSeparator}{%
-  \vspace{1.5mm}%
-\noindent\hspace*{-\SZTUCellHorizontalPadding}\rule{\dimexpr\linewidth+\SZTUCellHorizontalPaddingDouble\relax}{\SZTUFormRuleWidth}\hspace*{-\SZTUCellHorizontalPadding}\par
-  \vspace{1.5mm}%
 }
 
 \begin{document}
@@ -120,38 +127,52 @@
     \Label{题\quad 目} & \SetCell[c=6]{l,m,wd=117.21mm}\InfoPaddedLeft{\ProposalTitle} & & & & & \\
     \Label{学生姓名} & \Info{\StudentName} & \Label{学号} & \SetCell[c=2]{c,m,wd=28.13mm}\Info{\StudentId} & & \Label{专业} & \SetCell{l,m,wd=34.80mm}\InfoPaddedAutoAlign{\Major} \\
     \Label{学\quad 院} & \SetCell{l,m,wd=29.09mm}\InfoPaddedLeft{\College} & \SetCell[c=2]{c,m,wd=29.37mm}\Label{指导教师} & & \SetCell[c=3]{c,m,wd=58.75mm}\Info{\Advisor} & & \\
-  \end{tblr}\par
+  \end{tblr}
+  \SZTUFormTightJoin
   \begin{tcolorbox}[proposalflow]
     \FlowSection{本选题的意义及国内外发展状况：}{\SignificanceAndStatus}
-    \ProposalSeparator
+  \end{tcolorbox}
+  \SZTUFormTightJoin
+  \begin{tcolorbox}[proposalflow]
     \FlowSection{研究内容：}{\ResearchContent}
-    \ProposalSeparator
+  \end{tcolorbox}
+  \SZTUFormTightJoin
+  \begin{tcolorbox}[proposalflow]
     \MethodsSection
-    \ProposalSeparator
+  \end{tcolorbox}
+  \SZTUFormTightJoin
+  \begin{tcolorbox}[proposalflow]
     \FlowReferences{\ReferencesContent}
   \end{tcolorbox}
-  % Keep the handwritten sections on the same continuous outer boundary as
-  % the metadata and body.  Subtract both rules so the tabular's total outer
-  % width equals \ProposalTableWidth exactly.
-  \noindent\begin{tabular}{|P{\dimexpr\ProposalTableWidth-2\arrayrulewidth\relax}|}
-    \hline
-    \begin{minipage}[t][\SZTUStudentSignatureHeight][t]{\dimexpr\ProposalTableWidth-\SZTUCellHorizontalPaddingDouble\relax}
-      \vspace{1mm}\Label{学生签名：}\par
+  % Keep the handwritten sections on the same continuous outer boundary and
+  % the same top-alignment model as the body sections.
+  \SZTUFormTightJoin
+  \begin{tcolorbox}[proposalfixed,height=\SZTUStudentSignatureHeight]
+    \vbox to \ProposalStudentSignatureContentHeight{%
+      \hsize=\linewidth
+      \noindent\Label{学生签名：}\par
       \vfill
-      \hfill\SignatureText{年\hspace{6.35mm}月\hspace{6.35mm}日}\hspace{7.5mm}
-    \end{minipage} \\
-    \hline
-    \begin{minipage}[t][\SZTUReviewSignatureHeight][t]{\dimexpr\ProposalTableWidth-\SZTUCellHorizontalPaddingDouble\relax}
-      \vspace{1mm}\Label{指导教师意见：}\par
+      \noindent\hfill\SignatureText{年\hspace{6.35mm}月\hspace{6.35mm}日}\hspace*{7.5mm}\par
+    }%
+  \end{tcolorbox}
+  \SZTUFormTightJoin
+  \begin{tcolorbox}[proposalfixed,height=\SZTUReviewSignatureHeight]
+    \vbox to \SZTUTeacherOpinionRegionHeight{%
+      \hsize=\linewidth
+      \noindent\Label{指导教师意见：}\par
       \vfill
-      \hfill\makebox[\SZTUSignatureSlotWidth][l]{\SignatureText{签名：}}\par
-      \vspace{1mm}\Label{学院领导意见：}\par
+      \noindent\hfill\makebox[\SZTUSignatureSlotWidth][l]{\SignatureText{签名：}}\par
+      \vspace{\SZTUOpinionTransitionGap}%
+    }%
+    \nointerlineskip
+    \vbox to \ProposalCollegeOpinionRegionHeight{%
+      \hsize=\linewidth
+      \noindent\Label{学院领导意见：}\par
       \vfill
-      \hfill\makebox[\SZTUSignatureSlotWidth][l]{\SignatureText{签名：}}\par
-      \hfill\SignatureText{年\hspace{6.35mm}月\hspace{6.35mm}日}\hspace{7.5mm}
-    \end{minipage} \\
-    \hline
-  \end{tabular}
+      \noindent\hfill\makebox[\SZTUSignatureSlotWidth][l]{\SignatureText{签名：}}\par
+      \noindent\hfill\SignatureText{年\hspace{6.35mm}月\hspace{6.35mm}日}\hspace*{7.5mm}\par
+    }%
+  \end{tcolorbox}
 \end{adjustwidth}
 
 \end{document}

@@ -13,7 +13,8 @@
 - `word/render.py`、`latex/render.py`：确定性双路渲染器。
 
 目录层级必须通过 `level` 和 `number` 表达；上下标、粗体和斜体使用 `runs`；正文列表
-使用显式 `ordered_list`；图片使用本地路径、替代文本、宽度和可选题注。不得用空格模拟
+使用显式 `ordered_list` 或 `unordered_list`，并可通过单个 `children` 子列表嵌套至四级；
+图片使用本地路径、替代文本、宽度和可选题注。不得用空格模拟
 缩进，也不得让 Agent 直接修改 Word 表格或生成的 TeX 数据文件。
 
 ## 必需字体
@@ -69,6 +70,6 @@ PY=/Users/chen/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/b
 "$PY" templates/midterm/test.py
 ```
 
-测试同时覆盖最短、正常、长字段和长正文含图片四类 fixture，并检查 Word 结构、字体字号、
+测试同时覆盖最短、正常、长字段、长正文含图片和四级混合列表五类 fixture，并检查 Word 结构、字体字号、
 颜色、居中与缩进、列表、上下标、图片替代文本，以及 LaTeX 的字体嵌入、A4 页面、表格几何、
 分页闭合边框和中文字形门禁。该测试通过不等于 Word/WPS 目标编辑器验收通过。

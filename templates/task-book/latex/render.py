@@ -21,13 +21,28 @@ if str(TEMPLATES_DIR) not in sys.path:
     sys.path.insert(0, str(TEMPLATES_DIR))
 
 from common.python.content import display_width, starts_with_calendar_date  # noqa: E402
-from common.python.font_files import resolve_font_files, tex_font_parts  # noqa: E402
-from common.python.typography import load_document_layout  # noqa: E402
+from common.python.font_files import (  # noqa: E402
+    cjk_emphasis_options,
+    resolve_font_files,
+    tex_font_parts,
+)
+from common.python.process_form import (  # noqa: E402
+    copy_process_form_latex_support,
+    load_process_document_layout,
+    process_form_latex_tokens,
+)
 
 
 CJK_CHARACTER = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 CJK_TRAILING_PUNCTUATION = frozenset("，。；：！？、,.!?;:）)]】》〉」』”’…")
 NUMBERED_PREFIX = re.compile(r"^\s*(?:[0-9]+|[一二三四五六七八九十]+)[、.．)]\s*")
+LAYOUT = load_process_document_layout(
+    Path(__file__).resolve().parents[1] / "spec" / "layout.json"
+)
+LIST_FIRST_LEVEL_INDENT_EM = LAYOUT["paragraphs"]["list_first_level_indent_em"]
+LIST_LEVEL_INDENT_EM = LAYOUT["paragraphs"]["list_level_indent_em"]
+LIST_MAX_DEPTH = LAYOUT["paragraphs"]["list_max_depth"]
+UNORDERED_LIST_MARKERS = LAYOUT["paragraphs"]["unordered_list_markers"]
 
 
 def _load_model(script_dir: Path):
@@ -225,15 +240,8 @@ def render_blocks(
         block_type = block["type"]
         if block_type == "paragraph":
             rendered.append(rf"\{paragraph_macro}{{{rich_runs(block['runs'])}}}")
-        elif block_type == "ordered_list":
-            items = []
-            for index, item in enumerate(block["items"], start=1):
-                marker = item.get("marker") or f"（{index}）"
-                items.append(
-                    rf"\TaskOrderedItem{{{tex_escape(marker)}}}"
-                    rf"{{{rich_runs(item['runs'])}}}"
-                )
-            rendered.append("\n".join(items))
+        elif block_type in {"ordered_list", "unordered_list"}:
+            rendered.append(render_list_block(block))
         elif block_type == "image":
             source = _resolve_image(block["path"], data_dir)
             asset_name = _safe_asset_name(source)
@@ -247,6 +255,27 @@ def render_blocks(
             )
         else:
             raise AssertionError(f"unsupported normalized block: {block_type}")
+    return "\n".join(rendered)
+
+
+def _list_marker(block: dict[str, Any], item: dict[str, Any], index: int, depth: int) -> str:
+    if block["type"] == "ordered_list":
+        return item["marker"] or f"（{index}）"
+    return UNORDERED_LIST_MARKERS[depth - 1]
+
+
+def render_list_block(block: dict[str, Any], *, depth: int = 1) -> str:
+    if not 1 <= depth <= LIST_MAX_DEPTH:
+        raise AssertionError(f"normalized list depth escaped bounds: {depth}")
+    marker_indent = LIST_FIRST_LEVEL_INDENT_EM + (depth - 1) * LIST_LEVEL_INDENT_EM
+    rendered: list[str] = []
+    for index, item in enumerate(block["items"], start=1):
+        marker = tex_escape(_list_marker(block, item, index, depth))
+        rendered.append(
+            rf"\TaskListItem{{{marker_indent:g}}}{{{marker}}}{{{rich_runs(item['runs'])}}}"
+        )
+        if item["children"]:
+            rendered.append(render_list_block(item["children"], depth=depth + 1))
     return "\n".join(rendered)
 
 
@@ -309,17 +338,20 @@ def fonts_tex(fonts: dict[str, Path]) -> str:
     )
     if len({times_dir, times_bold_dir, times_italic_dir, times_bold_italic_dir}) != 1:
         raise ValueError("all Times New Roman style files must be in the same directory")
+    school_options = cjk_emphasis_options(school_dir)
+    simhei_options = cjk_emphasis_options(simhei_dir)
+    simsun_options = cjk_emphasis_options(simsun_dir)
     return "\n".join(
         [
             "% Generated file. Exact official fonts; missing fonts are fatal.",
-            rf"\setCJKmainfont[Path={{{simsun_dir}}}]{{{simsun}}}",
-            rf"\setCJKsansfont[Path={{{simhei_dir}}}]{{{simhei}}}",
-            rf"\newCJKfontfamily\schoolmark[Path={{{school_dir}}},AutoFakeBold=3]{{{school_name}}}",
-            rf"\newCJKfontfamily\heiti[Path={{{simhei_dir}}},AutoFakeBold=3]{{{simhei}}}",
-            rf"\newCJKfontfamily\heitiBold[Path={{{simhei_dir}}},AutoFakeBold=3]{{{simhei}}}",
-            rf"\newfontfamily\heitiLatin[Path={{{simhei_dir}}},AutoFakeBold=3]{{{simhei}}}",
-            rf"\newCJKfontfamily\songti[Path={{{simsun_dir}}},AutoFakeBold=3]{{{simsun}}}",
-            rf"\newCJKfontfamily\songtiBold[Path={{{simsun_dir}}},AutoFakeBold=3]{{{simsun}}}",
+            rf"\setCJKmainfont[{simsun_options}]{{{simsun}}}",
+            rf"\setCJKsansfont[{simhei_options}]{{{simhei}}}",
+            rf"\newCJKfontfamily\schoolmark[{school_options}]{{{school_name}}}",
+            rf"\newCJKfontfamily\heiti[{simhei_options}]{{{simhei}}}",
+            rf"\newCJKfontfamily\heitiBold[{simhei_options}]{{{simhei}}}",
+            rf"\newfontfamily\heitiLatin[{simhei_options}]{{{simhei}}}",
+            rf"\newCJKfontfamily\songti[{simsun_options}]{{{simsun}}}",
+            rf"\newCJKfontfamily\songtiBold[{simsun_options}]{{{simsun}}}",
             rf"\setmainfont[Path={{{times_dir}}},BoldFont={{{times_bold}}},ItalicFont={{{times_italic}}},BoldItalicFont={{{times_bold_italic}}}]{{{times}}}",
             "",
         ]
@@ -345,7 +377,6 @@ def typography_tex(layout: dict[str, Any]) -> str:
     notice = layout.get("notice", {})
     padding = float(table["horizontal_padding_mm"])
     table_width = float(table["width_mm"])
-    border_pt = float(table["border_pt"])
     right_inset = float(signature["right_inset_mm"])
     topic_size_pt = float(_style(layout, "topic_body")["size_pt"])
     topic_indent_mm = topic_size_pt * 5 * 25.4 / 72.0
@@ -445,21 +476,20 @@ def typography_tex(layout: dict[str, Any]) -> str:
             rf"\newcommand{{\SZTUFullFieldUnderlineWidth}}{{{float(cover['full_field_underline_width_mm']):g}mm}}",
             rf"\newcommand{{\SZTUTitleUnderlineWidth}}{{{float(cover['title_underline_width_mm']):g}mm}}",
             rf"\newcommand{{\SZTUCoverUnderlineWidth}}{{{float(cover['underline_pt']):g}pt}}",
+            rf"\newcommand{{\SZTUTitleSingleLineUnderlineOffset}}{{{float(cover['title_latex_single_line_rule_offset_mm']):g}mm}}",
+            rf"\newcommand{{\SZTUTitleSingleLineSubscriptUnderlineOffset}}{{{float(cover['title_latex_single_line_subscript_rule_offset_mm']):g}mm}}",
+            rf"\newcommand{{\SZTUTitleTwoLineUnderlineOffset}}{{{float(cover['title_latex_two_line_rule_offset_mm']):g}mm}}",
+            rf"\newcommand{{\SZTUTitleTwoLineSubscriptUnderlineOffset}}{{{float(cover['title_latex_two_line_subscript_rule_offset_mm']):g}mm}}",
             rf"\newcommand{{\SZTUNoticeTitleTop}}{{{float(notice.get('title_top_mm', 42.45)):g}mm}}",
             rf"\newcommand{{\SZTUNoticeFirstItemTop}}{{{float(notice.get('first_item_top_mm', 71.05)):g}mm}}",
             rf"\newcommand{{\SZTUNoticeHangingIndent}}{{{(float(notice['hanging_chars_hundredth']) / 100 * 10.5) if 'hanging_chars_hundredth' in notice else (float(notice.get('hanging_indent_twip', 403)) / 20):g}pt}}",
             rf"\newcommand{{\SZTUNoticeItemGap}}{{{float(notice.get('item_space_after_pt', 0.0)):g}pt}}",
             rf"\newcommand{{\SZTUTableWidth}}{{{table_width:g}mm}}",
-            rf"\newcommand{{\SZTUFormRuleWidth}}{{{border_pt:g}pt}}",
-            rf"\newcommand{{\SZTUCellHorizontalPadding}}{{{padding:g}mm}}",
-            rf"\newcommand{{\SZTUCellHorizontalPaddingDouble}}{{{2 * padding:g}mm}}",
-            rf"\newcommand{{\SZTUFixedVerticalPadding}}{{{float(table['top_bottom_padding_mm']):g}mm}}",
-            rf"\newcommand{{\SZTUFlowVerticalPadding}}{{{float(table['flow_vertical_padding_mm']):g}mm}}",
-            rf"\newcommand{{\SZTUFlowEndSpace}}{{{float(table['flow_end_space_mm']):g}mm}}",
+            *process_form_latex_tokens(layout),
             rf"\newcommand{{\SZTUBodyLineSpacing}}{{{float(paragraphs['body_line_spacing']):g}}}",
             rf"\newcommand{{\SZTUNoticeLineSpacing}}{{{float(paragraphs['notice_line_spacing']):g}}}",
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{float(paragraphs['first_line_indent_em']):g}em}}",
-            rf"\newcommand{{\SZTUOrderedListHangingIndent}}{{{paragraph_number('ordered_list_hanging_indent_em', default=2.0):g}em}}",
+            rf"\newcommand{{\SZTUListHangingIndent}}{{{paragraph_number('list_hanging_indent_em', default=2.0):g}em}}",
             rf"\newcommand{{\SZTUScheduleLabelWidth}}{{{paragraph_number('schedule_period_width_em', 'schedule_label_width_em', 11.0):g}em}}",
             rf"\newcommand{{\SZTUTitleRowMinHeight}}{{{height('title_row', 'title'):g}mm}}",
             rf"\newcommand{{\SZTUBasicMinHeight}}{{{height('basic_content_and_requirements', 'basic_content'):g}mm}}",
@@ -717,6 +747,15 @@ def data_tex(
         "GraduationYear": tex_escape(str(metadata["graduation_year"])),
         "TaskTitle": rich_runs(metadata["title"]),
         "TaskCoverTitleLineCount": str(len(cover_title_lines)),
+        "TaskCoverTitleLineOneHasSubscript": str(
+            int(any(run.get("script") == "sub" for run in cover_title_lines[0]))
+        ),
+        "TaskCoverTitleLineTwoHasSubscript": str(
+            int(
+                len(cover_title_lines) == 2
+                and any(run.get("script") == "sub" for run in cover_title_lines[1])
+            )
+        ),
         "TaskCoverTitleLineOne": rich_runs(cover_title_lines[0]),
         "TaskCoverTitleLineTwo": (
             rich_runs(cover_title_lines[1]) if len(cover_title_lines) == 2 else ""
@@ -771,7 +810,7 @@ def render(
     script_dir = Path(__file__).resolve().parent
     model = _load_model(script_dir)
     data = model.validate_data(json.loads(data_path.read_text(encoding="utf-8")))
-    layout = load_document_layout(script_dir.parent / "spec" / "layout.json")
+    layout = load_process_document_layout(script_dir.parent / "spec" / "layout.json")
     fixed = _read_object(script_dir.parent / "spec" / "fixed-content.json")
     cover = layout["cover"]
     cover_title_style = _style(layout, "cover_title_value")
@@ -814,6 +853,7 @@ def render(
     (output_dir / "task-book-typography.tex").write_text(
         typography_tex(layout), encoding="utf-8"
     )
+    copy_process_form_latex_support(output_dir)
     shutil.copy2(script_dir / "main.tex", output_dir / "main.tex")
 
     if compile_pdf:

@@ -25,6 +25,7 @@ from common.python.content import (  # noqa: E402
     ContentDataError as DataError,
     display_width,
     has_explicit_numbering,
+    normalize_content_block,
     normalize_paragraph,
     plain_runs,
     require_object,
@@ -32,7 +33,7 @@ from common.python.content import (  # noqa: E402
     runs_text,
     split_numbered_subitems,
 )
-from common.python.typography import load_document_layout  # noqa: E402
+from common.python.process_form import load_process_document_layout  # noqa: E402
 
 
 SCHEMA_VERSION = "0.2"
@@ -53,7 +54,9 @@ SECTION_KEYS = (
 )
 ADVISOR_TITLE_PATTERN = re.compile(r"(?:老师|教授|副教授|讲师|博士|硕士|导师)$")
 TITLE_DISPLAY_WIDTH_LIMIT = 64.0
-LAYOUT = load_document_layout(Path(__file__).resolve().parents[1] / "spec" / "layout.json")
+LAYOUT = load_process_document_layout(
+    Path(__file__).resolve().parents[1] / "spec" / "layout.json"
+)
 BODY_STYLE = LAYOUT["typography"]["body"]
 BODY_SIZE_PT = BODY_STYLE["size_pt"]
 BODY_CJK_FONT = BODY_STYLE["cjk_word_family"]
@@ -63,6 +66,10 @@ FIRST_LINE_INDENT_PT = BODY_SIZE_PT * LAYOUT["paragraphs"]["first_line_indent_em
 NESTED_LIST_LEFT_INDENT_PT = (
     BODY_SIZE_PT * LAYOUT["paragraphs"]["nested_list_left_indent_em"]
 )
+LIST_LEVEL_INDENT_PT = BODY_SIZE_PT * LAYOUT["paragraphs"]["list_level_indent_em"]
+LIST_HANGING_INDENT_PT = BODY_SIZE_PT * LAYOUT["paragraphs"]["list_hanging_indent_em"]
+LIST_MAX_DEPTH = LAYOUT["paragraphs"]["list_max_depth"]
+UNORDERED_LIST_MARKERS = LAYOUT["paragraphs"]["unordered_list_markers"]
 
 
 def validate_data(raw: Any) -> dict[str, Any]:
@@ -98,7 +105,7 @@ def validate_data(raw: Any) -> dict[str, Any]:
     unknown_sections = set(sections) - set(SECTION_KEYS)
     if unknown_sections:
         raise DataError(f"unknown section fields: {sorted(unknown_sections)}")
-    clean_sections: dict[str, list[list[dict[str, Any]]]] = {}
+    clean_sections: dict[str, Any] = {}
     for key in SECTION_KEYS:
         value = sections.get(key)
         if not isinstance(value, list) or not value:
@@ -108,10 +115,24 @@ def validate_data(raw: Any) -> dict[str, Any]:
         max_length = 1000 if key == "references" else 5000
         if len(value) > 50:
             raise DataError(f"sections.{key} may contain at most 50 items")
-        clean_sections[key] = [
-            normalize_paragraph(item, f"sections.{key}[{index}]", max_length)
-            for index, item in enumerate(value)
-        ]
+        if key in {"research_content", "methods_and_means", "research_steps"}:
+            normalized_blocks = [
+                normalize_content_block(
+                    item,
+                    f"sections.{key}[{index}]",
+                    max_length,
+                    max_list_depth=LIST_MAX_DEPTH,
+                )
+                for index, item in enumerate(value)
+            ]
+            if any(block["type"] == "image" for block in normalized_blocks):
+                raise DataError(f"sections.{key} supports text and lists, not images")
+            clean_sections[key] = normalized_blocks
+        else:
+            clean_sections[key] = [
+                normalize_paragraph(item, f"sections.{key}[{index}]", max_length)
+                for index, item in enumerate(value)
+            ]
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -209,10 +230,54 @@ def _fill_section(
         _remove_paragraph(paragraph)
 
 
+def _list_marker(block_type: str, item: dict[str, Any], index: int, depth: int) -> str:
+    if block_type == "ordered_list":
+        return item["marker"] or f"{index}、"
+    return UNORDERED_LIST_MARKERS[depth - 1]
+
+
+def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
+    if not 1 <= depth <= LIST_MAX_DEPTH:
+        raise AssertionError(f"normalized list depth escaped bounds: {depth}")
+    for index, item in enumerate(block["items"], start=1):
+        paragraph = cell.add_paragraph()
+        _format_body_paragraph(paragraph, references=False, indent=False)
+        paragraph.paragraph_format.left_indent = Pt(
+            depth * LIST_LEVEL_INDENT_PT + LIST_HANGING_INDENT_PT
+        )
+        paragraph.paragraph_format.first_line_indent = Pt(-LIST_HANGING_INDENT_PT)
+        marker = _list_marker(block["type"], item, index, depth)
+        _append_runs(paragraph, plain_runs(f"{marker} "), size_pt=BODY_SIZE_PT)
+        _append_runs(paragraph, item["runs"], size_pt=BODY_SIZE_PT)
+        if item["children"]:
+            _append_list_block(cell, item["children"], depth=depth + 1)
+
+
+def _append_text_content_blocks(cell, blocks: list[dict[str, Any]]) -> None:
+    for block in blocks:
+        if block["type"] == "paragraph":
+            paragraph = cell.add_paragraph()
+            _format_body_paragraph(paragraph, references=False)
+            _append_runs(paragraph, block["runs"], size_pt=BODY_SIZE_PT)
+        elif block["type"] in {"ordered_list", "unordered_list"}:
+            _append_list_block(cell, block)
+        else:
+            raise AssertionError(f"unsupported normalized block: {block['type']}")
+
+
+def _fill_text_content_section(cell, blocks: list[dict[str, Any]]) -> None:
+    if all(block["type"] == "paragraph" for block in blocks):
+        _fill_section(cell, [block["runs"] for block in blocks])
+        return
+    for paragraph in list(cell.paragraphs[1:]):
+        _remove_paragraph(paragraph)
+    _append_text_content_blocks(cell, blocks)
+
+
 def _fill_methods_section(
     cell,
-    methods: list[list[dict[str, Any]]],
-    steps: list[list[dict[str, Any]]],
+    methods: list[dict[str, Any]],
+    steps: list[dict[str, Any]],
 ) -> None:
     if not cell.paragraphs:
         raise RuntimeError("methods cell has no label paragraph")
@@ -227,11 +292,15 @@ def _fill_methods_section(
         heading_paragraph = cell.add_paragraph()
         _format_body_paragraph(heading_paragraph, references=False)
         _append_runs(heading_paragraph, plain_runs(heading), size_pt=BODY_SIZE_PT)
+        if not all(item["type"] == "paragraph" for item in items):
+            _append_text_content_blocks(cell, items)
+            continue
         for index, item in enumerate(items, start=1):
-            split_item = split_numbered_subitems(item)
+            runs = item["runs"]
+            split_item = split_numbered_subitems(runs)
             paragraph = cell.add_paragraph()
             _format_body_paragraph(paragraph, references=False)
-            lead = split_item[0] if split_item else item
+            lead = split_item[0] if split_item else runs
             if not has_explicit_numbering(lead):
                 _append_runs(paragraph, plain_runs(f"{index}、"), size_pt=BODY_SIZE_PT)
             _append_runs(paragraph, lead, size_pt=BODY_SIZE_PT)
@@ -303,7 +372,7 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
 
     sections = data["sections"]
     _fill_section(table.rows[3].cells[0], sections["significance_and_status"])
-    _fill_section(table.rows[4].cells[0], sections["research_content"])
+    _fill_text_content_section(table.rows[4].cells[0], sections["research_content"])
     _fill_methods_section(
         table.rows[5].cells[0],
         sections["methods_and_means"],

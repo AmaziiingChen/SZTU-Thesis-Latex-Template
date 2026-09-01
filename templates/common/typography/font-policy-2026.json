@@ -12,6 +12,16 @@
       "latex_family": "SimHei",
       "font_file_keys": ["SimHei"]
     },
+    "cjk_kai": {
+      "word_family": "楷体",
+      "latex_family": "KaiTi",
+      "font_file_keys": ["KaiTi"]
+    },
+    "cjk_thesis_title": {
+      "word_family": "华文中宋",
+      "latex_family": "STZhongsong",
+      "font_file_keys": ["STZhongsong"]
+    },
     "cjk_school_mark": {
       "word_family": "华文行楷",
       "latex_family": "STXingkai",
@@ -49,6 +59,14 @@
     "SimHei": {
       "environment": "SZTU_SIMHEI_FONT",
       "candidates": ["simhei.ttf"]
+    },
+    "KaiTi": {
+      "environment": "SZTU_KAITI_FONT",
+      "candidates": ["simkai.ttf", "KaiTi.ttf", "Kaiti.ttf"]
+    },
+    "STZhongsong": {
+      "environment": "SZTU_STZHONGSONG_FONT",
+      "candidates": ["STZhongsong.ttf"]
     },
     "Times New Roman": {
       "environment": "SZTU_TIMES_REGULAR_FONT",

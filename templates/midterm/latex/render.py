@@ -17,12 +17,25 @@ TEMPLATES_DIR = Path(__file__).resolve().parents[2]
 if str(TEMPLATES_DIR) not in sys.path:
     sys.path.insert(0, str(TEMPLATES_DIR))
 
-from common.python.font_files import resolve_font_files, tex_font_parts  # noqa: E402
-from common.python.typography import load_document_layout  # noqa: E402
+from common.python.font_files import (  # noqa: E402
+    cjk_emphasis_options,
+    resolve_font_files,
+    tex_font_parts,
+)
+from common.python.process_form import (  # noqa: E402
+    copy_process_form_latex_support,
+    load_process_document_layout,
+    process_form_latex_tokens,
+)
 
 
 CJK_CHARACTER = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 CJK_TRAILING_PUNCTUATION = frozenset("，。；：！？、,.!?;:）)]】》〉」』”’…")
+LAYOUT = load_process_document_layout(
+    Path(__file__).resolve().parents[1] / "spec" / "layout.json"
+)
+LIST_MAX_DEPTH = LAYOUT["paragraphs"]["list_max_depth"]
+UNORDERED_LIST_MARKERS = LAYOUT["paragraphs"]["unordered_list_markers"]
 
 
 def _load_word_renderer(script_dir: Path):
@@ -46,12 +59,13 @@ def fonts_tex(fonts: dict[str, Path]) -> str:
     )
     if len({times_dir, times_bold_dir, times_italic_dir, times_bold_italic_dir}) != 1:
         raise ValueError("all Times New Roman style files must be in the same directory")
+    simsun_options = cjk_emphasis_options(simsun_dir)
     return "\n".join(
         [
             "% Generated file. Exact official fonts; missing fonts are fatal.",
-            rf"\setCJKmainfont[Path={{{simsun_dir}}}]{{{simsun}}}",
-            rf"\newCJKfontfamily\songti[Path={{{simsun_dir}}}]{{{simsun}}}",
-            rf"\newCJKfontfamily\songtiBold[Path={{{simsun_dir}}},AutoFakeBold=3]{{{simsun}}}",
+            rf"\setCJKmainfont[{simsun_options}]{{{simsun}}}",
+            rf"\newCJKfontfamily\songti[{simsun_options}]{{{simsun}}}",
+            rf"\newCJKfontfamily\songtiBold[{simsun_options}]{{{simsun}}}",
             rf"\newCJKfontfamily\formtitle[Path={{{form_title_dir}}}]{{{form_title}}}",
             rf"\setmainfont[Path={{{times_dir}}},BoldFont={{{times_bold}}},ItalicFont={{{times_italic}}},BoldItalicFont={{{times_bold_italic}}}]{{{times}}}",
             "",
@@ -97,15 +111,12 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUColFourContent}}{{{columns[3] - 2 * padding - column_rule_share_mm:g}mm}}",
             rf"\newcommand{{\SZTUTableContentWidth}}{{{table['width_mm'] - 2 * padding - 2 * rule_mm - 0.001:g}mm}}",
             rf"\newcommand{{\SZTUTitleContentWidth}}{{{sum(columns[1:]) - 2 * padding - 2 * rule_mm:g}mm}}",
-            rf"\newcommand{{\SZTUFormRuleWidth}}{{{table['border_pt']:g}pt}}",
-            rf"\newcommand{{\SZTUCellHorizontalPadding}}{{{padding:g}mm}}",
-            rf"\newcommand{{\SZTUCellHorizontalPaddingDouble}}{{{2 * padding:g}mm}}",
-            rf"\newcommand{{\SZTUFlowVerticalPadding}}{{{table['flow_vertical_padding_mm']:g}mm}}",
-            rf"\newcommand{{\SZTUFlowEndSpace}}{{{table['flow_end_space_mm']:g}mm}}",
+            *process_form_latex_tokens(layout),
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUOutlineLevelIndent}}{{{paragraphs['outline_level_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUOutlineHangingIndent}}{{{paragraphs['outline_hanging_indent_em']:g}em}}",
-            rf"\newcommand{{\SZTUListHangingIndent}}{{{paragraphs['ordered_list_hanging_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUListLevelIndent}}{{{paragraphs['list_level_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUListHangingIndent}}{{{paragraphs['list_hanging_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUMetadataRowHeight}}{{{row_heights['metadata']:g}mm}}",
             rf"\newcommand{{\SZTUTeacherHeaderHeight}}{{{row_heights['teacher_header']:g}mm}}",
             rf"\newcommand{{\SZTUTeacherFirstHeight}}{{{row_heights['teacher_option_first']:g}mm}}",
@@ -222,14 +233,8 @@ def render_blocks(
     for block in blocks:
         if block["type"] == "paragraph":
             rendered.append(rf"\MidtermParagraph{{{rich_runs(block['runs'])}}}")
-        elif block["type"] == "ordered_list":
-            items = []
-            for index, item in enumerate(block["items"], start=1):
-                marker = item["marker"] or f"{index}、"
-                items.append(
-                    rf"\MidtermListItem{{{tex_escape(marker)}}}{{{rich_runs(item['runs'])}}}"
-                )
-            rendered.append("\n".join(items))
+        elif block["type"] in {"ordered_list", "unordered_list"}:
+            rendered.append(render_list_block(block))
         elif block["type"] == "image":
             source = _resolve_image(block["path"], data_dir)
             asset_name = _safe_asset_name(source)
@@ -242,6 +247,26 @@ def render_blocks(
             )
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
+    return "\n".join(rendered)
+
+
+def _list_marker(block: dict, item: dict, index: int, depth: int) -> str:
+    if block["type"] == "ordered_list":
+        return item["marker"] or f"{index}、"
+    return UNORDERED_LIST_MARKERS[depth - 1]
+
+
+def render_list_block(block: dict, *, depth: int = 1) -> str:
+    if not 1 <= depth <= LIST_MAX_DEPTH:
+        raise AssertionError(f"normalized list depth escaped bounds: {depth}")
+    rendered = []
+    for index, item in enumerate(block["items"], start=1):
+        marker = tex_escape(_list_marker(block, item, index, depth))
+        rendered.append(
+            rf"\MidtermListItem{{{depth}}}{{{marker}}}{{{rich_runs(item['runs'])}}}"
+        )
+        if item["children"]:
+            rendered.append(render_list_block(item["children"], depth=depth + 1))
     return "\n".join(rendered)
 
 
@@ -289,7 +314,7 @@ def render(data_path: Path, output_dir: Path, *, overwrite: bool, compile_pdf: b
     script_dir = Path(__file__).resolve().parent
     shared = _load_word_renderer(script_dir)
     data = shared.validate_data(json.loads(data_path.read_text(encoding="utf-8")))
-    layout = load_document_layout(script_dir.parent / "spec" / "layout.json")
+    layout = load_process_document_layout(script_dir.parent / "spec" / "layout.json")
     fonts = resolve_font_files(
         layout["required_font_files"],
         local_font_dir=script_dir.parent / "fonts.local",
@@ -306,6 +331,7 @@ def render(data_path: Path, output_dir: Path, *, overwrite: bool, compile_pdf: b
     (output_dir / "midterm-typography.tex").write_text(
         typography_tex(layout), encoding="utf-8"
     )
+    copy_process_form_latex_support(output_dir)
     shutil.copy2(script_dir / "main.tex", output_dir / "main.tex")
     if compile_pdf:
         command = ["xelatex", "-interaction=nonstopmode", "-halt-on-error", "main.tex"]
@@ -325,7 +351,9 @@ def main() -> int:
     try:
         if args.check_fonts:
             script_dir = Path(__file__).resolve().parent
-            layout = load_document_layout(script_dir.parent / "spec" / "layout.json")
+            layout = load_process_document_layout(
+                script_dir.parent / "spec" / "layout.json"
+            )
             fonts = resolve_font_files(
                 layout["required_font_files"],
                 local_font_dir=script_dir.parent / "fonts.local",
