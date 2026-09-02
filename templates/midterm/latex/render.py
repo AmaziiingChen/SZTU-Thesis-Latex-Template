@@ -22,6 +22,7 @@ from common.python.font_files import (  # noqa: E402
     resolve_font_files,
     tex_font_parts,
 )
+from common.python.content import figure_caption_runs  # noqa: E402
 from common.python.process_form import (  # noqa: E402
     copy_process_form_latex_support,
     load_process_document_layout,
@@ -82,6 +83,7 @@ def typography_tex(layout: dict) -> str:
     row_heights = layout["row_min_heights_mm"]
     section_heights = layout["section_min_heights_mm"]
     latex_pagination = layout["latex_pagination"]
+    image = layout["image"]
     padding = float(table["horizontal_padding_mm"])
     columns = table["column_widths_mm"]
     rule_mm = float(table["border_pt"]) * 25.4 / 72.27
@@ -127,6 +129,7 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUSignatureRightInset}}{{{signature['right_inset_mm']:g}mm}}",
             rf"\newcommand{{\SZTUTeacherSignatureBlank}}{{{signature['teacher_blank_width_mm']:g}mm}}",
             rf"\newcommand{{\SZTUReviewSignatureBlank}}{{{signature['review_blank_width_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUImageMaxHeight}}{{{image['max_height_mm']:g}mm}}",
             "",
         ]
     )
@@ -238,7 +241,7 @@ def render_blocks(
             asset_name = _safe_asset_name(source)
             assets_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, assets_dir / asset_name)
-            caption = rich_runs(block["caption_runs"]) if block["caption_runs"] else ""
+            caption = rich_runs(figure_caption_runs(block))
             rendered.append(
                 rf"\MidtermFigure{{assets/{tex_escape(asset_name)}}}"
                 rf"{{{block['width_mm']:g}mm}}{{{caption}}}"

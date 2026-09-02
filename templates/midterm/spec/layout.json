@@ -1,5 +1,5 @@
 {
-  "version": "0.4",
+  "version": "0.5",
   "typography": {
     "title": {
       "cjk_font_role": "cjk_form_title",
@@ -91,7 +91,10 @@
   },
   "image": {
     "default_width_mm": 120.0,
-    "max_width_mm": 146.0
+    "max_width_mm": 146.0,
+    "max_height_mm": 180.0,
+    "caption_prefix": "图",
+    "source_prefix": "来源："
   },
   "signature": {
     "right_inset_mm": 7.5,

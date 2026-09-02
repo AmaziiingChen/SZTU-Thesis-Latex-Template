@@ -84,6 +84,8 @@ def main() -> int:
     assert r"\Needspace" not in latex_source
     assert r"\SZTUMainMinHeight" not in latex_source
     assert r"\SZTUTeacherBundleNeedspace" not in latex_source
+    assert r"\begin{minipage}{\linewidth}" in latex_source
+    assert r"height=\SZTUImageMaxHeight,keepaspectratio" in latex_source
 
     plain_run = {"text": "完成开题", "script": "normal", "italic": False, "bold": False}
     assert latex_renderer.rich_runs([plain_run]) == r"完成开\nobreak{}题"
@@ -128,6 +130,7 @@ def main() -> int:
     assert layout["table"]["section_title_content_gap_mm"] == 0.0
     assert layout["paragraphs"]["list_max_depth"] == 4
     assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
+    assert layout["image"]["max_height_mm"] == 180.0
     assert layout["signature"]["teacher_blank_width_mm"] == 45.0
     assert layout["signature"]["review_blank_width_mm"] == 35.0
     assert layout["latex_pagination"]["teacher_opinion_height_mm"] == 84.0
@@ -176,6 +179,26 @@ def main() -> int:
         normalized = word_renderer.validate_data(raw)
         assert normalized["schema_version"] == "0.1"
         assert normalized["sections"]["directory"][0]["level"] == 1
+        if name == "long-with-image":
+            research = normalized["sections"]["main_research_content"]
+            progress = normalized["sections"]["progress"]
+            figures = [
+                block
+                for block in [*research, *progress]
+                if block["type"] == "image"
+            ]
+            assert [block["figure_label"] for block in figures] == [
+                "图 3-1",
+                "图 3-2",
+            ]
+            normalized_text = "".join(
+                word_renderer.runs_text(block["runs"])
+                for block in [*research, *progress]
+                if block["type"] == "paragraph"
+            )
+            assert "{{fig:" not in normalized_text
+            assert "图 3-1" in normalized_text
+            assert "图 3-2" in normalized_text
 
         docx_output = output_root / f"{name}.docx"
         run(
@@ -297,6 +320,33 @@ def main() -> int:
         if name == "long-with-image":
             xml = document.element.xml
             assert "统一数据模型驱动 Word 与 LaTeX 双路渲染流程示意图" in xml
+            assert "{{fig:" not in xml
+            figure_paragraphs = [
+                paragraph
+                for cell in (directory_cell, progress_cell)
+                for paragraph in cell.paragraphs
+                if paragraph._p.xpath(".//w:drawing")
+            ]
+            assert len(figure_paragraphs) == 2
+            assert all(
+                paragraph.paragraph_format.keep_with_next is True
+                and paragraph.paragraph_format.keep_together is True
+                for paragraph in figure_paragraphs
+            )
+            caption_paragraphs = [
+                paragraph
+                for cell in (directory_cell, progress_cell)
+                for paragraph in cell.paragraphs
+                if paragraph.text.startswith("图 3-")
+            ]
+            assert [paragraph.text for paragraph in caption_paragraphs] == [
+                "图 3-1 统一数据入口与双路渲染流程（来源：SyntheticWorkflow2026）",
+                "图 3-2 中期工作进展验证结果",
+            ]
+            assert all(
+                paragraph.paragraph_format.keep_together is True
+                for paragraph in caption_paragraphs
+            )
             all_runs = [run_item for cell in (directory_cell, progress_cell) for run_item in paragraph_runs(cell)]
             assert any(run_item.text == "2" and run_item.font.subscript for run_item in all_runs)
             assert any(run_item.text == "−" and run_item.font.superscript for run_item in all_runs)
@@ -373,6 +423,7 @@ def main() -> int:
         assert r"\newcommand{\SZTUTeacherOpinionHeight}{84mm}" in typography_tex
         assert r"\newcommand{\SZTUReviewOpinionHeight}{72mm}" in typography_tex
         assert r"\newcommand{\SZTUProgressMinHeight}{55.12mm}" in typography_tex
+        assert r"\newcommand{\SZTUImageMaxHeight}{180mm}" in typography_tex
         assert r"\newcommand{\SZTUMainMinHeight}" not in typography_tex
         assert r"\newcommand{\SZTUTeacherBundleNeedspace}" not in typography_tex
         assert r"\newcommand{\SZTUTeacherSignatureBlank}{45mm}" in typography_tex
@@ -386,6 +437,10 @@ def main() -> int:
             assert r"10\textsuperscript{−3}" in data_tex
             assert r"R\textsuperscript{2}" in data_tex
             assert r"\MidtermFigure{assets/" in data_tex
+            assert "图 3-1" in data_tex
+            assert "图 3-2" in data_tex
+            assert "{{fig:" not in data_tex
+            assert "SyntheticWorkflow2026" in data_tex
             assert len(list((latex_dir / "assets").glob("*.png"))) == 1
         if name == "nested-list":
             for depth, marker in ((1, "•"), (2, "（1）"), (3, "▪"), (4, "A.")):
@@ -580,6 +635,40 @@ def main() -> int:
         pass
     else:
         raise AssertionError("remote image URL must be rejected")
+
+    structured_figures = json.loads(
+        (midterm_dir / "fixtures" / "long-with-image.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    duplicate_figure = copy.deepcopy(structured_figures)
+    duplicate_figure["sections"]["progress"][2]["id"] = "fig-workflow_0001"
+    try:
+        word_renderer.validate_data(duplicate_figure)
+    except ValueError as error:
+        assert "duplicate figure id" in str(error)
+    else:
+        raise AssertionError("duplicate figure ids must be rejected")
+
+    unknown_reference = copy.deepcopy(structured_figures)
+    unknown_reference["sections"]["progress"][0]["runs"][0]["text"] += (
+        "未知引用{{fig:fig-missing_0001}}。"
+    )
+    try:
+        word_renderer.validate_data(unknown_reference)
+    except ValueError as error:
+        assert "unknown figure" in str(error)
+    else:
+        raise AssertionError("unknown figure references must be rejected")
+
+    missing_caption = copy.deepcopy(structured_figures)
+    del missing_caption["sections"]["main_research_content"][2]["caption"]
+    try:
+        word_renderer.validate_data(missing_caption)
+    except ValueError as error:
+        assert "caption is required" in str(error)
+    else:
+        raise AssertionError("new figures without captions must be rejected")
 
     unified_output = output_root / "unified-minimal"
     run(

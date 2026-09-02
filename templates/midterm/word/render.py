@@ -17,6 +17,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Mm, Pt, RGBColor
+from PIL import Image as PILImage
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2]
 if str(TEMPLATES_DIR) not in sys.path:
@@ -25,9 +26,11 @@ if str(TEMPLATES_DIR) not in sys.path:
 from common.python.content import (  # noqa: E402
     ContentDataError as DataError,
     display_width,
+    figure_caption_runs,
     normalize_content_block,
     normalize_paragraph,
     plain_runs,
+    prepare_figure_content,
     require_object,
     require_text,
     runs_text,
@@ -174,6 +177,12 @@ def validate_data(raw: Any) -> dict[str, Any]:
             )
             for index, block in enumerate(raw_blocks)
         ]
+    prepare_figure_content(
+        [
+            clean_sections["main_research_content"],
+            clean_sections["progress"],
+        ]
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "metadata": clean_metadata,
@@ -282,6 +291,21 @@ def _set_picture_alt(run, alt: str) -> None:
         doc_pr[0].set("descr", alt)
 
 
+def _fit_image_dimensions(image_path: Path, requested_width_mm: float) -> tuple[float, float]:
+    with PILImage.open(image_path) as image:
+        pixel_width, pixel_height = image.size
+    if pixel_width <= 0 or pixel_height <= 0:
+        raise DataError("image dimensions must be positive")
+    width_mm = float(requested_width_mm)
+    height_mm = width_mm * pixel_height / pixel_width
+    max_height_mm = float(LAYOUT["image"]["max_height_mm"])
+    if height_mm > max_height_mm:
+        scale = max_height_mm / height_mm
+        width_mm *= scale
+        height_mm = max_height_mm
+    return width_mm, height_mm
+
+
 def _list_marker(block_type: str, item: dict[str, Any], index: int, depth: int) -> str:
     if block_type == "ordered_list":
         return item["marker"] or f"{index}、"
@@ -314,20 +338,27 @@ def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path
             _append_list_block(cell, block)
         elif block["type"] == "image":
             paragraph = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+            paragraph.paragraph_format.keep_with_next = True
+            paragraph.paragraph_format.keep_together = True
             run = paragraph.add_run()
             _set_run_font(run, style=BODY)
             image_path = _resolve_image(block["path"], data_dir)
-            run.add_picture(str(image_path), width=Mm(block["width_mm"]))
+            width_mm, height_mm = _fit_image_dimensions(
+                image_path, block["width_mm"]
+            )
+            run.add_picture(
+                str(image_path), width=Mm(width_mm), height=Mm(height_mm)
+            )
             _set_picture_alt(run, block["alt"])
-            if block["caption_runs"]:
-                caption = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
-                caption.paragraph_format.space_before = Pt(
-                    LAYOUT["paragraphs"]["caption_space_before_pt"]
-                )
-                caption.paragraph_format.space_after = Pt(
-                    LAYOUT["paragraphs"]["caption_space_after_pt"]
-                )
-                _append_runs(caption, block["caption_runs"], style=BODY)
+            caption = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+            caption.paragraph_format.keep_together = True
+            caption.paragraph_format.space_before = Pt(
+                LAYOUT["paragraphs"]["caption_space_before_pt"]
+            )
+            caption.paragraph_format.space_after = Pt(
+                LAYOUT["paragraphs"]["caption_space_after_pt"]
+            )
+            _append_runs(caption, figure_caption_runs(block), style=BODY)
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
 

@@ -58,6 +58,9 @@ UNICODE_SCRIPT_CHARACTERS: dict[str, tuple[str, str]] = {
 }
 
 PLAIN_SCIENTIFIC_CHARACTER_REPLACEMENTS = {"℃": "°C"}
+FIGURE_ID_PATTERN = re.compile(r"fig-[A-Za-z0-9_-]{8,96}")
+FIGURE_REFERENCE_PATTERN = re.compile(r"\{\{fig:(fig-[A-Za-z0-9_-]{8,96})\}\}")
+FIGURE_SOURCE_KEY_PATTERN = re.compile(r"[A-Za-z0-9_:.+/-]{1,200}")
 
 
 def _expand_legacy_scientific_run(run: dict[str, Any]) -> list[dict[str, Any]]:
@@ -213,11 +216,33 @@ def normalize_content_block(
         }
     block = require_object(value, path)
     if block.get("type") == "image":
-        unknown = set(block) - {"type", "path", "alt", "width_mm", "caption"}
+        unknown = set(block) - {
+            "type",
+            "id",
+            "path",
+            "alt",
+            "chapter",
+            "width_mm",
+            "caption",
+            "source_citation_key",
+        }
         if unknown:
             raise ContentDataError(f"unknown fields in {path}: {sorted(unknown)}")
+        figure_id = block.get("id")
+        if figure_id is not None and (
+            not isinstance(figure_id, str)
+            or FIGURE_ID_PATTERN.fullmatch(figure_id) is None
+        ):
+            raise ContentDataError(f"{path}.id must be a stable figure id")
         image_path = require_text(block.get("path"), f"{path}.path", 1000)
         alt = require_text(block.get("alt"), f"{path}.alt", 500)
+        chapter = block.get("chapter", 1)
+        if (
+            isinstance(chapter, bool)
+            or not isinstance(chapter, int)
+            or not 1 <= chapter <= 99
+        ):
+            raise ContentDataError(f"{path}.chapter must be an integer from 1 to 99")
         width_mm = block.get("width_mm", 120.0)
         if (
             isinstance(width_mm, bool)
@@ -226,10 +251,21 @@ def normalize_content_block(
         ):
             raise ContentDataError(f"{path}.width_mm must be between 20 and 146")
         caption = block.get("caption")
-        return {
+        if figure_id is not None and caption is None:
+            raise ContentDataError(f"{path}.caption is required for a referenced figure")
+        source_citation_key = block.get("source_citation_key")
+        if source_citation_key is not None and (
+            not isinstance(source_citation_key, str)
+            or FIGURE_SOURCE_KEY_PATTERN.fullmatch(source_citation_key) is None
+        ):
+            raise ContentDataError(
+                f"{path}.source_citation_key contains unsupported characters"
+            )
+        normalized = {
             "type": "image",
             "path": image_path,
             "alt": alt,
+            "chapter": chapter,
             "width_mm": float(width_mm),
             "caption_runs": normalize_paragraph(
                 caption, f"{path}.caption", max_length
@@ -237,6 +273,11 @@ def normalize_content_block(
             if caption is not None
             else None,
         }
+        if figure_id is not None:
+            normalized["id"] = figure_id
+        if source_citation_key is not None:
+            normalized["source_citation_key"] = source_citation_key
+        return normalized
     if block.get("type") not in {"ordered_list", "unordered_list"}:
         raise ContentDataError(
             f"{path}.type must be paragraph, ordered_list, unordered_list, or image"
@@ -318,6 +359,91 @@ def normalize_list_block(
             }
         )
     return {"type": list_type, "items": clean_items}
+
+
+def _iter_content_run_groups(block: dict[str, Any]):
+    if block["type"] == "paragraph":
+        yield block["runs"]
+        return
+    if block["type"] not in {"ordered_list", "unordered_list"}:
+        return
+    for item in block["items"]:
+        yield item["runs"]
+        if item["children"] is not None:
+            yield from _iter_content_run_groups(item["children"])
+
+
+def _resolve_figure_references(
+    runs: list[dict[str, Any]],
+    labels: dict[str, str],
+    *,
+    path: str,
+) -> None:
+    for run_index, run in enumerate(runs):
+        def replacement(match: re.Match[str]) -> str:
+            figure_id = match.group(1)
+            label = labels.get(figure_id)
+            if label is None:
+                raise ContentDataError(
+                    f"{path}.runs[{run_index}] references unknown figure {figure_id}"
+                )
+            return label
+
+        run["text"] = FIGURE_REFERENCE_PATTERN.sub(replacement, run["text"])
+        if "{{fig:" in run["text"]:
+            raise ContentDataError(
+                f"{path}.runs[{run_index}] contains an invalid figure reference"
+            )
+
+
+def prepare_figure_content(
+    block_groups: list[list[dict[str, Any]]],
+) -> dict[str, str]:
+    """Assign stable display numbers and resolve references across body sections."""
+
+    chapter_counts: dict[int, int] = {}
+    labels: dict[str, str] = {}
+    for blocks in block_groups:
+        for block in blocks:
+            if block["type"] != "image":
+                continue
+            chapter = block["chapter"]
+            sequence = chapter_counts.get(chapter, 0) + 1
+            chapter_counts[chapter] = sequence
+            block["figure_label"] = f"图 {chapter}-{sequence}"
+            figure_id = block.get("id")
+            if figure_id is None:
+                continue
+            if figure_id in labels:
+                raise ContentDataError(f"duplicate figure id: {figure_id}")
+            labels[figure_id] = block["figure_label"]
+
+    for group_index, blocks in enumerate(block_groups):
+        for block_index, block in enumerate(blocks):
+            for runs in _iter_content_run_groups(block):
+                _resolve_figure_references(
+                    runs,
+                    labels,
+                    path=f"figure_groups[{group_index}][{block_index}]",
+                )
+    return labels
+
+
+def figure_caption_runs(block: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return the renderer-owned numbered caption for one normalized image."""
+
+    label = block.get("figure_label")
+    if not isinstance(label, str) or not label:
+        raise ContentDataError("figure content must be prepared before rendering")
+    result = plain_runs(label)
+    caption_runs = block.get("caption_runs") or []
+    if caption_runs:
+        result.extend(plain_runs(" "))
+        result.extend(dict(run) for run in caption_runs)
+    source_key = block.get("source_citation_key")
+    if source_key:
+        result.extend(plain_runs(f"（来源：{source_key}）"))
+    return result
 
 
 def has_explicit_numbering(runs: list[dict[str, Any]]) -> bool:
