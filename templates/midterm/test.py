@@ -244,6 +244,11 @@ def main() -> int:
             progress = normalized["sections"]["progress"]
             assert len([block for block in research if block["type"] == "data_table"]) == 2
             assert len([block for block in progress if block["type"] == "data_table"]) == 1
+            equations = [block for block in research if block["type"] == "equation"]
+            assert len(equations) == 1
+            assert equations[0]["equation_label"] == "(3-1)"
+            assert "{{eq:" not in research[1]["runs"][0]["text"]
+            assert "(3-1)" in research[1]["runs"][0]["text"]
             groups = [block for block in progress if block["type"] == "figure_group"]
             assert len(groups) == 4
             assert [block["figure_label"] for block in groups] == [
@@ -453,13 +458,23 @@ def main() -> int:
             )
             assert equation_table.rows[0].cells[2].paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.RIGHT
         if name == "extreme-pagination":
-            assert len(directory_cell.tables) == 2
+            assert len(directory_cell.tables) == 3
             assert len(progress_cell.tables) == 5
             assert all(
                 row._tr.xpath("./w:trPr/w:cantSplit")
                 for nested in [*directory_cell.tables, *progress_cell.tables]
                 for row in nested.rows
             )
+            equation_table = directory_cell.tables[1]
+            document_xml = document.element.xml
+            for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
+                assert f"<{math_tag}" in document_xml
+            assert equation_table.rows[0].cells[2].text == "(3-1)"
+            assert all(
+                border.get(qn("w:val")) == "nil"
+                for border in equation_table._tbl.tblPr.find(qn("w:tblBorders"))
+            )
+            assert equation_table.rows[0].cells[2].paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.RIGHT
             assert "图 3-4 第四组组合图" in progress_cell.text
 
         if args.skip_pdf:
@@ -547,6 +562,13 @@ def main() -> int:
             assert r"\sqrt{{x}^{2}}" in data_tex
             assert r"\input" not in data_tex
             assert "(3-1)" in data_tex and "{{eq:" not in data_tex
+        if name == "extreme-pagination":
+            assert data_tex.count(r"\begin{tblr}{width=\linewidth") >= 3
+            assert data_tex.count(r"\begin{minipage}[t]{0.4875\linewidth}") == 8
+            assert r"\frac{" in data_tex
+            assert r"_{out}" in data_tex and r"_{in}" in data_tex
+            assert r"\sqrt{{x}^{2}}" in data_tex
+            assert "(3-1)" in data_tex and "{{eq:" not in data_tex
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)
@@ -574,6 +596,10 @@ def main() -> int:
         assert "深圳技术大学本科毕业论文（设计）" in extracted
         assert raw["metadata"]["student_name"] in extracted
         assert "存在的问题及后期指导工作意见" in extracted
+        if name == "extreme-pagination":
+            compact_extracted = re.sub(r"\s+", "", extracted)
+            assert "(3-1)" in compact_extracted
+            assert "图3-4" in compact_extracted
         gate = run(
             [sys.executable, str(project_dir / "scripts" / "validate_cjk_render.py"), str(pdf_path)],
             cwd=project_dir,
@@ -582,6 +608,8 @@ def main() -> int:
 
         with pdfplumber.open(pdf_path) as pdf:
             first_page = pdf.pages[0]
+            if name == "extreme-pagination":
+                assert sum(len(page.images) for page in pdf.pages) >= 8
             teacher_bundle_pages = {}
             student_section_pages = {}
             for page_index, page in enumerate(pdf.pages, start=1):

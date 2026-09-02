@@ -84,6 +84,6 @@ PY=/Users/chen/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/b
 "$PY" templates/midterm/test.py
 ```
 
-测试同时覆盖最短、正常、长字段、长正文含图片、四级混合列表、结构化内容和七页极端分页等 fixture，并检查 Word 结构、字体字号、
+测试同时覆盖最短、正常、长字段、长正文含图片、四级混合列表、结构化内容和包含表格、公式、组合图的七页极端分页等 fixture，并检查 Word 结构、字体字号、
 颜色、居中与缩进、列表、上下标、原生公式结构、图片替代文本，以及 LaTeX 的字体嵌入、A4 页面、表格几何、
 分页闭合边框和中文字形门禁。该测试通过不等于 Word/WPS 目标编辑器验收通过。

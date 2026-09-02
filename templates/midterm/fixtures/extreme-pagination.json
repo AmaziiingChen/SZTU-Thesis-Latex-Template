@@ -20,8 +20,9 @@
     ],
     "main_research_content": [
       {"type": "paragraph", "runs": [{"text": "第一组压力段落用于验证长正文自然跨页。每个段落都是独立语义块，必须保持两字符首行缩进，不允许为了减少页数而缩小字号、行距、页边距或签署区域。"}]},
-      {"type": "paragraph", "runs": [{"text": "第二组压力段落覆盖结构化内容与普通正文交替出现的情况。渲染器需要在页面边界附近保持连续外框，并让后续正文恢复正常段落格式。"}]},
+      {"type": "paragraph", "runs": [{"text": "第二组压力段落覆盖结构化内容与普通正文交替出现的情况。渲染器需要在页面边界附近保持连续外框，并让后续正文恢复正常段落格式；综合效率计算见{{eq:eq-extreme0001}}。"}]},
       {"type": "data_table", "columns": [{"header": "阶段", "alignment": "center"}, {"header": "输入", "width_weight": 1.5}, {"header": "处理", "width_weight": 1.8}, {"header": "输出", "width_weight": 1.5}], "rows": [{"cells": ["一", "匿名数据", "结构校验", "模型"]}, {"cells": ["二", "统一模型", "Word 与 LaTeX 渲染", "文件"]}, {"cells": ["三", "生成文件", "结构与视觉检查", "记录"]}], "caption": "第一组跨页数据表"},
+      {"type": "equation", "id": "eq-extreme0001", "chapter": 3, "expression": {"type": "row", "items": [{"type": "text", "value": "η="}, {"type": "fraction", "numerator": {"type": "subscript", "base": {"type": "text", "value": "C"}, "sub": {"type": "text", "value": "out"}}, "denominator": {"type": "subscript", "base": {"type": "text", "value": "C"}, "sub": {"type": "text", "value": "in"}}}, {"type": "text", "value": "+"}, {"type": "square_root", "body": {"type": "superscript", "base": {"type": "text", "value": "x"}, "super": {"type": "text", "value": "2"}}}]}, "alt": "综合效率等于输出浓度与输入浓度之比，再加上变量平方的平方根"},
       {"type": "paragraph", "runs": [{"text": "第三组压力段落验证数据表之后的正文缩进、字形和段落间距。表格只表达真实行列关系，不使用空格、制表符或图片模拟单元格。"}]},
       {"type": "paragraph", "runs": [{"text": "第四组压力段落验证较长中文内容在单元格内换行。页面末尾不能留下断裂的边框，下一页必须继续使用相同的左右边界和正文宽度。"}]},
       {"type": "paragraph", "runs": [{"text": "第五组压力段落继续增加可重复的分页负载，并检查中文、English、H", "bold": false}, {"text": "2", "script": "sub"}, {"text": "O 与 x", "script": "normal"}, {"text": "2", "script": "super"}, {"text": " 等富文本在长文档中的稳定性。"}]},
