@@ -14,7 +14,7 @@
       "本案例全部使用公开虚构数据，只验证通用能力，不复刻任何真实学生内容。"
     ],
     "research_content": [
-      "研究将比较结构化输入与双路输出，整体流程见{{fig:fig-proposal-flow}}，计算式见{{eq:eq-efficiency0001}}。",
+      "研究将比较结构化输入与双路输出，整体流程见{{fig:fig-proposal-flow}}，单图示例见{{fig:fig-proposal-review}}，计算式见{{eq:eq-efficiency0001}}。",
       {
         "type": "data_table",
         "columns": [
@@ -62,6 +62,15 @@
           }
         ],
         "caption": "开题报告结构化生成流程"
+      },
+      {
+        "type": "image",
+        "id": "fig-proposal-review",
+        "chapter": 1,
+        "path": "../../midterm/fixtures/assets/research-workflow.png",
+        "alt": "虚构的开题报告单图回归示意图",
+        "width_mm": 72,
+        "caption": "开题报告单图回归示意"
       }
     ],
     "methods_and_means": [

@@ -130,12 +130,6 @@ def validate_data(raw: Any) -> dict[str, Any]:
                 )
                 for index, item in enumerate(value)
             ]
-            unsupported = [block["type"] for block in normalized_blocks if block["type"] == "image"]
-            if unsupported:
-                raise DataError(
-                    f"sections.{key} does not support standalone images; "
-                    f"unsupported blocks: {sorted(set(unsupported))}"
-                )
             clean_sections[key] = normalized_blocks
         else:
             clean_sections[key] = [
@@ -465,6 +459,32 @@ def _append_figure_group(cell, block: dict[str, Any], *, data_dir: Path) -> None
     _append_runs(caption, figure_caption_runs(block), size_pt=BODY_SIZE_PT)
 
 
+def _append_image(cell, block: dict[str, Any], *, data_dir: Path) -> None:
+    paragraph = cell.add_paragraph()
+    _format_body_paragraph(paragraph, references=False, indent=False)
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.keep_with_next = True
+    paragraph.paragraph_format.keep_together = True
+    run = paragraph.add_run()
+    _set_run_font(run, name=BODY_CJK_FONT, size_pt=BODY_SIZE_PT)
+    image_path = _resolve_image(block["path"], data_dir)
+    width_mm, height_mm = _fit_image_dimensions(
+        image_path,
+        block["width_mm"],
+        max_height_mm=float(LAYOUT["image"]["max_height_mm"]),
+    )
+    run.add_picture(str(image_path), width=Mm(width_mm), height=Mm(height_mm))
+    _set_picture_alt(run, block["alt"])
+
+    caption = cell.add_paragraph()
+    _format_body_paragraph(caption, references=False, indent=False)
+    caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    caption.paragraph_format.keep_together = True
+    caption.paragraph_format.space_before = Pt(3)
+    caption.paragraph_format.space_after = Pt(3)
+    _append_runs(caption, figure_caption_runs(block), size_pt=BODY_SIZE_PT)
+
+
 def _append_text_content_blocks(
     cell,
     blocks: list[dict[str, Any]],
@@ -478,6 +498,8 @@ def _append_text_content_blocks(
             _append_runs(paragraph, block["runs"], size_pt=BODY_SIZE_PT)
         elif block["type"] in {"ordered_list", "unordered_list"}:
             _append_list_block(cell, block)
+        elif block["type"] == "image":
+            _append_image(cell, block, data_dir=data_dir)
         elif block["type"] == "data_table":
             _append_data_table(cell, block)
         elif block["type"] == "figure_group":

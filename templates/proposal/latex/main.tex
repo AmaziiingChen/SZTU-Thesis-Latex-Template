@@ -32,6 +32,13 @@
 \newcommand{\Label}[1]{{\heiti\SZTULabelSize #1}}
 \newcommand{\Info}[1]{{\songti\SZTUBodySize #1}}
 \newcommand{\SignatureText}[1]{{\songti\SZTUSignatureSize #1}}
+\newcommand{\ProposalFigure}[3]{%
+  \par\noindent\begin{minipage}{\linewidth}
+    \centering
+    \includegraphics[width=#2,height=\SZTUImageMaxHeight,keepaspectratio]{#1}\par
+    \vspace{3pt}\Info{#3}\par\vspace{3pt}%
+  \end{minipage}\par
+}
 \newlength{\ProposalStudentSignatureContentHeight}
 \setlength{\ProposalStudentSignatureContentHeight}{\dimexpr\SZTUStudentSignatureHeight-\SZTUFixedVerticalPadding-\SZTUFixedVerticalPadding-\SZTUFormRuleWidth-\SZTUFormRuleWidth\relax}
 \newlength{\ProposalReviewContentHeight}

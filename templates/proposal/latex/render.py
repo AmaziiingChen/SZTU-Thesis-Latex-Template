@@ -101,6 +101,7 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUNestedListLeftIndent}}{{{paragraphs['nested_list_left_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUListLevelIndent}}{{{paragraphs['list_level_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUListHangingIndent}}{{{paragraphs['list_hanging_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUImageMaxHeight}}{{{layout['image']['max_height_mm']:g}mm}}",
             rf"\newcommand{{\SZTUStudentSignatureHeight}}{{{signatures['student_min_height_mm']:g}mm}}",
             rf"\newcommand{{\SZTUReviewSignatureHeight}}{{{signatures['review_min_height_mm']:g}mm}}",
             rf"\newcommand{{\SZTUSignatureSlotWidth}}{{{signatures['signature_slot_width_mm']:g}mm}}",
@@ -262,6 +263,23 @@ def render_figure_group(
     )
 
 
+def render_image(
+    block: dict,
+    *,
+    data_dir: Path,
+    assets_dir: Path,
+) -> str:
+    source = _resolve_image(block["path"], data_dir)
+    asset_name = _safe_asset_name(source)
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, assets_dir / asset_name)
+    caption = rich_runs(figure_caption_runs(block))
+    return (
+        rf"\ProposalFigure{{assets/{tex_escape(asset_name)}}}"
+        rf"{{{block['width_mm']:g}mm}}{{{caption}}}"
+    )
+
+
 def render_text_blocks(
     items: list[dict],
     *,
@@ -274,6 +292,10 @@ def render_text_blocks(
             rendered.append(rf"\ProposalParagraph{{{rich_runs(block['runs'])}}}")
         elif block["type"] in {"ordered_list", "unordered_list"}:
             rendered.append(render_list_block(block))
+        elif block["type"] == "image":
+            rendered.append(
+                render_image(block, data_dir=data_dir, assets_dir=assets_dir)
+            )
         elif block["type"] == "data_table":
             rendered.append(render_data_table(block))
         elif block["type"] == "figure_group":

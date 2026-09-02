@@ -115,6 +115,8 @@ def main() -> int:
     assert r"\noindent 本课题研究步骤如下" not in latex_template
     assert r"\newcommand{\NestedOrderedItem}" in latex_template
     assert r"\newcommand{\ProposalListItem}" in latex_template
+    assert r"\newcommand{\ProposalFigure}" in latex_template
+    assert r"height=\SZTUImageMaxHeight" in latex_template
     assert r"\ProposalSeparator" not in latex_template
     assert latex_template.count(r"\begin{tcolorbox}[proposalflow]") == 4
     assert latex_template.count(r"\begin{tcolorbox}[proposalfixed") == 2
@@ -287,10 +289,12 @@ def main() -> int:
             research = normalized["sections"]["research_content"]
             embedded_block = next(item for item in research if item["type"] == "data_table")
             group = next(item for item in research if item["type"] == "figure_group")
+            image = next(item for item in research if item["type"] == "image")
             equation = next(item for item in research if item["type"] == "equation")
             assert len(embedded_block["columns"]) == 4
             assert len(embedded_block["rows"]) == 3
             assert group["figure_label"] == "图 1-1"
+            assert image["figure_label"] == "图 1-2"
             assert [item["subfigure_label"] for item in group["items"]] == ["（a）", "（b）"]
             assert equation["expression"]["type"] == "row"
             assert equation["equation_label"] == "(1-1)"
@@ -308,7 +312,19 @@ def main() -> int:
             assert [item.get("descr") for item in document.element.xpath(".//wp:docPr")] == [
                 "虚构的结构化输入流程图",
                 "虚构的双路输出流程图",
+                "虚构的开题报告单图回归示意图",
             ]
+            research_cell_paragraphs = research_cell.paragraphs
+            image_caption_index = next(
+                index
+                for index, paragraph in enumerate(research_cell_paragraphs)
+                if paragraph.text == "图 1-2 开题报告单图回归示意"
+            )
+            image_caption = research_cell_paragraphs[image_caption_index]
+            image_paragraph = research_cell_paragraphs[image_caption_index - 1]
+            assert image_paragraph.paragraph_format.keep_with_next
+            assert image_paragraph.paragraph_format.keep_together
+            assert image_caption.paragraph_format.keep_together
             for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
                 assert f"<{math_tag}" in document.element.xml
             assert "效率等于输出浓度" in document.element.xml
@@ -389,6 +405,9 @@ def main() -> int:
             assert r"\begin{tblr}" in data_tex
             assert r"\begin{minipage}[t]{0.4891\linewidth}" in data_tex
             assert "图 1-1" in data_tex
+            assert "图 1-2" in data_tex
+            assert r"\ProposalFigure{assets/research-workflow-" in data_tex
+            assert r"}{72mm}{图 1-2 开题报告单图回归示意}" in data_tex
             assert "（a）" in data_tex and "（b）" in data_tex
             assert r"\frac{" in data_tex and r"_{out}" in data_tex
             assert r"\sqrt{{x}^{2}}" in data_tex
