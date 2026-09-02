@@ -25,8 +25,9 @@ Schema 和确定性渲染器；签名与审核意见不由程序填写。
 `templates/common/`。任务书和中期检查必须复用同一公共层，不复制这些实现。
 
 `research_content`、`methods_and_means` 和 `research_steps` 已支持公共
-`data_table` 与 `figure_group` 内容块。Word 与 LaTeX/PDF 使用同源行列、图片、子图标记、
-图号和题注；匿名示例见 `fixtures/structured-content.json`。这些块只允许出现在正文区域，
+`data_table`、`figure_group` 与 `equation` 内容块。Word 与 LaTeX/PDF 使用同源行列、图片、
+子图标记、图号、题注和结构化公式；匿名示例见 `fixtures/structured-content.json`。公式
+不接受原始 TeX/MathML/OMML，当前不自动编号。这些块只允许出现在正文区域，
 不得改变外层官方表格或人工签署区。
 
 ## 生成 Word 文档

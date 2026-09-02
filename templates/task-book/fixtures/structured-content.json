@@ -28,6 +28,19 @@
         ],
         "caption": "结构化任务处理表"
       },
+      {
+        "type": "equation",
+        "expression": {
+          "type": "row",
+          "items": [
+            {"type": "text", "value": "η="},
+            {"type": "fraction", "numerator": {"type": "subscript", "base": {"type": "text", "value": "C"}, "sub": {"type": "text", "value": "out"}}, "denominator": {"type": "subscript", "base": {"type": "text", "value": "C"}, "sub": {"type": "text", "value": "in"}}},
+            {"type": "text", "value": "+"},
+            {"type": "square_root", "body": {"type": "superscript", "base": {"type": "text", "value": "x"}, "super": {"type": "text", "value": "2"}}}
+          ]
+        },
+        "alt": "效率等于输出浓度与输入浓度之比，再加上变量平方的平方根"
+      },
       "所有数据均为公开虚构内容，人工签名和学院意见保持空白。"
     ],
     "schedule": [

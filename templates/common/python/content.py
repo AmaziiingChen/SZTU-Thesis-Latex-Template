@@ -61,6 +61,10 @@ PLAIN_SCIENTIFIC_CHARACTER_REPLACEMENTS = {"℃": "°C"}
 FIGURE_ID_PATTERN = re.compile(r"fig-[A-Za-z0-9_-]{8,96}")
 FIGURE_REFERENCE_PATTERN = re.compile(r"\{\{fig:(fig-[A-Za-z0-9_-]{8,96})\}\}")
 FIGURE_SOURCE_KEY_PATTERN = re.compile(r"[A-Za-z0-9_:.+/-]{1,200}")
+MATH_TEXT_PATTERN = re.compile(
+    r"[A-Za-z0-9αβγδεζηθικλμνξοπρστυφχψωΓΔΘΛΞΠΣΥΦΨΩ +\-\u2212=\u00d7\u00b7/(),.\[\]<>\u2264\u2265%|:]+"
+)
+MATH_NODE_TYPES = {"text", "row", "fraction", "subscript", "superscript", "square_root"}
 
 
 def _expand_legacy_scientific_run(run: dict[str, Any]) -> list[dict[str, Any]]:
@@ -194,6 +198,72 @@ def normalize_paragraph(
 
 def plain_runs(text: str) -> list[dict[str, Any]]:
     return [{"text": text, "script": "normal", "italic": False, "bold": False}]
+
+
+def normalize_math_expression(
+    value: Any,
+    path: str,
+    *,
+    max_depth: int = 8,
+    max_nodes: int = 100,
+    _depth: int = 1,
+    _counter: list[int] | None = None,
+) -> dict[str, Any]:
+    """Normalize a renderer-independent display-math AST.
+
+    The public data model deliberately has no raw TeX/MathML/OMML escape hatch.
+    Word and LaTeX therefore render the same validated semantic tree.
+    """
+    if _depth > max_depth:
+        raise ContentDataError(f"{path} exceeds the maximum math depth of {max_depth}")
+    counter = _counter if _counter is not None else [0]
+    counter[0] += 1
+    if counter[0] > max_nodes:
+        raise ContentDataError(f"{path} exceeds the maximum of {max_nodes} math nodes")
+    node = require_object(value, path)
+    node_type = node.get("type")
+    if node_type not in MATH_NODE_TYPES:
+        raise ContentDataError(f"{path}.type is not a supported math node")
+
+    def child(raw: Any, child_path: str) -> dict[str, Any]:
+        return normalize_math_expression(
+            raw,
+            child_path,
+            max_depth=max_depth,
+            max_nodes=max_nodes,
+            _depth=_depth + 1,
+            _counter=counter,
+        )
+
+    if node_type == "text":
+        if set(node) != {"type", "value"}:
+            raise ContentDataError(f"{path} text node must contain only type and value")
+        text = require_text(node.get("value"), f"{path}.value", 100)
+        if MATH_TEXT_PATTERN.fullmatch(text) is None:
+            raise ContentDataError(f"{path}.value contains unsupported math characters")
+        return {"type": "text", "value": text}
+    if node_type == "row":
+        if set(node) != {"type", "items"}:
+            raise ContentDataError(f"{path} row node must contain only type and items")
+        items = node.get("items")
+        if not isinstance(items, list) or not 1 <= len(items) <= 50:
+            raise ContentDataError(f"{path}.items must contain 1 to 50 math nodes")
+        return {
+            "type": "row",
+            "items": [child(item, f"{path}.items[{index}]") for index, item in enumerate(items)],
+        }
+    fields = {
+        "fraction": ("numerator", "denominator"),
+        "subscript": ("base", "sub"),
+        "superscript": ("base", "super"),
+        "square_root": ("body",),
+    }[node_type]
+    if set(node) != {"type", *fields}:
+        raise ContentDataError(f"{path} {node_type} node has invalid fields")
+    return {
+        "type": node_type,
+        **{field: child(node[field], f"{path}.{field}") for field in fields},
+    }
 
 
 def normalize_content_block(
@@ -417,10 +487,21 @@ def normalize_content_block(
             if block.get("caption") is not None
             else None,
         }
+    if block.get("type") == "equation":
+        unknown = set(block) - {"type", "expression", "alt"}
+        if unknown:
+            raise ContentDataError(f"unknown fields in {path}: {sorted(unknown)}")
+        return {
+            "type": "equation",
+            "expression": normalize_math_expression(
+                block.get("expression"), f"{path}.expression"
+            ),
+            "alt": require_text(block.get("alt"), f"{path}.alt", 500),
+        }
     if block.get("type") not in {"ordered_list", "unordered_list"}:
         raise ContentDataError(
             f"{path}.type must be paragraph, ordered_list, unordered_list, image, "
-            "figure_group, or data_table"
+            "figure_group, data_table, or equation"
         )
     return normalize_list_block(
         block,

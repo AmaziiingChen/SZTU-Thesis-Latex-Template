@@ -271,6 +271,60 @@ def main() -> int:
     assert [item["subfigure_label"] for item in figure_group["items"]] == ["（a）", "（b）"]
     assert figure_group["caption_runs"][0]["text"] == "两种方法结果对比"
 
+    equation = normalize_content_block(
+        {
+            "type": "equation",
+            "expression": {
+                "type": "row",
+                "items": [
+                    {"type": "text", "value": "η="},
+                    {
+                        "type": "fraction",
+                        "numerator": {
+                            "type": "subscript",
+                            "base": {"type": "text", "value": "C"},
+                            "sub": {"type": "text", "value": "out"},
+                        },
+                        "denominator": {
+                            "type": "subscript",
+                            "base": {"type": "text", "value": "C"},
+                            "sub": {"type": "text", "value": "in"},
+                        },
+                    },
+                    {
+                        "type": "square_root",
+                        "body": {
+                            "type": "superscript",
+                            "base": {"type": "text", "value": "x"},
+                            "super": {"type": "text", "value": "2"},
+                        },
+                    },
+                ],
+            },
+            "alt": "效率等于浓度比值与平方根项之和",
+        },
+        "fixture.equation",
+        200,
+    )
+    assert equation["type"] == "equation"
+    assert equation["expression"]["items"][1]["type"] == "fraction"
+    assert equation["expression"]["items"][2]["body"]["type"] == "superscript"
+
+    try:
+        normalize_content_block(
+            {
+                "type": "equation",
+                "expression": {"type": "text", "value": r"\\input{private}"},
+                "alt": "非法公式",
+            },
+            "fixture.unsafe_equation",
+            200,
+        )
+    except ContentDataError as exc:
+        assert "unsupported math characters" in str(exc)
+    else:
+        raise AssertionError("raw TeX commands must be rejected")
+
     legacy_ordered = normalize_content_block(
         {"type": "ordered_list", "items": [{"content": "旧列表"}]},
         "fixture.legacy_ordered",
@@ -316,6 +370,8 @@ def main() -> int:
         "listLevel4",
         "textContentBlock",
         "contentBlock",
+        "mathExpression",
+        "equation",
     } <= set(schema["$defs"])
     assert "children" not in schema["$defs"]["listLevel4"]["properties"]["items"]["items"]["properties"]
 

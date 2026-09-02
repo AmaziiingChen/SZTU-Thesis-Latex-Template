@@ -1627,8 +1627,10 @@ def main() -> int:
         if name == "structured-content":
             basic_blocks = normalized["sections"]["basic_content_and_requirements"]
             table_block = next(item for item in basic_blocks if item["type"] == "data_table")
+            equation = next(item for item in basic_blocks if item["type"] == "equation")
             assert len(table_block["columns"]) == 4
             assert len(table_block["rows"]) == 3
+            assert equation["expression"]["type"] == "row"
             group = next(
                 item
                 for item in normalized["sections"]["required_materials"]
@@ -1648,6 +1650,9 @@ def main() -> int:
                 "虚构的结构化数据输入流程图",
                 "虚构的双路文档生成流程图",
             ]
+            for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
+                assert f"<{math_tag}" in document.element.xml
+            assert "效率等于输出浓度" in document.element.xml
 
         if name == "nested-list":
             basic_paragraphs = main_table.rows[1].cells[0].paragraphs
@@ -1788,6 +1793,9 @@ def main() -> int:
             assert r"\begin{minipage}[t]{0.4894\linewidth}" in data_tex
             assert r"图 1\mbox{-}1" in data_tex
             assert "（a）" in data_tex and "（b）" in data_tex
+            assert r"\frac{" in data_tex and r"_{out}" in data_tex
+            assert r"\sqrt{{x}^{2}}" in data_tex
+            assert r"\input" not in data_tex
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)

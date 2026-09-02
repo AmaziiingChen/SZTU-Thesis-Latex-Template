@@ -35,6 +35,7 @@ from common.python.process_form import (  # noqa: E402
     load_process_document_layout,
     process_form_latex_tokens,
 )
+from common.python.equation import latex_math  # noqa: E402
 
 
 CJK_CHARACTER = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
@@ -266,6 +267,13 @@ def render_blocks(
                     data_dir=data_dir,
                     assets_dir=assets_dir,
                 )
+            )
+        elif block_type == "equation":
+            config = LAYOUT["equation"]
+            rendered.append(
+                rf"\par\vspace{{{config['space_before_pt']:g}pt}}"
+                rf"\[\displaystyle {latex_math(block['expression'])}\]"
+                rf"\vspace{{{config['space_after_pt']:g}pt}}\par"
             )
         else:
             raise AssertionError(f"unsupported normalized block: {block_type}")

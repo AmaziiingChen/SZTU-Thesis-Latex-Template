@@ -37,6 +37,7 @@ from common.python.content import (  # noqa: E402
     split_numbered_subitems,
 )
 from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.equation import append_omml  # noqa: E402
 
 
 SCHEMA_VERSION = "0.2"
@@ -473,6 +474,21 @@ def _append_text_content_blocks(
             _append_data_table(cell, block)
         elif block["type"] == "figure_group":
             _append_figure_group(cell, block, data_dir=data_dir)
+        elif block["type"] == "equation":
+            paragraph = cell.add_paragraph()
+            _format_body_paragraph(paragraph, references=False, indent=False)
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragraph.paragraph_format.space_before = Pt(
+                LAYOUT["equation"]["space_before_pt"]
+            )
+            paragraph.paragraph_format.space_after = Pt(
+                LAYOUT["equation"]["space_after_pt"]
+            )
+            paragraph.paragraph_format.keep_together = True
+            fallback = paragraph.add_run(block["alt"])
+            _set_run_font(fallback, name=BODY_CJK_FONT, size_pt=BODY_SIZE_PT)
+            fallback.font.hidden = True
+            append_omml(paragraph, block["expression"])
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
 

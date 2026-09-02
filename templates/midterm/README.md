@@ -12,6 +12,8 @@
   LaTeX/PDF 使用同源列定义，数据行禁止拆分。
 - `figure_group`：2–4 张本地图片组成一个图组，自动生成 `（a）`、`（b）` 子图标记、
   统一图号与总题注，并作为一个分页单元处理。
+- `equation`：文本、分式、上下标和平方根组成的受限表达式树；Word 生成原生 OMML，
+  LaTeX/PDF 从同一结构生成公式。原始 TeX/MathML/OMML 会被拒绝。
 
 示例数据见 `fixtures/structured-content.json`。开题报告与任务书也已完成同等的双路
 渲染和回归；前端仍应按具体文档字段开放能力，不向签名、意见等固定区域注入内容块。
@@ -81,6 +83,6 @@ PY=/Users/chen/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/b
 "$PY" templates/midterm/test.py
 ```
 
-测试同时覆盖最短、正常、长字段、长正文含图片和四级混合列表五类 fixture，并检查 Word 结构、字体字号、
-颜色、居中与缩进、列表、上下标、图片替代文本，以及 LaTeX 的字体嵌入、A4 页面、表格几何、
+测试同时覆盖最短、正常、长字段、长正文含图片、四级混合列表、结构化内容和七页极端分页等 fixture，并检查 Word 结构、字体字号、
+颜色、居中与缩进、列表、上下标、原生公式结构、图片替代文本，以及 LaTeX 的字体嵌入、A4 页面、表格几何、
 分页闭合边框和中文字形门禁。该测试通过不等于 Word/WPS 目标编辑器验收通过。

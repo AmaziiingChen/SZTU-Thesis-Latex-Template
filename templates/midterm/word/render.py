@@ -36,6 +36,7 @@ from common.python.content import (  # noqa: E402
     runs_text,
 )
 from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.equation import append_omml  # noqa: E402
 from common.python.outline_numbering import (  # noqa: E402
     number_outline_levels,
     require_numbering_style,
@@ -427,6 +428,18 @@ def _append_data_table(cell, block: dict[str, Any]) -> None:
         _append_runs(caption, block["caption_runs"], style=BODY)
 
 
+def _append_equation(cell, block: dict[str, Any]) -> None:
+    paragraph = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    config = LAYOUT["equation"]
+    paragraph.paragraph_format.space_before = Pt(config["space_before_pt"])
+    paragraph.paragraph_format.space_after = Pt(config["space_after_pt"])
+    paragraph.paragraph_format.keep_together = True
+    fallback = paragraph.add_run(block["alt"])
+    _set_run_font(fallback, style=BODY)
+    fallback.font.hidden = True
+    append_omml(paragraph, block["expression"])
+
+
 def _append_figure_group(cell, block: dict[str, Any], *, data_dir: Path) -> None:
     config = LAYOUT["figure_group"]
     count = len(block["items"])
@@ -530,6 +543,8 @@ def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path
             _append_data_table(cell, block)
         elif block["type"] == "figure_group":
             _append_figure_group(cell, block, data_dir=data_dir)
+        elif block["type"] == "equation":
+            _append_equation(cell, block)
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
 

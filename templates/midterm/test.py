@@ -173,6 +173,7 @@ def main() -> int:
         "nested-list",
         "outline-numbering",
         "structured-content",
+        "extreme-pagination",
     )
     for name in fixture_names:
         fixture = midterm_dir / "fixtures" / f"{name}.json"
@@ -205,14 +206,30 @@ def main() -> int:
             progress = normalized["sections"]["progress"]
             data_tables = [block for block in research if block["type"] == "data_table"]
             figure_groups = [block for block in progress if block["type"] == "figure_group"]
+            equations = [block for block in research if block["type"] == "equation"]
             assert len(data_tables) == 1
             assert len(data_tables[0]["columns"]) == 4
             assert len(data_tables[0]["rows"]) == 3
             assert len(figure_groups) == 1
+            assert len(equations) == 1
+            assert equations[0]["expression"]["type"] == "row"
             assert figure_groups[0]["figure_label"] == "图 3-1"
             assert [item["subfigure_label"] for item in figure_groups[0]["items"]] == [
                 "（a）",
                 "（b）",
+            ]
+        if name == "extreme-pagination":
+            research = normalized["sections"]["main_research_content"]
+            progress = normalized["sections"]["progress"]
+            assert len([block for block in research if block["type"] == "data_table"]) == 2
+            assert len([block for block in progress if block["type"] == "data_table"]) == 1
+            groups = [block for block in progress if block["type"] == "figure_group"]
+            assert len(groups) == 4
+            assert [block["figure_label"] for block in groups] == [
+                "图 3-1",
+                "图 3-2",
+                "图 3-3",
+                "图 3-4",
             ]
 
         docx_output = output_root / f"{name}.docx"
@@ -402,6 +419,19 @@ def main() -> int:
             assert "基线方法流程示意图" in document.element.xml
             assert "改进方法流程示意图" in document.element.xml
             assert "图 3-1 两种方法的处理流程对比" in progress_cell.text
+            document_xml = document.element.xml
+            for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
+                assert f"<{math_tag}" in document_xml
+            assert "效率等于输入输出浓度差" in document_xml
+        if name == "extreme-pagination":
+            assert len(directory_cell.tables) == 2
+            assert len(progress_cell.tables) == 5
+            assert all(
+                row._tr.xpath("./w:trPr/w:cantSplit")
+                for nested in [*directory_cell.tables, *progress_cell.tables]
+                for row in nested.rows
+            )
+            assert "图 3-4 第四组组合图" in progress_cell.text
 
         if args.skip_pdf:
             if name == "nested-list":
@@ -483,6 +513,10 @@ def main() -> int:
             assert "图 3-1" in data_tex
             assert "（a）" in data_tex and "（b）" in data_tex
             assert "{{fig:" not in data_tex
+            assert r"\frac{" in data_tex
+            assert r"_{out}" in data_tex and r"_{in}" in data_tex
+            assert r"\sqrt{{x}^{2}}" in data_tex
+            assert r"\input" not in data_tex
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)
@@ -490,7 +524,10 @@ def main() -> int:
         match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)
         assert match is not None
         page_count = int(match.group(1))
-        assert 2 <= page_count <= 8
+        if name == "extreme-pagination":
+            assert 7 <= page_count <= 17
+        else:
+            assert 2 <= page_count <= 8
         fonts = run(["pdffonts", str(pdf_path)], cwd=project_dir)
         assert "FZXBSJW" in fonts
         assert "SimSun" in fonts

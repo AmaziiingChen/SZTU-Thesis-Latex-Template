@@ -65,6 +65,10 @@
     "column_gap_mm": 3.0,
     "max_item_height_mm": 72.0
   },
+  "equation": {
+    "space_before_pt": 3.0,
+    "space_after_pt": 3.0
+  },
   "signature_regions": {
     "student_min_height_mm": 22.0,
     "review_min_height_mm": 88.0,

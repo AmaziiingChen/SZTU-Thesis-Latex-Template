@@ -108,6 +108,10 @@
     "column_gap_mm": 3.0,
     "max_item_height_mm": 75.0
   },
+  "equation": {
+    "space_before_pt": 3.0,
+    "space_after_pt": 3.0
+  },
   "signature": {
     "right_inset_mm": 7.5,
     "teacher_blank_width_mm": 45.0,

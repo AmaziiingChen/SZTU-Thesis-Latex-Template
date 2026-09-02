@@ -268,10 +268,12 @@ def main() -> int:
             research = normalized["sections"]["research_content"]
             embedded_block = next(item for item in research if item["type"] == "data_table")
             group = next(item for item in research if item["type"] == "figure_group")
+            equation = next(item for item in research if item["type"] == "equation")
             assert len(embedded_block["columns"]) == 4
             assert len(embedded_block["rows"]) == 3
             assert group["figure_label"] == "图 1-1"
             assert [item["subfigure_label"] for item in group["items"]] == ["（a）", "（b）"]
+            assert equation["expression"]["type"] == "row"
             research_cell = table.rows[4].cells[0]
             embedded = research_cell.tables[0]
             group_table = research_cell.tables[1]
@@ -284,6 +286,9 @@ def main() -> int:
                 "虚构的结构化输入流程图",
                 "虚构的双路输出流程图",
             ]
+            for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
+                assert f"<{math_tag}" in document.element.xml
+            assert "效率等于输出浓度" in document.element.xml
 
         if args.skip_pdf:
             if name == "nested-list":
@@ -355,6 +360,9 @@ def main() -> int:
             assert r"\begin{minipage}[t]{0.4891\linewidth}" in data_tex
             assert "图 1-1" in data_tex
             assert "（a）" in data_tex and "（b）" in data_tex
+            assert r"\frac{" in data_tex and r"_{out}" in data_tex
+            assert r"\sqrt{{x}^{2}}" in data_tex
+            assert r"\input" not in data_tex
 
         info = run(["pdfinfo", str(latex_dir / "main.pdf")], cwd=project_dir)
         match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)
@@ -390,7 +398,17 @@ def main() -> int:
             if "SimHei" in char["fontname"]
         }
         assert all(
-            any(name in char["fontname"] for name in ("SimSun", "SimHei", "TimesNewRoman"))
+            any(
+                name in char["fontname"]
+                for name in (
+                    "SimSun",
+                    "SimHei",
+                    "TimesNewRoman",
+                    "CMMI",
+                    "CMR",
+                    "CMSY",
+                )
+            )
             for char in chars
         )
         assert 10.50 in simsun_sizes and 12.00 in simsun_sizes

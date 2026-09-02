@@ -35,6 +35,30 @@
         ],
         "caption": "不同方法的匿名实验结果"
       },
+      {
+        "type": "equation",
+        "expression": {
+          "type": "row",
+          "items": [
+            {"type": "text", "value": "η="},
+            {
+              "type": "fraction",
+              "numerator": {
+                "type": "row",
+                "items": [
+                  {"type": "subscript", "base": {"type": "text", "value": "C"}, "sub": {"type": "text", "value": "out"}},
+                  {"type": "text", "value": "−"},
+                  {"type": "subscript", "base": {"type": "text", "value": "C"}, "sub": {"type": "text", "value": "in"}}
+                ]
+              },
+              "denominator": {"type": "subscript", "base": {"type": "text", "value": "C"}, "sub": {"type": "text", "value": "in"}}
+            },
+            {"type": "text", "value": "×100%+"},
+            {"type": "square_root", "body": {"type": "superscript", "base": {"type": "text", "value": "x"}, "super": {"type": "text", "value": "2"}}}
+          ]
+        },
+        "alt": "效率等于输入输出浓度差与输入浓度之比乘百分之百，再加上变量平方的平方根"
+      },
       {"type": "paragraph", "runs": [{"text": "实验结果表明改进方法在保持相同样本规模时取得更高准确率，并降低平均误差。后续将继续验证不同数据划分下的稳定性。"}]}
     ],
     "progress": [
