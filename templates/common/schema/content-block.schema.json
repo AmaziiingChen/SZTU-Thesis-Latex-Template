@@ -345,6 +345,8 @@
       "required": ["type", "expression", "alt"],
       "properties": {
         "type": {"const": "equation"},
+        "id": {"type": "string", "pattern": "^eq-[A-Za-z0-9_-]{8,96}$"},
+        "chapter": {"type": "integer", "minimum": 1, "maximum": 99},
         "expression": {"$ref": "#/$defs/mathExpression"},
         "alt": {"type": "string", "minLength": 1, "maxLength": 500}
       }

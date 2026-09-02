@@ -61,6 +61,8 @@ PLAIN_SCIENTIFIC_CHARACTER_REPLACEMENTS = {"℃": "°C"}
 FIGURE_ID_PATTERN = re.compile(r"fig-[A-Za-z0-9_-]{8,96}")
 FIGURE_REFERENCE_PATTERN = re.compile(r"\{\{fig:(fig-[A-Za-z0-9_-]{8,96})\}\}")
 FIGURE_SOURCE_KEY_PATTERN = re.compile(r"[A-Za-z0-9_:.+/-]{1,200}")
+EQUATION_ID_PATTERN = re.compile(r"eq-[A-Za-z0-9_-]{8,96}")
+EQUATION_REFERENCE_PATTERN = re.compile(r"\{\{eq:(eq-[A-Za-z0-9_-]{8,96})\}\}")
 MATH_TEXT_PATTERN = re.compile(
     r"[A-Za-z0-9αβγδεζηθικλμνξοπρστυφχψωΓΔΘΛΞΠΣΥΦΨΩ +\-\u2212=\u00d7\u00b7/(),.\[\]<>\u2264\u2265%|:]+"
 )
@@ -488,16 +490,33 @@ def normalize_content_block(
             else None,
         }
     if block.get("type") == "equation":
-        unknown = set(block) - {"type", "expression", "alt"}
+        unknown = set(block) - {"type", "id", "chapter", "expression", "alt"}
         if unknown:
             raise ContentDataError(f"unknown fields in {path}: {sorted(unknown)}")
-        return {
+        equation_id = block.get("id")
+        if equation_id is not None and (
+            not isinstance(equation_id, str)
+            or EQUATION_ID_PATTERN.fullmatch(equation_id) is None
+        ):
+            raise ContentDataError(f"{path}.id must be a stable equation id")
+        chapter = block.get("chapter", 1)
+        if (
+            isinstance(chapter, bool)
+            or not isinstance(chapter, int)
+            or not 1 <= chapter <= 99
+        ):
+            raise ContentDataError(f"{path}.chapter must be an integer from 1 to 99")
+        normalized = {
             "type": "equation",
+            "chapter": chapter,
             "expression": normalize_math_expression(
                 block.get("expression"), f"{path}.expression"
             ),
             "alt": require_text(block.get("alt"), f"{path}.alt", 500),
         }
+        if equation_id is not None:
+            normalized["id"] = equation_id
+        return normalized
     if block.get("type") not in {"ordered_list", "unordered_list"}:
         raise ContentDataError(
             f"{path}.type must be paragraph, ordered_list, unordered_list, image, "
@@ -661,6 +680,49 @@ def prepare_figure_content(
                     labels,
                     path=f"figure_groups[{group_index}][{block_index}]",
                 )
+    return labels
+
+
+def prepare_equation_content(
+    block_groups: list[list[dict[str, Any]]],
+) -> dict[str, str]:
+    """Number identified equations by chapter and resolve semantic references."""
+    chapter_counts: dict[int, int] = {}
+    labels: dict[str, str] = {}
+    for blocks in block_groups:
+        for block in blocks:
+            if block["type"] != "equation" or block.get("id") is None:
+                continue
+            chapter = block["chapter"]
+            sequence = chapter_counts.get(chapter, 0) + 1
+            chapter_counts[chapter] = sequence
+            equation_id = block["id"]
+            if equation_id in labels:
+                raise ContentDataError(f"duplicate equation id: {equation_id}")
+            label = f"({chapter}-{sequence})"
+            block["equation_label"] = label
+            labels[equation_id] = label
+
+    for group_index, blocks in enumerate(block_groups):
+        for block_index, block in enumerate(blocks):
+            for runs in _iter_content_run_groups(block):
+                for run_index, run in enumerate(runs):
+                    def replacement(match: re.Match[str]) -> str:
+                        equation_id = match.group(1)
+                        label = labels.get(equation_id)
+                        if label is None:
+                            raise ContentDataError(
+                                f"equation_groups[{group_index}][{block_index}].runs[{run_index}] "
+                                f"references unknown equation {equation_id}"
+                            )
+                        return label
+
+                    run["text"] = EQUATION_REFERENCE_PATTERN.sub(replacement, run["text"])
+                    if "{{eq:" in run["text"]:
+                        raise ContentDataError(
+                            f"equation_groups[{group_index}][{block_index}].runs[{run_index}] "
+                            "contains an invalid equation reference"
+                        )
     return labels
 
 

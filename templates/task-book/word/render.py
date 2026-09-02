@@ -34,7 +34,7 @@ from common.python.content import (  # noqa: E402
 )
 from common.python.font_files import font_roots, resolve_font_files  # noqa: E402
 from common.python.process_form import load_process_document_layout  # noqa: E402
-from common.python.equation import append_omml  # noqa: E402
+from common.python.equation import add_numbered_omml_table, append_omml  # noqa: E402
 
 
 def _load_model():
@@ -840,6 +840,32 @@ def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path
         elif block["type"] == "figure_group":
             _append_figure_group(cell, block, data_dir=data_dir)
         elif block["type"] == "equation":
+            label = block.get("equation_label")
+            if label is not None:
+                _, paragraphs = add_numbered_omml_table(
+                    cell,
+                    block["expression"],
+                    label,
+                    width_mm=float(LAYOUT["equation"]["width_mm"]),
+                )
+                for equation_paragraph in paragraphs:
+                    _format_paragraph(
+                        equation_paragraph,
+                        alignment=equation_paragraph.alignment,
+                    )
+                    equation_paragraph.paragraph_format.keep_together = True
+                center = paragraphs[1]
+                center.paragraph_format.space_before = Pt(
+                    LAYOUT["equation"]["space_before_pt"]
+                )
+                center.paragraph_format.space_after = Pt(
+                    LAYOUT["equation"]["space_after_pt"]
+                )
+                fallback = center.add_run(block["alt"])
+                _set_run_font(fallback, style=style)
+                fallback.font.hidden = True
+                _set_run_font(paragraphs[2].runs[0], style=style)
+                continue
             paragraph = cell.add_paragraph()
             _format_paragraph(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)
             paragraph.paragraph_format.space_before = Pt(

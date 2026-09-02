@@ -35,7 +35,7 @@ from common.python.process_form import (  # noqa: E402
     load_process_document_layout,
     process_form_latex_tokens,
 )
-from common.python.equation import latex_math  # noqa: E402
+from common.python.equation import latex_display  # noqa: E402
 
 
 CJK_CHARACTER = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
@@ -272,7 +272,7 @@ def render_blocks(
             config = LAYOUT["equation"]
             rendered.append(
                 rf"\par\vspace{{{config['space_before_pt']:g}pt}}"
-                rf"\[\displaystyle {latex_math(block['expression'])}\]"
+                f"{latex_display(block['expression'], block.get('equation_label'))}"
                 rf"\vspace{{{config['space_after_pt']:g}pt}}\par"
             )
         else:

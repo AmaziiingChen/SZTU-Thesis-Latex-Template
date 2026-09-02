@@ -30,13 +30,14 @@ from common.python.content import (  # noqa: E402
     normalize_content_block,
     normalize_paragraph,
     plain_runs,
+    prepare_equation_content,
     prepare_figure_content,
     require_object,
     require_text,
     runs_text,
 )
 from common.python.process_form import load_process_document_layout  # noqa: E402
-from common.python.equation import append_omml  # noqa: E402
+from common.python.equation import add_numbered_omml_table, append_omml  # noqa: E402
 from common.python.outline_numbering import (  # noqa: E402
     number_outline_levels,
     require_numbering_style,
@@ -179,6 +180,12 @@ def validate_data(raw: Any) -> dict[str, Any]:
             for index, block in enumerate(raw_blocks)
         ]
     prepare_figure_content(
+        [
+            clean_sections["main_research_content"],
+            clean_sections["progress"],
+        ]
+    )
+    prepare_equation_content(
         [
             clean_sections["main_research_content"],
             clean_sections["progress"],
@@ -429,8 +436,27 @@ def _append_data_table(cell, block: dict[str, Any]) -> None:
 
 
 def _append_equation(cell, block: dict[str, Any]) -> None:
-    paragraph = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
     config = LAYOUT["equation"]
+    label = block.get("equation_label")
+    if label is not None:
+        _, paragraphs = add_numbered_omml_table(
+            cell,
+            block["expression"],
+            label,
+            width_mm=float(config["width_mm"]),
+        )
+        for paragraph in paragraphs:
+            _format_paragraph(paragraph, alignment=paragraph.alignment)
+            paragraph.paragraph_format.keep_together = True
+        center = paragraphs[1]
+        center.paragraph_format.space_before = Pt(config["space_before_pt"])
+        center.paragraph_format.space_after = Pt(config["space_after_pt"])
+        fallback = center.add_run(block["alt"])
+        _set_run_font(fallback, style=BODY)
+        fallback.font.hidden = True
+        _set_run_font(paragraphs[2].runs[0], style=BODY)
+        return
+    paragraph = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
     paragraph.paragraph_format.space_before = Pt(config["space_before_pt"])
     paragraph.paragraph_format.space_after = Pt(config["space_after_pt"])
     paragraph.paragraph_format.keep_together = True

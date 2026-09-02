@@ -6,7 +6,7 @@
 “基本内容与要求”和“需收集的资料”已支持公共结构化内容块：`data_table` 使用显式
 行列数据、列宽权重和对齐方式；`figure_group` 支持 2–4 张本地图片、自动子图标记、
 统一图号与总题注；`equation` 使用受限表达式树生成 Word 原生 OMML 与同源 LaTeX 公式，
-不接受原始 TeX/MathML/OMML。Word 与 LaTeX/PDF 使用同一份数据，示例见
+不接受原始 TeX/MathML/OMML；带稳定 ID 的公式自动按章编号并支持正文引用。Word 与 LaTeX/PDF 使用同一份数据，示例见
 `fixtures/structured-content.json`。
 
 ## 统一数据入口

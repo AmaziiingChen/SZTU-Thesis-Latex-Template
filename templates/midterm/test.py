@@ -213,6 +213,9 @@ def main() -> int:
             assert len(figure_groups) == 1
             assert len(equations) == 1
             assert equations[0]["expression"]["type"] == "row"
+            assert equations[0]["equation_label"] == "(3-1)"
+            assert "{{eq:" not in research[0]["runs"][0]["text"]
+            assert "(3-1)" in research[0]["runs"][0]["text"]
             assert figure_groups[0]["figure_label"] == "图 3-1"
             assert [item["subfigure_label"] for item in figure_groups[0]["items"]] == [
                 "（a）",
@@ -405,8 +408,9 @@ def main() -> int:
             assert any(run_item.text == "2" and run_item.font.subscript for run_item in nested_runs)
             assert normalized["sections"]["main_research_content"][1]["type"] == "unordered_list"
         if name == "structured-content":
-            assert len(directory_cell.tables) == 1
+            assert len(directory_cell.tables) == 2
             nested_data_table = directory_cell.tables[0]
+            equation_table = directory_cell.tables[1]
             assert len(nested_data_table.rows) == 4
             assert len(nested_data_table.columns) == 4
             assert nested_data_table.rows[0]._tr.xpath("./w:trPr/w:tblHeader")
@@ -423,6 +427,13 @@ def main() -> int:
             for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
                 assert f"<{math_tag}" in document_xml
             assert "效率等于输入输出浓度差" in document_xml
+            assert equation_table.rows[0].cells[2].text == "(3-1)"
+            assert equation_table.rows[0]._tr.xpath("./w:trPr/w:cantSplit")
+            assert all(
+                border.get(qn("w:val")) == "nil"
+                for border in equation_table._tbl.tblPr.find(qn("w:tblBorders"))
+            )
+            assert equation_table.rows[0].cells[2].paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.RIGHT
         if name == "extreme-pagination":
             assert len(directory_cell.tables) == 2
             assert len(progress_cell.tables) == 5
@@ -517,6 +528,7 @@ def main() -> int:
             assert r"_{out}" in data_tex and r"_{in}" in data_tex
             assert r"\sqrt{{x}^{2}}" in data_tex
             assert r"\input" not in data_tex
+            assert "(3-1)" in data_tex and "{{eq:" not in data_tex
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)

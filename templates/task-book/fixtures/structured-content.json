@@ -12,7 +12,7 @@
   },
   "sections": {
     "basic_content_and_requirements": [
-      "本课题验证真实行列表格与组合图在任务书连续主表中的确定性排版，实验流程见{{fig:fig-task-flow}}。",
+      "本课题验证真实行列表格与组合图在任务书连续主表中的确定性排版，实验流程见{{fig:fig-task-flow}}，计算式见{{eq:eq-efficiency0001}}。",
       {
         "type": "data_table",
         "columns": [
@@ -30,6 +30,8 @@
       },
       {
         "type": "equation",
+        "id": "eq-efficiency0001",
+        "chapter": 1,
         "expression": {
           "type": "row",
           "items": [

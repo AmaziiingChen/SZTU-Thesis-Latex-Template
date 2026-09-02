@@ -274,9 +274,13 @@ def main() -> int:
             assert group["figure_label"] == "图 1-1"
             assert [item["subfigure_label"] for item in group["items"]] == ["（a）", "（b）"]
             assert equation["expression"]["type"] == "row"
+            assert equation["equation_label"] == "(1-1)"
+            assert "{{eq:" not in research[0]["runs"][0]["text"]
+            assert "(1-1)" in research[0]["runs"][0]["text"]
             research_cell = table.rows[4].cells[0]
             embedded = research_cell.tables[0]
-            group_table = research_cell.tables[1]
+            equation_table = research_cell.tables[1]
+            group_table = research_cell.tables[2]
             assert len(embedded.rows) == 4 and len(embedded.columns) == 4
             assert embedded.rows[0]._tr.get_or_add_trPr().find(qn("w:tblHeader")) is not None
             assert all(row._tr.get_or_add_trPr().find(qn("w:cantSplit")) is not None for row in embedded.rows)
@@ -289,6 +293,13 @@ def main() -> int:
             for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
                 assert f"<{math_tag}" in document.element.xml
             assert "效率等于输出浓度" in document.element.xml
+            assert equation_table.rows[0].cells[2].text == "(1-1)"
+            assert equation_table.rows[0]._tr.get_or_add_trPr().find(qn("w:cantSplit")) is not None
+            assert all(
+                border.get(qn("w:val")) == "nil"
+                for border in equation_table._tbl.tblPr.find(qn("w:tblBorders"))
+            )
+            assert equation_table.rows[0].cells[2].paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.RIGHT
 
         if args.skip_pdf:
             if name == "nested-list":
@@ -363,6 +374,7 @@ def main() -> int:
             assert r"\frac{" in data_tex and r"_{out}" in data_tex
             assert r"\sqrt{{x}^{2}}" in data_tex
             assert r"\input" not in data_tex
+            assert "(1-1)" in data_tex and "{{eq:" not in data_tex
 
         info = run(["pdfinfo", str(latex_dir / "main.pdf")], cwd=project_dir)
         match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)

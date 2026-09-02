@@ -14,7 +14,7 @@
       "本案例全部使用公开虚构数据，只验证通用能力，不复刻任何真实学生内容。"
     ],
     "research_content": [
-      "研究将比较结构化输入与双路输出，整体流程见{{fig:fig-proposal-flow}}。",
+      "研究将比较结构化输入与双路输出，整体流程见{{fig:fig-proposal-flow}}，计算式见{{eq:eq-efficiency0001}}。",
       {
         "type": "data_table",
         "columns": [
@@ -32,6 +32,8 @@
       },
       {
         "type": "equation",
+        "id": "eq-efficiency0001",
+        "chapter": 1,
         "expression": {
           "type": "row",
           "items": [

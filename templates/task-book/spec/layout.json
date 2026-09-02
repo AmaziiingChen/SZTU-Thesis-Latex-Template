@@ -207,6 +207,7 @@
     "max_item_height_mm": 72.0
   },
   "equation": {
+    "width_mm": 142.0,
     "space_before_pt": 3.0,
     "space_after_pt": 3.0
   }

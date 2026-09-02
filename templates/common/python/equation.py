@@ -6,6 +6,9 @@ from typing import Any
 
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Mm
 
 
 GREEK_LATEX = {
@@ -73,6 +76,50 @@ def append_omml(paragraph, expression: dict[str, Any]) -> None:
     paragraph._p.append(math_para)
 
 
+def add_numbered_omml_table(
+    cell,
+    expression: dict[str, Any],
+    label: str,
+    *,
+    width_mm: float,
+):
+    """Add a borderless full-width equation row and return its three paragraphs."""
+    table = cell.add_table(rows=1, cols=3)
+    table.autofit = False
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    widths = [width_mm * 0.18, width_mm * 0.64, width_mm * 0.18]
+    table_width = table._tbl.tblPr.find(qn("w:tblW"))
+    if table_width is None:
+        table_width = OxmlElement("w:tblW")
+        table._tbl.tblPr.insert(0, table_width)
+    table_width.set(qn("w:w"), str(round(Mm(width_mm).twips)))
+    table_width.set(qn("w:type"), "dxa")
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        border = OxmlElement(f"w:{edge}")
+        border.set(qn("w:val"), "nil")
+        borders.append(border)
+    table._tbl.tblPr.append(borders)
+    row_properties = table.rows[0]._tr.get_or_add_trPr()
+    row_properties.append(OxmlElement("w:cantSplit"))
+    for grid_col, column_width in zip(table._tbl.tblGrid.gridCol_lst, widths, strict=True):
+        grid_col.set(qn("w:w"), str(round(Mm(column_width).twips)))
+    paragraphs = []
+    for target, column_width in zip(table.rows[0].cells, widths, strict=True):
+        target.width = Mm(column_width)
+        target.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        tc_width = target._tc.get_or_add_tcPr().get_or_add_tcW()
+        tc_width.set(qn("w:w"), str(round(Mm(column_width).twips)))
+        tc_width.set(qn("w:type"), "dxa")
+        paragraphs.append(target.paragraphs[0])
+    paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    paragraphs[1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraphs[2].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    append_omml(paragraphs[1], expression)
+    paragraphs[2].add_run(label)
+    return table, paragraphs
+
+
 def _latex_text(value: str) -> str:
     return "".join(
         GREEK_LATEX.get(char, MATH_OPERATOR_LATEX.get(char, char)) for char in value
@@ -95,3 +142,15 @@ def latex_math(node: dict[str, Any]) -> str:
     if node_type == "square_root":
         return rf"\sqrt{{{latex_math(node['body'])}}}"
     raise AssertionError(f"unsupported normalized math node: {node_type}")
+
+
+def latex_display(expression: dict[str, Any], label: str | None = None) -> str:
+    """Render one centered display equation with an optional right-aligned label."""
+    math = latex_math(expression)
+    if label is None:
+        return rf"\[\displaystyle {math}\]"
+    return (
+        r"\par\noindent"
+        rf"\makebox[0pt][l]{{\hspace{{\linewidth}}\makebox[0pt][r]{{{label}}}}}"
+        rf"\makebox[\linewidth][c]{{$\displaystyle {math}$}}\par"
+    )

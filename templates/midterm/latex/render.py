@@ -23,7 +23,7 @@ from common.python.font_files import (  # noqa: E402
     tex_font_parts,
 )
 from common.python.content import figure_caption_runs  # noqa: E402
-from common.python.equation import latex_math  # noqa: E402
+from common.python.equation import latex_display  # noqa: E402
 from common.python.process_form import (  # noqa: E402
     copy_process_form_latex_support,
     load_process_document_layout,
@@ -266,10 +266,9 @@ def render_blocks(
 
 def render_equation(block: dict) -> str:
     config = LAYOUT["equation"]
-    expression = latex_math(block["expression"])
     return (
         rf"\par\vspace{{{config['space_before_pt']:g}pt}}"
-        rf"\[\displaystyle {expression}\]"
+        f"{latex_display(block['expression'], block.get('equation_label'))}"
         rf"\vspace{{{config['space_after_pt']:g}pt}}\par"
     )
 

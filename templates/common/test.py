@@ -16,6 +16,7 @@ from common.python.content import (  # noqa: E402
     ContentDataError,
     normalize_content_block,
     normalize_paragraph,
+    prepare_equation_content,
     split_numbered_subitems,
 )
 from common.python.font_files import cjk_emphasis_options  # noqa: E402
@@ -274,6 +275,8 @@ def main() -> int:
     equation = normalize_content_block(
         {
             "type": "equation",
+            "id": "eq-common0001",
+            "chapter": 2,
             "expression": {
                 "type": "row",
                 "items": [
@@ -309,6 +312,32 @@ def main() -> int:
     assert equation["type"] == "equation"
     assert equation["expression"]["items"][1]["type"] == "fraction"
     assert equation["expression"]["items"][2]["body"]["type"] == "superscript"
+    reference = normalize_content_block(
+        "计算结果见{{eq:eq-common0001}}。", "fixture.equation_reference", 200
+    )
+    labels = prepare_equation_content([[reference, equation]])
+    assert labels == {"eq-common0001": "(2-1)"}
+    assert equation["equation_label"] == "(2-1)"
+    assert reference["runs"][0]["text"] == "计算结果见(2-1)。"
+
+    try:
+        prepare_equation_content(
+            [[dict(equation), {**equation, "equation_label": "(2-1)"}]]
+        )
+    except ContentDataError as exc:
+        assert "duplicate equation id" in str(exc)
+    else:
+        raise AssertionError("duplicate equation ids must be rejected")
+
+    unknown_reference = normalize_content_block(
+        "未知公式{{eq:eq-missing0001}}", "fixture.unknown_equation", 200
+    )
+    try:
+        prepare_equation_content([[unknown_reference]])
+    except ContentDataError as exc:
+        assert "references unknown equation" in str(exc)
+    else:
+        raise AssertionError("unknown equation references must be rejected")
 
     try:
         normalize_content_block(

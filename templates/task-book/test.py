@@ -1631,6 +1631,9 @@ def main() -> int:
             assert len(table_block["columns"]) == 4
             assert len(table_block["rows"]) == 3
             assert equation["expression"]["type"] == "row"
+            assert equation["equation_label"] == "(1-1)"
+            assert "{{eq:" not in basic_blocks[0]["runs"][0]["text"]
+            assert "(1-1)" in basic_blocks[0]["runs"][0]["text"]
             group = next(
                 item
                 for item in normalized["sections"]["required_materials"]
@@ -1653,6 +1656,14 @@ def main() -> int:
             for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
                 assert f"<{math_tag}" in document.element.xml
             assert "效率等于输出浓度" in document.element.xml
+            equation_table = main_table.rows[1].cells[0].tables[1]
+            assert equation_table.rows[0].cells[2].text == "(1-1)"
+            assert row_has_cant_split(equation_table.rows[0])
+            assert all(
+                border.get(qn("w:val")) == "nil"
+                for border in equation_table._tbl.tblPr.find(qn("w:tblBorders"))
+            )
+            assert equation_table.rows[0].cells[2].paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.RIGHT
 
         if name == "nested-list":
             basic_paragraphs = main_table.rows[1].cells[0].paragraphs
@@ -1796,6 +1807,7 @@ def main() -> int:
             assert r"\frac{" in data_tex and r"_{out}" in data_tex
             assert r"\sqrt{{x}^{2}}" in data_tex
             assert r"\input" not in data_tex
+            assert "(1-1)" in data_tex and "{{eq:" not in data_tex
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)
