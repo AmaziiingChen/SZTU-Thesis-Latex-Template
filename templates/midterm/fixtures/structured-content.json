@@ -1,0 +1,55 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "李清远",
+    "college": "大数据与互联网学院",
+    "major": "数据科学与大数据技术",
+    "class_name": "大数据二班",
+    "advisor": "陈思齐",
+    "check_date": "2026-04-18",
+    "title": "多源实验数据的结构化分析与可复现报告生成方法研究"
+  },
+  "sections": {
+    "numbering_style": "decimal_hierarchy",
+    "directory": [
+      {"level": 1, "title": "研究背景"},
+      {"level": 2, "title": "数据来源"},
+      {"level": 1, "title": "方法设计"},
+      {"level": 2, "title": "对比实验"},
+      {"level": 1, "title": "结果分析"}
+    ],
+    "main_research_content": [
+      {"type": "paragraph", "runs": [{"text": "研究围绕多源实验记录的统一表达展开，将参数、测量结果和图像证据分别保存为具有明确语义的内容块。表格只承担可比较数据，图片组用于呈现同一实验条件下的并列结果。"}]},
+      {
+        "type": "data_table",
+        "columns": [
+          {"header": "实验组", "width_weight": 1.4, "alignment": "left"},
+          {"header": "样本数", "alignment": "center"},
+          {"header": "准确率", "alignment": "center"},
+          {"header": "平均误差", "alignment": "center"}
+        ],
+        "rows": [
+          {"cells": ["基线方法", "120", "91.2%", "0.184"]},
+          {"cells": ["改进方法", "120", {"runs": [{"text": "96.8%", "bold": true}]}, "0.091"]},
+          {"cells": ["消融实验", "120", "94.1%", "0.127"]}
+        ],
+        "caption": "不同方法的匿名实验结果"
+      },
+      {"type": "paragraph", "runs": [{"text": "实验结果表明改进方法在保持相同样本规模时取得更高准确率，并降低平均误差。后续将继续验证不同数据划分下的稳定性。"}]}
+    ],
+    "progress": [
+      {"type": "paragraph", "runs": [{"text": "目前已完成数据清洗、基线复现和第一轮对比实验。两组代表性结果以组合图片展示，避免把相互关联的子图拆到不同页面。"}]},
+      {
+        "type": "figure_group",
+        "id": "fig-compare_0001",
+        "chapter": 3,
+        "items": [
+          {"path": "assets/research-workflow.png", "alt": "基线方法流程示意图", "caption": "基线方法"},
+          {"path": "assets/research-workflow.png", "alt": "改进方法流程示意图", "caption": "改进方法"}
+        ],
+        "caption": "两种方法的处理流程对比"
+      },
+      {"type": "paragraph", "runs": [{"text": "组合结果见{{fig:fig-compare_0001}}。下一阶段将扩充实验规模，补充误差分析，并检查数据表和组合图片在 Word 与 LaTeX 中的分页一致性。"}]}
+    ]
+  }
+}

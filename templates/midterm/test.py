@@ -172,6 +172,7 @@ def main() -> int:
         "long-with-image",
         "nested-list",
         "outline-numbering",
+        "structured-content",
     )
     for name in fixture_names:
         fixture = midterm_dir / "fixtures" / f"{name}.json"
@@ -199,6 +200,20 @@ def main() -> int:
             assert "{{fig:" not in normalized_text
             assert "图 3-1" in normalized_text
             assert "图 3-2" in normalized_text
+        if name == "structured-content":
+            research = normalized["sections"]["main_research_content"]
+            progress = normalized["sections"]["progress"]
+            data_tables = [block for block in research if block["type"] == "data_table"]
+            figure_groups = [block for block in progress if block["type"] == "figure_group"]
+            assert len(data_tables) == 1
+            assert len(data_tables[0]["columns"]) == 4
+            assert len(data_tables[0]["rows"]) == 3
+            assert len(figure_groups) == 1
+            assert figure_groups[0]["figure_label"] == "图 3-1"
+            assert [item["subfigure_label"] for item in figure_groups[0]["items"]] == [
+                "（a）",
+                "（b）",
+            ]
 
         docx_output = output_root / f"{name}.docx"
         run(
@@ -372,6 +387,21 @@ def main() -> int:
             nested_runs = [run_item for paragraph in body_paragraphs for run_item in paragraph.runs]
             assert any(run_item.text == "2" and run_item.font.subscript for run_item in nested_runs)
             assert normalized["sections"]["main_research_content"][1]["type"] == "unordered_list"
+        if name == "structured-content":
+            assert len(directory_cell.tables) == 1
+            nested_data_table = directory_cell.tables[0]
+            assert len(nested_data_table.rows) == 4
+            assert len(nested_data_table.columns) == 4
+            assert nested_data_table.rows[0]._tr.xpath("./w:trPr/w:tblHeader")
+            assert all(row._tr.xpath("./w:trPr/w:cantSplit") for row in nested_data_table.rows)
+            assert len(progress_cell.tables) == 1
+            figure_group_table = progress_cell.tables[0]
+            assert len(figure_group_table.rows) == 1
+            assert len(figure_group_table.columns) == 2
+            assert figure_group_table.rows[0]._tr.xpath("./w:trPr/w:cantSplit")
+            assert "基线方法流程示意图" in document.element.xml
+            assert "改进方法流程示意图" in document.element.xml
+            assert "图 3-1 两种方法的处理流程对比" in progress_cell.text
 
         if args.skip_pdf:
             if name == "nested-list":
@@ -447,6 +477,12 @@ def main() -> int:
                 assert rf"\MidtermListItem{{{depth}}}{{{marker}}}" in data_tex
             assert r"\MidtermParagraph{列表结束后" in data_tex
             assert r"H\textsubscript{2}O" in data_tex
+        if name == "structured-content":
+            assert r"\begin{tblr}{width=\linewidth" in data_tex
+            assert r"\begin{minipage}[t]{0.4875\linewidth}" in data_tex
+            assert "图 3-1" in data_tex
+            assert "（a）" in data_tex and "（b）" in data_tex
+            assert "{{fig:" not in data_tex
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)

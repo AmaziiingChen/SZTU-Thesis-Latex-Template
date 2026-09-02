@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -16,6 +18,7 @@ if str(TEMPLATES_DIR) not in sys.path:
     sys.path.insert(0, str(TEMPLATES_DIR))
 
 from common.python.content import (  # noqa: E402
+    figure_caption_runs,
     has_explicit_numbering,
     split_numbered_subitems,
 )
@@ -164,13 +167,118 @@ def render_list_block(block: dict, *, depth: int = 1) -> str:
     return "\n".join(rendered)
 
 
-def render_text_blocks(items: list[dict]) -> str:
+def _safe_asset_name(source: Path) -> str:
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
+    suffix = source.suffix.lower()
+    if suffix not in {".png", ".jpg", ".jpeg", ".pdf"}:
+        raise ValueError(f"LaTeX image must be PNG, JPEG, or PDF: {source}")
+    stem = re.sub(r"[^a-zA-Z0-9-]+", "-", source.stem).strip("-") or "image"
+    return f"{stem}-{digest}{suffix}"
+
+
+def _resolve_image(path_text: str, data_dir: Path) -> Path:
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path_text):
+        raise ValueError("remote image URLs are forbidden; use a local file")
+    source = Path(path_text).expanduser()
+    if not source.is_absolute():
+        source = data_dir / source
+    source = source.resolve()
+    if not source.is_file():
+        raise ValueError(f"image file does not exist: {source}")
+    return source
+
+
+def render_data_table(block: dict) -> str:
+    alignments = {"left": "l", "center": "c", "right": "r"}
+    colspec = "".join(
+        rf"X[{column['width_weight']:g},{alignments[column['alignment']]},m]"
+        for column in block["columns"]
+    )
+    header = " & ".join(
+        rf"\textbf{{{rich_runs(column['header_runs'])}}}"
+        for column in block["columns"]
+    )
+    rows = [" & ".join(rich_runs(cell) for cell in row) for row in block["rows"]]
+    row_break = r" \\" + "\n"
+    body = row_break.join([header, *rows])
+    caption = (
+        rf"\par\vspace{{3pt}}\Info{{{rich_runs(block['caption_runs'])}}}\par"
+        if block["caption_runs"]
+        else ""
+    )
+    config = LAYOUT["embedded_table"]
+    options = (
+        f"width=\\linewidth,colspec={{{colspec}}},"
+        f"columns={{colsep={float(config['cell_padding_mm']):g}mm}},"
+        f"rows={{valign=m,rowsep={float(config['cell_padding_mm']):g}mm}},"
+        f"hlines={{{float(config['border_pt']):g}pt}},"
+        f"vlines={{{float(config['border_pt']):g}pt}}"
+    )
+    return (
+        r"\par\noindent\begin{minipage}{\linewidth}\centering" "\n"
+        rf"\begin{{tblr}}{{{options}}}" "\n"
+        f"{body}{row_break}"
+        r"\end{tblr}" "\n"
+        f"{caption}"
+        r"\end{minipage}\par"
+    )
+
+
+def render_figure_group(
+    block: dict,
+    *,
+    data_dir: Path,
+    assets_dir: Path,
+) -> str:
+    count = len(block["items"])
+    gap_fraction = float(LAYOUT["figure_group"]["column_gap_mm"]) / float(
+        LAYOUT["figure_group"]["width_mm"]
+    )
+    width_fraction = (1.0 - gap_fraction * (count - 1)) / count
+    items = []
+    for item in block["items"]:
+        source = _resolve_image(item["path"], data_dir)
+        asset_name = _safe_asset_name(source)
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, assets_dir / asset_name)
+        subcaption = tex_escape(item["subfigure_label"])
+        if item["caption_runs"]:
+            subcaption += rich_runs(item["caption_runs"])
+        items.append(
+            rf"\begin{{minipage}}[t]{{{width_fraction:.4f}\linewidth}}"
+            rf"\centering\includegraphics[width=\linewidth,height="
+            rf"{float(LAYOUT['figure_group']['max_item_height_mm']):g}mm,keepaspectratio]"
+            rf"{{assets/{tex_escape(asset_name)}}}\par"
+            rf"\vspace{{2pt}}\Info{{{subcaption}}}\par\end{{minipage}}"
+        )
+    caption = rich_runs(figure_caption_runs(block))
+    return (
+        r"\par\noindent\begin{minipage}{\linewidth}\centering" "\n"
+        + r"\hfill".join(items)
+        + "\n"
+        + rf"\vspace{{3pt}}\Info{{{caption}}}\par"
+        + r"\end{minipage}\par"
+    )
+
+
+def render_text_blocks(
+    items: list[dict],
+    *,
+    data_dir: Path,
+    assets_dir: Path,
+) -> str:
     rendered = []
     for block in items:
         if block["type"] == "paragraph":
             rendered.append(rf"\ProposalParagraph{{{rich_runs(block['runs'])}}}")
         elif block["type"] in {"ordered_list", "unordered_list"}:
             rendered.append(render_list_block(block))
+        elif block["type"] == "data_table":
+            rendered.append(render_data_table(block))
+        elif block["type"] == "figure_group":
+            rendered.append(
+                render_figure_group(block, data_dir=data_dir, assets_dir=assets_dir)
+            )
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
     return "\n".join(rendered)
@@ -196,13 +304,18 @@ def numbered_paragraphs(items: list[list[dict]]) -> str:
     return "\\par\n".join(rendered_items)
 
 
-def render_method_blocks(items: list[dict]) -> str:
+def render_method_blocks(
+    items: list[dict],
+    *,
+    data_dir: Path,
+    assets_dir: Path,
+) -> str:
     if all(item["type"] == "paragraph" for item in items):
         return numbered_paragraphs([item["runs"] for item in items])
-    return render_text_blocks(items)
+    return render_text_blocks(items, data_dir=data_dir, assets_dir=assets_dir)
 
 
-def data_tex(data: dict) -> str:
+def data_tex(data: dict, *, data_dir: Path, assets_dir: Path) -> str:
     metadata = data["metadata"]
     sections = data["sections"]
     macros = {
@@ -213,9 +326,15 @@ def data_tex(data: dict) -> str:
         "College": tex_escape(metadata["college"]),
         "Advisor": tex_escape(metadata["advisor"]),
         "SignificanceAndStatus": paragraphs(sections["significance_and_status"]),
-        "ResearchContent": render_text_blocks(sections["research_content"]),
-        "MethodsAndMeans": render_method_blocks(sections["methods_and_means"]),
-        "ResearchSteps": render_method_blocks(sections["research_steps"]),
+        "ResearchContent": render_text_blocks(
+            sections["research_content"], data_dir=data_dir, assets_dir=assets_dir
+        ),
+        "MethodsAndMeans": render_method_blocks(
+            sections["methods_and_means"], data_dir=data_dir, assets_dir=assets_dir
+        ),
+        "ResearchSteps": render_method_blocks(
+            sections["research_steps"], data_dir=data_dir, assets_dir=assets_dir
+        ),
         "ReferencesContent": paragraphs(sections["references"], indent=False),
     }
     lines = ["% Generated file. Edit the JSON source, not this file."]
@@ -236,8 +355,14 @@ def render(data_path: Path, output_dir: Path, *, overwrite: bool, compile_pdf: b
     if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:
         raise FileExistsError(f"output directory is not empty; pass --overwrite: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
+    assets_dir = output_dir / "assets"
     (output_dir / "proposal-data.tex").write_text(
-        data_tex(data), encoding="utf-8"
+        data_tex(
+            data,
+            data_dir=data_path.resolve().parent,
+            assets_dir=assets_dir,
+        ),
+        encoding="utf-8",
     )
     (output_dir / "proposal-fonts.tex").write_text(fonts_tex(fonts), encoding="utf-8")
     (output_dir / "proposal-typography.tex").write_text(

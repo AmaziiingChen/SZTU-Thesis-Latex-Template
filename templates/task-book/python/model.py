@@ -17,6 +17,7 @@ from common.python.content import (  # noqa: E402
     display_width,
     normalize_content_block,
     normalize_paragraph,
+    prepare_figure_content,
     require_object,
     require_text,
     runs_text,
@@ -267,6 +268,12 @@ def validate_data(raw: Any) -> dict[str, Any]:
             sections["topic_information"]
         ),
     }
+    prepare_figure_content(
+        [
+            clean_sections["basic_content_and_requirements"],
+            clean_sections["required_materials"],
+        ]
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "metadata": clean_metadata,

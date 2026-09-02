@@ -96,6 +96,18 @@
     "caption_prefix": "图",
     "source_prefix": "来源："
   },
+  "embedded_table": {
+    "width_mm": 142.0,
+    "border_pt": 0.5,
+    "cell_padding_mm": 1.2,
+    "caption_space_before_pt": 3.0,
+    "caption_space_after_pt": 3.0
+  },
+  "figure_group": {
+    "width_mm": 142.0,
+    "column_gap_mm": 3.0,
+    "max_item_height_mm": 75.0
+  },
   "signature": {
     "right_inset_mm": 7.5,
     "teacher_blank_width_mm": 45.0,

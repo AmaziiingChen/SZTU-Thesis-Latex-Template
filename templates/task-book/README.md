@@ -3,6 +3,11 @@
 本目录使用一份结构化 JSON 同时驱动 Word 与 LaTeX/PDF。当前格式权威为学校发布材料中的
 `2025届毕业论文任务书-样例修正版(1).docx`；历史二进制 DOC 仅作辅助参考。
 
+“基本内容与要求”和“需收集的资料”已支持公共结构化内容块：`data_table` 使用显式
+行列数据、列宽权重和对齐方式；`figure_group` 支持 2–4 张本地图片、自动子图标记、
+统一图号与总题注。Word 与 LaTeX/PDF 使用同一份数据，示例见
+`fixtures/structured-content.json`。
+
 ## 统一数据入口
 
 - `schema/task-book.schema.json`：公开 JSON 契约；

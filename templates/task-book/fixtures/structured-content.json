@@ -1,0 +1,71 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": "面向过程文档的结构化数据与组合图排版验证",
+    "student_name": "测试学生",
+    "student_id": "202600000001",
+    "college": "测试学院",
+    "major": "测试专业",
+    "class_name": "测试一班",
+    "advisor": "测试教师"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "本课题验证真实行列表格与组合图在任务书连续主表中的确定性排版，实验流程见{{fig:fig-task-flow}}。",
+      {
+        "type": "data_table",
+        "columns": [
+          {"header": "阶段", "width_weight": 1.0, "alignment": "center"},
+          {"header": "输入", "width_weight": 1.4, "alignment": "left"},
+          {"header": "处理", "width_weight": 1.8, "alignment": "left"},
+          {"header": "输出", "width_weight": 1.4, "alignment": "left"}
+        ],
+        "rows": [
+          {"cells": ["准备", "匿名数据", "结构校验", "统一模型"]},
+          {"cells": ["生成", "统一模型", {"runs": [{"text": "双路", "bold": true}, {"text": "渲染"}]}, "Word 与 PDF"]},
+          {"cells": ["验收", "生成文件", "结构与版式检查", "回归记录"]}
+        ],
+        "caption": "结构化任务处理表"
+      },
+      "所有数据均为公开虚构内容，人工签名和学院意见保持空白。"
+    ],
+    "schedule": [
+      {"period": "第1—4周", "content": "完成需求分析、数据建模和模板规格整理。"},
+      {"period": "第5—10周", "content": "完成 Word 与 LaTeX 双路实现及自动回归。"},
+      {"period": "第11—16周", "content": "完成压力测试、论文撰写和归档。"}
+    ],
+    "required_materials": [
+      {
+        "type": "figure_group",
+        "id": "fig-task-flow",
+        "chapter": 1,
+        "items": [
+          {
+            "path": "../../midterm/fixtures/assets/research-workflow.png",
+            "alt": "虚构的结构化数据输入流程图",
+            "caption": "数据输入"
+          },
+          {
+            "path": "../../midterm/fixtures/assets/research-workflow.png",
+            "alt": "虚构的双路文档生成流程图",
+            "caption": "双路生成"
+          }
+        ],
+        "caption": "任务书结构化生成流程"
+      },
+      "学校当年发布的任务书原件、填写说明和匿名回归记录。"
+    ],
+    "references": [
+      "[1] ECMA International. ECMA-376 Office Open XML File Formats[S]. 2021.",
+      "[2] Lamport L. LaTeX: A Document Preparation System[M]. 1994."
+    ],
+    "topic_information": {
+      "nature": "graduation_design",
+      "source": {
+        "type": "self_proposed",
+        "self_proposed_by": "teacher_student_joint"
+      }
+    }
+  }
+}

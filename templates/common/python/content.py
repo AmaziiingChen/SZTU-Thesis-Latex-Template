@@ -204,7 +204,7 @@ def normalize_content_block(
     max_list_items: int = 100,
     max_list_depth: int = 4,
 ) -> dict[str, Any]:
-    """Normalize a paragraph, list, or image into one stable shape.
+    """Normalize one public process-document content block into a stable shape.
 
     Legacy flat ``ordered_list`` blocks remain valid. New list items may carry
     one ``children`` list block, with the root list counted as depth one.
@@ -278,9 +278,149 @@ def normalize_content_block(
         if source_citation_key is not None:
             normalized["source_citation_key"] = source_citation_key
         return normalized
+    if block.get("type") == "figure_group":
+        unknown = set(block) - {
+            "type",
+            "id",
+            "chapter",
+            "items",
+            "caption",
+            "source_citation_key",
+        }
+        if unknown:
+            raise ContentDataError(f"unknown fields in {path}: {sorted(unknown)}")
+        figure_id = block.get("id")
+        if figure_id is not None and (
+            not isinstance(figure_id, str)
+            or FIGURE_ID_PATTERN.fullmatch(figure_id) is None
+        ):
+            raise ContentDataError(f"{path}.id must be a stable figure id")
+        chapter = block.get("chapter", 1)
+        if (
+            isinstance(chapter, bool)
+            or not isinstance(chapter, int)
+            or not 1 <= chapter <= 99
+        ):
+            raise ContentDataError(f"{path}.chapter must be an integer from 1 to 99")
+        raw_items = block.get("items")
+        if not isinstance(raw_items, list) or not 2 <= len(raw_items) <= 4:
+            raise ContentDataError(f"{path}.items must contain 2 to 4 images")
+        items = []
+        for index, raw_item in enumerate(raw_items):
+            item_path = f"{path}.items[{index}]"
+            item = require_object(raw_item, item_path)
+            item_unknown = set(item) - {"path", "alt", "caption"}
+            if item_unknown:
+                raise ContentDataError(
+                    f"unknown fields in {item_path}: {sorted(item_unknown)}"
+                )
+            child = {
+                "path": require_text(item.get("path"), f"{item_path}.path", 1000),
+                "alt": require_text(item.get("alt"), f"{item_path}.alt", 500),
+                "subfigure_label": f"（{chr(ord('a') + index)}）",
+                "caption_runs": normalize_paragraph(
+                    item["caption"], f"{item_path}.caption", max_length
+                )
+                if item.get("caption") is not None
+                else None,
+            }
+            items.append(child)
+        source_citation_key = block.get("source_citation_key")
+        if source_citation_key is not None and (
+            not isinstance(source_citation_key, str)
+            or FIGURE_SOURCE_KEY_PATTERN.fullmatch(source_citation_key) is None
+        ):
+            raise ContentDataError(
+                f"{path}.source_citation_key contains unsupported characters"
+            )
+        normalized = {
+            "type": "figure_group",
+            "chapter": chapter,
+            "items": items,
+            "caption_runs": normalize_paragraph(
+                block.get("caption"), f"{path}.caption", max_length
+            ),
+        }
+        if figure_id is not None:
+            normalized["id"] = figure_id
+        if source_citation_key is not None:
+            normalized["source_citation_key"] = source_citation_key
+        return normalized
+    if block.get("type") == "data_table":
+        unknown = set(block) - {"type", "columns", "rows", "caption"}
+        if unknown:
+            raise ContentDataError(f"unknown fields in {path}: {sorted(unknown)}")
+        raw_columns = block.get("columns")
+        if not isinstance(raw_columns, list) or not 2 <= len(raw_columns) <= 8:
+            raise ContentDataError(f"{path}.columns must contain 2 to 8 columns")
+        columns = []
+        for index, raw_column in enumerate(raw_columns):
+            column_path = f"{path}.columns[{index}]"
+            column = require_object(raw_column, column_path)
+            column_unknown = set(column) - {"header", "width_weight", "alignment"}
+            if column_unknown:
+                raise ContentDataError(
+                    f"unknown fields in {column_path}: {sorted(column_unknown)}"
+                )
+            width_weight = column.get("width_weight", 1.0)
+            if (
+                isinstance(width_weight, bool)
+                or not isinstance(width_weight, (int, float))
+                or not 0.25 <= float(width_weight) <= 10
+            ):
+                raise ContentDataError(
+                    f"{column_path}.width_weight must be between 0.25 and 10"
+                )
+            alignment = column.get("alignment", "left")
+            if alignment not in {"left", "center", "right"}:
+                raise ContentDataError(
+                    f"{column_path}.alignment must be left, center, or right"
+                )
+            columns.append(
+                {
+                    "header_runs": normalize_paragraph(
+                        column.get("header"), f"{column_path}.header", max_length
+                    ),
+                    "width_weight": float(width_weight),
+                    "alignment": alignment,
+                }
+            )
+        raw_rows = block.get("rows")
+        if not isinstance(raw_rows, list) or not 1 <= len(raw_rows) <= 40:
+            raise ContentDataError(f"{path}.rows must contain 1 to 40 rows")
+        rows = []
+        for row_index, raw_row in enumerate(raw_rows):
+            row_path = f"{path}.rows[{row_index}]"
+            row = require_object(raw_row, row_path)
+            if set(row) != {"cells"}:
+                raise ContentDataError(f"{row_path} must contain only cells")
+            raw_cells = row.get("cells")
+            if not isinstance(raw_cells, list) or len(raw_cells) != len(columns):
+                raise ContentDataError(
+                    f"{row_path}.cells must match the {len(columns)} table columns"
+                )
+            rows.append(
+                [
+                    normalize_paragraph(
+                        cell, f"{row_path}.cells[{cell_index}]", max_length
+                    )
+                    for cell_index, cell in enumerate(raw_cells)
+                ]
+            )
+        return {
+            "type": "data_table",
+            "columns": columns,
+            "rows": rows,
+            "caption_runs": normalize_paragraph(
+                block["caption"], f"{path}.caption", max_length
+            )
+            if block.get("caption") is not None
+            else None,
+        }
     if block.get("type") not in {"ordered_list", "unordered_list"}:
         raise ContentDataError(
-            f"{path}.type must be paragraph, ordered_list, unordered_list, or image"
+            f"{path}.type must be paragraph, ordered_list, unordered_list, image, "
+            "figure_group, or data_table"
         )
     return normalize_list_block(
         block,
@@ -365,6 +505,20 @@ def _iter_content_run_groups(block: dict[str, Any]):
     if block["type"] == "paragraph":
         yield block["runs"]
         return
+    if block["type"] == "figure_group":
+        yield block["caption_runs"]
+        for item in block["items"]:
+            if item["caption_runs"]:
+                yield item["caption_runs"]
+        return
+    if block["type"] == "data_table":
+        for column in block["columns"]:
+            yield column["header_runs"]
+        for row in block["rows"]:
+            yield from row
+        if block["caption_runs"]:
+            yield block["caption_runs"]
+        return
     if block["type"] not in {"ordered_list", "unordered_list"}:
         return
     for item in block["items"]:
@@ -405,7 +559,7 @@ def prepare_figure_content(
     labels: dict[str, str] = {}
     for blocks in block_groups:
         for block in blocks:
-            if block["type"] != "image":
+            if block["type"] not in {"image", "figure_group"}:
                 continue
             chapter = block["chapter"]
             sequence = chapter_counts.get(chapter, 0) + 1
@@ -430,7 +584,7 @@ def prepare_figure_content(
 
 
 def figure_caption_runs(block: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return the renderer-owned numbered caption for one normalized image."""
+    """Return the renderer-owned numbered caption for one image or group."""
 
     label = block.get("figure_label")
     if not isinstance(label, str) or not label:

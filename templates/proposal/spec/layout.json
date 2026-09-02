@@ -50,6 +50,21 @@
     "flow_end_space_mm": 0.0,
     "section_title_content_gap_mm": 1.0
   },
+  "image": {
+    "max_height_mm": 170.0
+  },
+  "embedded_table": {
+    "width_mm": 138.0,
+    "border_pt": 0.48,
+    "cell_padding_mm": 1.2,
+    "caption_space_before_pt": 3.0,
+    "caption_space_after_pt": 3.0
+  },
+  "figure_group": {
+    "width_mm": 138.0,
+    "column_gap_mm": 3.0,
+    "max_item_height_mm": 72.0
+  },
   "signature_regions": {
     "student_min_height_mm": 22.0,
     "review_min_height_mm": 88.0,

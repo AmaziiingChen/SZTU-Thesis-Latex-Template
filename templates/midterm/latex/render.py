@@ -246,9 +246,91 @@ def render_blocks(
                 rf"\MidtermFigure{{assets/{tex_escape(asset_name)}}}"
                 rf"{{{block['width_mm']:g}mm}}{{{caption}}}"
             )
+        elif block["type"] == "data_table":
+            rendered.append(render_data_table(block))
+        elif block["type"] == "figure_group":
+            rendered.append(
+                render_figure_group(
+                    block,
+                    data_dir=data_dir,
+                    assets_dir=assets_dir,
+                )
+            )
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
     return "\n".join(rendered)
+
+
+def render_data_table(block: dict) -> str:
+    alignments = {"left": "l", "center": "c", "right": "r"}
+    colspec = "".join(
+        rf"X[{column['width_weight']:g},{alignments[column['alignment']]},m]"
+        for column in block["columns"]
+    )
+    header = " & ".join(
+        rf"\textbf{{{rich_runs(column['header_runs'])}}}"
+        for column in block["columns"]
+    )
+    rows = [
+        " & ".join(rich_runs(cell) for cell in row)
+        for row in block["rows"]
+    ]
+    row_break = r" \\" + "\n"
+    body = row_break.join([header, *rows])
+    caption = (
+        rf"\par\vspace{{3pt}}\Body{{{rich_runs(block['caption_runs'])}}}\par"
+        if block["caption_runs"]
+        else ""
+    )
+    border = float(LAYOUT["embedded_table"]["border_pt"])
+    options = (
+        f"width=\\linewidth,colspec={{{colspec}}},"
+        "columns={colsep=1.2mm},rows={valign=m,rowsep=1.2mm},"
+        f"hlines={{{border:g}pt}},vlines={{{border:g}pt}}"
+    )
+    return (
+        r"\par\noindent\begin{minipage}{\linewidth}\centering" "\n"
+        rf"\begin{{tblr}}{{{options}}}"
+        "\n"
+        f"{body}{row_break}"
+        r"\end{tblr}" "\n"
+        f"{caption}"
+        r"\end{minipage}\par"
+    )
+
+
+def render_figure_group(
+    block: dict,
+    *,
+    data_dir: Path,
+    assets_dir: Path,
+) -> str:
+    count = len(block["items"])
+    width_fraction = (1.0 - 0.025 * (count - 1)) / count
+    items = []
+    for item in block["items"]:
+        source = _resolve_image(item["path"], data_dir)
+        asset_name = _safe_asset_name(source)
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, assets_dir / asset_name)
+        subcaption = tex_escape(item["subfigure_label"])
+        if item["caption_runs"]:
+            subcaption += rich_runs(item["caption_runs"])
+        items.append(
+            rf"\begin{{minipage}}[t]{{{width_fraction:.4f}\linewidth}}"
+            rf"\centering\includegraphics[width=\linewidth,height="
+            rf"{LAYOUT['figure_group']['max_item_height_mm']:g}mm,keepaspectratio]"
+            rf"{{assets/{tex_escape(asset_name)}}}\par"
+            rf"\vspace{{2pt}}\Body{{{subcaption}}}\par\end{{minipage}}"
+        )
+    caption = rich_runs(figure_caption_runs(block))
+    return (
+        r"\par\noindent\begin{minipage}{\linewidth}\centering" "\n"
+        + r"\hfill".join(items)
+        + "\n"
+        + rf"\vspace{{3pt}}\Body{{{caption}}}\par"
+        + r"\end{minipage}\par"
+    )
 
 
 def _list_marker(block: dict, item: dict, index: int, depth: int) -> str:

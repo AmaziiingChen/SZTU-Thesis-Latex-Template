@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from docx import Document
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -291,19 +291,186 @@ def _set_picture_alt(run, alt: str) -> None:
         doc_pr[0].set("descr", alt)
 
 
-def _fit_image_dimensions(image_path: Path, requested_width_mm: float) -> tuple[float, float]:
+def _fit_image_dimensions(
+    image_path: Path,
+    requested_width_mm: float,
+    *,
+    max_height_mm: float | None = None,
+) -> tuple[float, float]:
     with PILImage.open(image_path) as image:
         pixel_width, pixel_height = image.size
     if pixel_width <= 0 or pixel_height <= 0:
         raise DataError("image dimensions must be positive")
     width_mm = float(requested_width_mm)
     height_mm = width_mm * pixel_height / pixel_width
-    max_height_mm = float(LAYOUT["image"]["max_height_mm"])
+    max_height_mm = (
+        float(max_height_mm)
+        if max_height_mm is not None
+        else float(LAYOUT["image"]["max_height_mm"])
+    )
     if height_mm > max_height_mm:
         scale = max_height_mm / height_mm
         width_mm *= scale
         height_mm = max_height_mm
     return width_mm, height_mm
+
+
+def _set_table_borders(table, *, border_pt: float | None) -> None:
+    tbl_pr = table._tbl.tblPr
+    old = tbl_pr.find(qn("w:tblBorders"))
+    if old is not None:
+        tbl_pr.remove(old)
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        element = OxmlElement(f"w:{edge}")
+        if border_pt is None:
+            element.set(qn("w:val"), "nil")
+        else:
+            element.set(qn("w:val"), "single")
+            element.set(qn("w:sz"), str(round(border_pt * 8)))
+            element.set(qn("w:color"), "000000")
+        borders.append(element)
+    tbl_pr.append(borders)
+
+
+def _set_table_cell_margins(table, margin_mm: float) -> None:
+    tbl_pr = table._tbl.tblPr
+    old = tbl_pr.find(qn("w:tblCellMar"))
+    if old is not None:
+        tbl_pr.remove(old)
+    margins = OxmlElement("w:tblCellMar")
+    value = str(round(Mm(margin_mm).twips))
+    for edge in ("top", "left", "bottom", "right"):
+        element = OxmlElement(f"w:{edge}")
+        element.set(qn("w:w"), value)
+        element.set(qn("w:type"), "dxa")
+        margins.append(element)
+    tbl_pr.append(margins)
+
+
+def _set_table_geometry(table, widths_mm: list[float]) -> None:
+    table.autofit = False
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    total_twips = round(Mm(sum(widths_mm)).twips)
+    tbl_w = table._tbl.tblPr.find(qn("w:tblW"))
+    if tbl_w is None:
+        tbl_w = OxmlElement("w:tblW")
+        table._tbl.tblPr.insert(0, tbl_w)
+    tbl_w.set(qn("w:w"), str(total_twips))
+    tbl_w.set(qn("w:type"), "dxa")
+    for grid_col, width_mm in zip(table._tbl.tblGrid.gridCol_lst, widths_mm, strict=True):
+        grid_col.set(qn("w:w"), str(round(Mm(width_mm).twips)))
+    for row in table.rows:
+        for cell, width_mm in zip(row.cells, widths_mm, strict=True):
+            width_twips = str(round(Mm(width_mm).twips))
+            cell.width = Mm(width_mm)
+            tc_w = cell._tc.get_or_add_tcPr().get_or_add_tcW()
+            tc_w.set(qn("w:w"), width_twips)
+            tc_w.set(qn("w:type"), "dxa")
+
+
+def _set_repeat_table_header(row) -> None:
+    tr_pr = row._tr.get_or_add_trPr()
+    if tr_pr.find(qn("w:tblHeader")) is None:
+        tr_pr.append(OxmlElement("w:tblHeader"))
+
+
+def _prevent_row_split(row) -> None:
+    tr_pr = row._tr.get_or_add_trPr()
+    if tr_pr.find(qn("w:cantSplit")) is None:
+        tr_pr.append(OxmlElement("w:cantSplit"))
+
+
+def _alignment(value: str):
+    return {
+        "left": WD_ALIGN_PARAGRAPH.LEFT,
+        "center": WD_ALIGN_PARAGRAPH.CENTER,
+        "right": WD_ALIGN_PARAGRAPH.RIGHT,
+    }[value]
+
+
+def _append_data_table(cell, block: dict[str, Any]) -> None:
+    config = LAYOUT["embedded_table"]
+    weights = [column["width_weight"] for column in block["columns"]]
+    total_weight = sum(weights)
+    widths = [float(config["width_mm"]) * weight / total_weight for weight in weights]
+    table = cell.add_table(rows=1 + len(block["rows"]), cols=len(block["columns"]))
+    _set_table_geometry(table, widths)
+    _set_table_borders(table, border_pt=float(config["border_pt"]))
+    _set_table_cell_margins(table, float(config["cell_padding_mm"]))
+    _set_repeat_table_header(table.rows[0])
+    for row in table.rows:
+        _prevent_row_split(row)
+    for column_index, column in enumerate(block["columns"]):
+        target = table.rows[0].cells[column_index]
+        target.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        paragraph = target.paragraphs[0]
+        _format_paragraph(paragraph, alignment=_alignment(column["alignment"]))
+        _append_runs(paragraph, column["header_runs"], style=BODY)
+        for run in paragraph.runs:
+            run.bold = True
+    for row_index, values in enumerate(block["rows"], start=1):
+        for column_index, runs in enumerate(values):
+            target = table.rows[row_index].cells[column_index]
+            target.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+            paragraph = target.paragraphs[0]
+            _format_paragraph(
+                paragraph,
+                alignment=_alignment(block["columns"][column_index]["alignment"]),
+            )
+            _append_runs(paragraph, runs, style=BODY)
+    if block["caption_runs"]:
+        caption = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        caption.paragraph_format.keep_together = True
+        caption.paragraph_format.space_before = Pt(config["caption_space_before_pt"])
+        caption.paragraph_format.space_after = Pt(config["caption_space_after_pt"])
+        _append_runs(caption, block["caption_runs"], style=BODY)
+
+
+def _append_figure_group(cell, block: dict[str, Any], *, data_dir: Path) -> None:
+    config = LAYOUT["figure_group"]
+    count = len(block["items"])
+    total_width = float(config["width_mm"])
+    gap = float(config["column_gap_mm"])
+    item_width = (total_width - gap * (count - 1)) / count
+    widths = [item_width] * count
+    table = cell.add_table(rows=1, cols=count)
+    _set_table_geometry(table, widths)
+    _set_table_borders(table, border_pt=None)
+    _set_table_cell_margins(table, gap / 2)
+    _prevent_row_split(table.rows[0])
+    for index, item in enumerate(block["items"]):
+        target = table.rows[0].cells[index]
+        target.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        paragraph = target.paragraphs[0]
+        _format_paragraph(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        paragraph.paragraph_format.keep_together = True
+        run = paragraph.add_run()
+        _set_run_font(run, style=BODY)
+        image_path = _resolve_image(item["path"], data_dir)
+        width_mm, height_mm = _fit_image_dimensions(
+            image_path,
+            item_width - gap,
+            max_height_mm=float(config["max_item_height_mm"]),
+        )
+        run.add_picture(str(image_path), width=Mm(width_mm), height=Mm(height_mm))
+        _set_picture_alt(run, item["alt"])
+        subcaption = target.add_paragraph()
+        _format_paragraph(subcaption, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        subcaption.paragraph_format.keep_together = True
+        subcaption.paragraph_format.keep_with_next = True
+        _append_runs(subcaption, plain_runs(item["subfigure_label"]), style=BODY)
+        if item["caption_runs"]:
+            _append_runs(subcaption, item["caption_runs"], style=BODY)
+    caption = _new_paragraph(cell, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    caption.paragraph_format.keep_together = True
+    caption.paragraph_format.space_before = Pt(
+        LAYOUT["paragraphs"]["caption_space_before_pt"]
+    )
+    caption.paragraph_format.space_after = Pt(
+        LAYOUT["paragraphs"]["caption_space_after_pt"]
+    )
+    _append_runs(caption, figure_caption_runs(block), style=BODY)
 
 
 def _list_marker(block_type: str, item: dict[str, Any], index: int, depth: int) -> str:
@@ -359,6 +526,10 @@ def _append_content_blocks(cell, blocks: list[dict[str, Any]], *, data_dir: Path
                 LAYOUT["paragraphs"]["caption_space_after_pt"]
             )
             _append_runs(caption, figure_caption_runs(block), style=BODY)
+        elif block["type"] == "data_table":
+            _append_data_table(cell, block)
+        elif block["type"] == "figure_group":
+            _append_figure_group(cell, block, data_dir=data_dir)
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
 

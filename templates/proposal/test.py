@@ -15,6 +15,7 @@ import pdfplumber
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
 from PIL import Image
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[1]
@@ -124,7 +125,14 @@ def main() -> int:
     assert r"\end{adjustwidth}" not in between_body_and_signature
     assert r"\begin{center}" not in between_body_and_signature
 
-    for name in ("short", "normal", "long", "layout_stress", "nested-list"):
+    for name in (
+        "short",
+        "normal",
+        "long",
+        "layout_stress",
+        "nested-list",
+        "structured-content",
+    ):
         fixture = proposal_dir / "fixtures" / f"{name}.json"
         fixture_data = json.loads(fixture.read_text(encoding="utf-8"))
         assert fixture_data["schema_version"] == "0.2"
@@ -157,7 +165,7 @@ def main() -> int:
         assert "本课题研究步骤如下" in table.rows[5].cells[0].text
         method_paragraphs = table.rows[5].cells[0].paragraphs[1:]
         assert method_paragraphs
-        if name != "nested-list":
+        if name not in {"nested-list", "structured-content"}:
             assert all(
                 paragraph.paragraph_format.first_line_indent is not None
                 and paragraph.paragraph_format.first_line_indent.pt
@@ -256,9 +264,34 @@ def main() -> int:
             assert any(run.text == "2" and run.font.subscript for run in nested_runs)
             assert normalized["sections"]["research_content"][1]["type"] == "unordered_list"
 
+        if name == "structured-content":
+            research = normalized["sections"]["research_content"]
+            embedded_block = next(item for item in research if item["type"] == "data_table")
+            group = next(item for item in research if item["type"] == "figure_group")
+            assert len(embedded_block["columns"]) == 4
+            assert len(embedded_block["rows"]) == 3
+            assert group["figure_label"] == "图 1-1"
+            assert [item["subfigure_label"] for item in group["items"]] == ["（a）", "（b）"]
+            research_cell = table.rows[4].cells[0]
+            embedded = research_cell.tables[0]
+            group_table = research_cell.tables[1]
+            assert len(embedded.rows) == 4 and len(embedded.columns) == 4
+            assert embedded.rows[0]._tr.get_or_add_trPr().find(qn("w:tblHeader")) is not None
+            assert all(row._tr.get_or_add_trPr().find(qn("w:cantSplit")) is not None for row in embedded.rows)
+            assert len(group_table.rows) == 1 and len(group_table.columns) == 2
+            assert group_table.rows[0]._tr.get_or_add_trPr().find(qn("w:cantSplit")) is not None
+            assert [item.get("descr") for item in document.element.xpath(".//wp:docPr")] == [
+                "虚构的结构化输入流程图",
+                "虚构的双路输出流程图",
+            ]
+
         if args.skip_pdf:
             if name == "nested-list":
-                data_tex = latex_renderer.data_tex(normalized)
+                data_tex = latex_renderer.data_tex(
+                    normalized,
+                    data_dir=fixture.parent,
+                    assets_dir=output_root / "skip-assets",
+                )
                 for depth, marker in ((1, "•"), (2, "（1）"), (3, "▪"), (4, "A.")):
                     assert rf"\ProposalListItem{{{depth}}}{{{marker}}}" in data_tex
                 assert r"\ProposalParagraph{列表结束后" in data_tex
@@ -317,6 +350,11 @@ def main() -> int:
                 assert rf"\ProposalListItem{{{depth}}}{{{marker}}}" in data_tex
             assert r"\ProposalParagraph{列表结束后" in data_tex
             assert r"H\textsubscript{2}O" in data_tex
+        if name == "structured-content":
+            assert r"\begin{tblr}" in data_tex
+            assert r"\begin{minipage}[t]{0.4891\linewidth}" in data_tex
+            assert "图 1-1" in data_tex
+            assert "（a）" in data_tex and "（b）" in data_tex
 
         info = run(["pdfinfo", str(latex_dir / "main.pdf")], cwd=project_dir)
         match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)

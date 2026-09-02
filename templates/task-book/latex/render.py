@@ -20,7 +20,11 @@ REPOSITORY_DIR = TEMPLATES_DIR.parent
 if str(TEMPLATES_DIR) not in sys.path:
     sys.path.insert(0, str(TEMPLATES_DIR))
 
-from common.python.content import display_width, starts_with_calendar_date  # noqa: E402
+from common.python.content import (  # noqa: E402
+    display_width,
+    figure_caption_runs,
+    starts_with_calendar_date,
+)
 from common.python.font_files import (  # noqa: E402
     cjk_emphasis_options,
     resolve_font_files,
@@ -253,9 +257,92 @@ def render_blocks(
                 rf"\TaskFigure{{assets/{tex_escape(asset_name)}}}"
                 rf"{{{float(block['width_mm']):g}mm}}{{{caption}}}"
             )
+        elif block_type == "data_table":
+            rendered.append(render_data_table(block))
+        elif block_type == "figure_group":
+            rendered.append(
+                render_figure_group(
+                    block,
+                    data_dir=data_dir,
+                    assets_dir=assets_dir,
+                )
+            )
         else:
             raise AssertionError(f"unsupported normalized block: {block_type}")
     return "\n".join(rendered)
+
+
+def render_data_table(block: dict[str, Any]) -> str:
+    alignments = {"left": "l", "center": "c", "right": "r"}
+    colspec = "".join(
+        rf"X[{column['width_weight']:g},{alignments[column['alignment']]},m]"
+        for column in block["columns"]
+    )
+    header = " & ".join(
+        rf"\textbf{{{rich_runs(column['header_runs'])}}}"
+        for column in block["columns"]
+    )
+    rows = [" & ".join(rich_runs(cell) for cell in row) for row in block["rows"]]
+    row_break = r" \\" + "\n"
+    body = row_break.join([header, *rows])
+    caption = (
+        rf"\par\vspace{{{float(LAYOUT['embedded_table']['caption_space_before_pt']):g}pt}}"
+        rf"\BodyText{{{rich_runs(block['caption_runs'])}}}\par"
+        if block["caption_runs"]
+        else ""
+    )
+    border = float(LAYOUT["embedded_table"]["border_pt"])
+    padding = float(LAYOUT["embedded_table"]["cell_padding_mm"])
+    options = (
+        f"width=\\linewidth,colspec={{{colspec}}},"
+        f"columns={{colsep={padding:g}mm}},rows={{valign=m,rowsep={padding:g}mm}},"
+        f"hlines={{{border:g}pt}},vlines={{{border:g}pt}}"
+    )
+    return (
+        r"\par\noindent\begin{minipage}{\linewidth}\centering" "\n"
+        rf"\begin{{tblr}}{{{options}}}" "\n"
+        f"{body}{row_break}"
+        r"\end{tblr}" "\n"
+        f"{caption}"
+        r"\end{minipage}\par"
+    )
+
+
+def render_figure_group(
+    block: dict[str, Any],
+    *,
+    data_dir: Path,
+    assets_dir: Path,
+) -> str:
+    count = len(block["items"])
+    gap_fraction = float(LAYOUT["figure_group"]["column_gap_mm"]) / float(
+        LAYOUT["figure_group"]["width_mm"]
+    )
+    width_fraction = (1.0 - gap_fraction * (count - 1)) / count
+    items: list[str] = []
+    for item in block["items"]:
+        source = _resolve_image(item["path"], data_dir)
+        asset_name = _safe_asset_name(source)
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, assets_dir / asset_name)
+        subcaption = tex_escape(item["subfigure_label"])
+        if item["caption_runs"]:
+            subcaption += rich_runs(item["caption_runs"])
+        items.append(
+            rf"\begin{{minipage}}[t]{{{width_fraction:.4f}\linewidth}}"
+            rf"\centering\includegraphics[width=\linewidth,height="
+            rf"{float(LAYOUT['figure_group']['max_item_height_mm']):g}mm,keepaspectratio]"
+            rf"{{assets/{tex_escape(asset_name)}}}\par"
+            rf"\vspace{{2pt}}\BodyText{{{subcaption}}}\par\end{{minipage}}"
+        )
+    caption = rich_runs(figure_caption_runs(block))
+    return (
+        r"\par\noindent\begin{minipage}{\linewidth}\centering" "\n"
+        + r"\hfill".join(items)
+        + "\n"
+        + rf"\vspace{{3pt}}\BodyText{{{caption}}}\par"
+        + r"\end{minipage}\par"
+    )
 
 
 def _list_marker(block: dict[str, Any], item: dict[str, Any], index: int, depth: int) -> str:

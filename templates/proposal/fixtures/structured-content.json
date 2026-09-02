@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.2",
+  "metadata": {
+    "title": "面向过程文档的结构化内容双路生成研究",
+    "student_name": "测试学生",
+    "student_id": "202600000001",
+    "major": "测试专业",
+    "college": "测试学院",
+    "advisor": "测试教师"
+  },
+  "sections": {
+    "significance_and_status": [
+      "过程文档同时包含段落、表格、图片和题注，使用统一结构模型可以减少重复排版。",
+      "本案例全部使用公开虚构数据，只验证通用能力，不复刻任何真实学生内容。"
+    ],
+    "research_content": [
+      "研究将比较结构化输入与双路输出，整体流程见{{fig:fig-proposal-flow}}。",
+      {
+        "type": "data_table",
+        "columns": [
+          {"header": "对象", "width_weight": 1.0, "alignment": "center"},
+          {"header": "输入", "width_weight": 1.5, "alignment": "left"},
+          {"header": "处理", "width_weight": 1.8, "alignment": "left"},
+          {"header": "结果", "width_weight": 1.5, "alignment": "left"}
+        ],
+        "rows": [
+          {"cells": ["模板", "官方规格", "结构蒸馏", "版式参数"]},
+          {"cells": ["正文", "富文本数据", {"runs": [{"text": "双路", "bold": true}, {"text": "渲染"}]}, "Word 与 PDF"]},
+          {"cells": ["验收", "生成文件", "结构与视觉检查", "回归记录"]}
+        ],
+        "caption": "结构化内容处理表"
+      },
+      {
+        "type": "figure_group",
+        "id": "fig-proposal-flow",
+        "chapter": 1,
+        "items": [
+          {
+            "path": "../../midterm/fixtures/assets/research-workflow.png",
+            "alt": "虚构的结构化输入流程图",
+            "caption": "统一输入"
+          },
+          {
+            "path": "../../midterm/fixtures/assets/research-workflow.png",
+            "alt": "虚构的双路输出流程图",
+            "caption": "双路输出"
+          }
+        ],
+        "caption": "开题报告结构化生成流程"
+      }
+    ],
+    "methods_and_means": [
+      {"type": "ordered_list", "items": [
+        {"content": "建立同源内容数据模型。"},
+        {"content": "实现 Word 与 LaTeX/PDF 渲染。"},
+        {"content": "运行结构、字形和分页回归。"}
+      ]}
+    ],
+    "research_steps": [
+      "第一阶段完成规格整理和数据建模。",
+      "第二阶段完成双路实现和匿名压力测试。"
+    ],
+    "references": [
+      "[1] ECMA International. ECMA-376 Office Open XML File Formats[S]. 2021.",
+      "[2] Lamport L. LaTeX: A Document Preparation System[M]. 1994."
+    ]
+  }
+}

@@ -232,6 +232,45 @@ def main() -> int:
     level_four = level_two["items"][0]["children"]["items"][0]["children"]
     assert level_four["items"][0]["children"] is None
 
+    data_table = normalize_content_block(
+        {
+            "type": "data_table",
+            "columns": [
+                {"header": "指标", "width_weight": 2, "alignment": "left"},
+                {"header": "结果", "alignment": "center"},
+            ],
+            "rows": [
+                {"cells": ["准确率", {"runs": [{"text": "98.6", "bold": True}, {"text": "%"}]}]},
+                {"cells": ["误差", "0.12"]},
+            ],
+            "caption": "匿名实验结果",
+        },
+        "fixture.data_table",
+        200,
+    )
+    assert data_table["type"] == "data_table"
+    assert [column["width_weight"] for column in data_table["columns"]] == [2.0, 1.0]
+    assert data_table["rows"][0][1][0]["bold"] is True
+    assert data_table["caption_runs"][0]["text"] == "匿名实验结果"
+
+    figure_group = normalize_content_block(
+        {
+            "type": "figure_group",
+            "id": "fig-group001",
+            "chapter": 2,
+            "items": [
+                {"path": "a.png", "alt": "方法一结果", "caption": "方法一"},
+                {"path": "b.png", "alt": "方法二结果", "caption": "方法二"},
+            ],
+            "caption": "两种方法结果对比",
+        },
+        "fixture.figure_group",
+        200,
+    )
+    assert figure_group["type"] == "figure_group"
+    assert [item["subfigure_label"] for item in figure_group["items"]] == ["（a）", "（b）"]
+    assert figure_group["caption_runs"][0]["text"] == "两种方法结果对比"
+
     legacy_ordered = normalize_content_block(
         {"type": "ordered_list", "items": [{"content": "旧列表"}]},
         "fixture.legacy_ordered",

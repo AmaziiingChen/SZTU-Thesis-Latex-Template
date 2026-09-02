@@ -49,6 +49,7 @@ FIXTURE_NAMES = (
     "cover-subscript",
     "reference-overflow",
     "image-page-break",
+    "structured-content",
 )
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 MM_TO_PT = 72.0 / 25.4
@@ -832,6 +833,16 @@ def content_texts(normalized: dict[str, Any]) -> list[str]:
                 add_list(block)
             elif block["type"] == "image" and block.get("caption_runs"):
                 values.append(runs_text(block["caption_runs"]))
+            elif block["type"] == "figure_group":
+                values.append(runs_text(block["caption_runs"]))
+                for item in block["items"]:
+                    if item["caption_runs"]:
+                        values.append(runs_text(item["caption_runs"]))
+            elif block["type"] == "data_table":
+                values.extend(runs_text(column["header_runs"]) for column in block["columns"])
+                values.extend(runs_text(cell) for row in block["rows"] for cell in row)
+                if block["caption_runs"]:
+                    values.append(runs_text(block["caption_runs"]))
 
     add_blocks(normalized["sections"]["basic_content_and_requirements"])
     for item in normalized["sections"]["schedule"]:
@@ -1613,6 +1624,31 @@ def main() -> int:
                 * layout["paragraphs"]["first_line_indent_em"]
             ) <= 0.01
 
+        if name == "structured-content":
+            basic_blocks = normalized["sections"]["basic_content_and_requirements"]
+            table_block = next(item for item in basic_blocks if item["type"] == "data_table")
+            assert len(table_block["columns"]) == 4
+            assert len(table_block["rows"]) == 3
+            group = next(
+                item
+                for item in normalized["sections"]["required_materials"]
+                if item["type"] == "figure_group"
+            )
+            assert group["figure_label"] == "图 1-1"
+            assert [item["subfigure_label"] for item in group["items"]] == ["（a）", "（b）"]
+            embedded = main_table.rows[1].cells[0].tables[0]
+            assert len(embedded.rows) == 4 and len(embedded.columns) == 4
+            assert embedded.rows[0]._tr.get_or_add_trPr().find(qn("w:tblHeader")) is not None
+            assert all(row_has_cant_split(row) for row in embedded.rows)
+            group_table = main_table.rows[3].cells[0].tables[0]
+            assert len(group_table.rows) == 1 and len(group_table.columns) == 2
+            assert row_has_cant_split(group_table.rows[0])
+            image_alt = [item.get("descr") for item in document.element.xpath(".//wp:docPr")]
+            assert image_alt == [
+                "虚构的结构化数据输入流程图",
+                "虚构的双路文档生成流程图",
+            ]
+
         if name == "nested-list":
             basic_paragraphs = main_table.rows[1].cells[0].paragraphs
             basic_texts = [item.text for item in basic_paragraphs if item.text.strip()]
@@ -1747,6 +1783,11 @@ def main() -> int:
             assert r"\TaskCoverTitleLineOneHasSubscript{1}" in data_tex
             assert r"\TaskCoverTitleLineTwoHasSubscript{1}" in data_tex
             assert data_tex.count(r"\textsubscript{") >= 4
+        if name == "structured-content":
+            assert r"\begin{tblr}" in data_tex
+            assert r"\begin{minipage}[t]{0.4894\linewidth}" in data_tex
+            assert r"图 1\mbox{-}1" in data_tex
+            assert "（a）" in data_tex and "（b）" in data_tex
 
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)
@@ -1866,6 +1907,11 @@ def main() -> int:
                 )
                 assert float(figure["x0"]) >= 90.0
                 assert float(figure["x1"]) <= 516.2
+            if name == "structured-content":
+                assert any(page.images for page in pdf.pages)
+                assert "图1-1" in normalized_visible_text(extracted)
+                assert "（a）数据输入" in extracted
+                assert "（b）双路生成" in extracted
 
     assert schedule_indent_cases == {False, True}
     assert_word_cant_split_exceptions(

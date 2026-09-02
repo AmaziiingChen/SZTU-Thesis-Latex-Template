@@ -191,6 +191,19 @@
   "latex_pagination": {},
   "image": {
     "default_width_mm": 120.0,
-    "max_width_mm": 146.0
+    "max_width_mm": 146.0,
+    "max_height_mm": 170.0
+  },
+  "embedded_table": {
+    "width_mm": 142.0,
+    "border_pt": 0.5,
+    "cell_padding_mm": 1.2,
+    "caption_space_before_pt": 3.0,
+    "caption_space_after_pt": 3.0
+  },
+  "figure_group": {
+    "width_mm": 142.0,
+    "column_gap_mm": 3.0,
+    "max_item_height_mm": 72.0
   }
 }
