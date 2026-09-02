@@ -1,0 +1,62 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "graduation_year": 2026,
+    "title": "面向复杂工程数据的可复现实验记录与长参考文献稳定排版研究",
+    "student_name": "测试学生甲",
+    "student_id": "202600000101",
+    "college": "测试学院",
+    "major": "测试工程专业",
+    "class_name": "测试一班",
+    "advisor": "测试教师甲"
+  },
+  "sections": {
+    "basic_content_and_requirements": [
+      "本夹具仅用于验证大量中英文参考文献自然跨页时的连续表格边框、文献顺序和末尾签署区域，不对应任何真实学生、教师或研究项目。",
+      "正文保持正常长度，使分页压力主要来自参考文献区；渲染过程不得缩小官方字号、压缩行距或截断长英文题名。"
+    ],
+    "schedule": [
+      {"period": "第1—4周", "content": "完成公开资料检索、方案设计和测试数据准备。"},
+      {"period": "第5—10周", "content": "完成实现、对照实验、误差分析和中期检查。"},
+      {"period": "第11—16周", "content": "完成论文撰写、修改、答辩准备和材料归档。"}
+    ],
+    "required_materials": [],
+    "references": [
+      "[1] Fictional Research Group A. A Reproducible Workflow for Long Mixed-Language Reference Entries in Structured Graduation Documents[J]. Journal of Deterministic Document Engineering, 2026, 18(1): 1-18.",
+      "[2] 测试作者甲, 测试作者乙. 结构化过程文档的连续表格分页与边框闭合方法[J]. 虚构文档工程学报, 2026, 12(2): 19-36.",
+      "[3] Fictional Research Group B. Stable Wrapping of English Titles, Digital Object Identifiers, Volume Numbers, Issue Numbers, and Page Ranges inside Narrow Formal Tables[J]. Reproducible Publishing Systems, 2025, 9(4): 101-129. DOI: 10.0000/fictional.2025.0003.",
+      "[4] 测试作者丙. 中英文混排参考文献在正式表格中的换行与留白控制[D]. 虚构大学, 2025.",
+      "[5] Fictional Research Group C. Cross-Page Reference Lists without Font Shrinking or Manual Blank Paragraphs[C]//Proceedings of the Fictional Conference on Document Automation. 2026: 55-72.",
+      "[6] 测试作者丁, 测试作者戊. 面向双路渲染的参考文献顺序一致性检查[J/OL]. 虚构软件测试, 2026, 8(3): 40-58.",
+      "[7] Fictional Research Group D. Preserving Punctuation, Brackets, Slashes, Colons, Semicolons, and Long Author Lists in Generated Office and PDF Documents[J]. Formal Layout Review, 2024, 17(6): 201-228.",
+      "[8] 测试作者己. 任务书长参考文献列表的自动分页和签名区保护研究[M]. 测试出版社, 2026.",
+      "[9] Fictional Research Group E. Detecting Missing, Reordered, or Truncated Citations after Multi-Page Rendering[J]. Journal of Synthetic Regression Cases, 2025, 5(1): 1-27.",
+      "[10] 测试作者庚, 测试作者辛. 连续单列表格跨页片段的页首页尾规则验证[J]. 虚构排版研究, 2025, 11(5): 88-107.",
+      "[11] Fictional Research Group F. A Very Long Fictional Reference Entry Designed to Exercise Word Wrapping near the Right Cell Padding while Retaining a Readable Latin Font, Complete Text, and Stable Baseline Alignment[J]. International Journal of Artificial Test Fixtures, 2026, 22(7): 301-339.",
+      "[12] 测试作者壬. 正式表格中超长英文文献题名与中文条目的混合排列[D/OL]. 虚构理工大学, 2026.",
+      "[13] Fictional Research Group G. Page-Break-Safe Bibliography Rendering for Local-First Graduation Document Tools[J]. Local Document Systems, 2026, 3(2): 66-94.",
+      "[14] 测试作者癸, 测试作者子. 本地文档生成工具中的匿名化回归夹具设计[J]. 虚构质量保障, 2026, 14(1): 12-31.",
+      "[15] Fictional Research Group H. Keeping the Approval and Handwritten Signature Region Available after a Bibliography Spans Several Pages[J]. Form Engineering Review, 2025, 16(8): 410-438.",
+      "[16] 测试作者丑. 参考文献结束位置与签署区域完整性的自动检查方法[P]. 虚构专利: CN000000000A, 2026.",
+      "[17] Fictional Research Group I. Regression Assertions for Continuous Borders, Final Bundles, and Non-Splitting Signature Areas in A4 Forms[J]. Document Reliability Letters, 2026, 7(3): 73-99.",
+      "[18] 测试作者寅, 测试作者卯. 不缩小字号条件下的长内容分页策略[J]. 虚构计算机应用, 2024, 20(9): 501-520.",
+      "[19] Fictional Research Group J. Complete Text Extraction as a Structural Gate before Visual Pagination Review[J]. Evidence-Aware Publishing, 2026, 2(4): 140-169.",
+      "[20] 测试作者辰. 中英文参考文献条目的段落级语义保存与双路输出[J]. 虚构信息处理, 2026, 6(2): 34-59.",
+      "[21] Fictional Research Group K. Avoiding Duplicate Headers when a Single Logical Form Cell Continues on the Next Page[J]. Structured Form Systems, 2025, 13(5): 250-278.",
+      "[22] 测试作者巳, 测试作者午. 任务书参考文献的编号、标点和换行回归检查[J]. 虚构教育技术, 2025, 19(6): 99-118.",
+      "[23] Fictional Research Group L. Deterministic Pagination under Mixed Chinese and Times New Roman Typography[J]. Cross-Platform Typography Tests, 2026, 10(1): 1-30.",
+      "[24] 测试作者未. 长参考文献压力样本的合成、匿名化和持续集成验证[R]. 虚构文档实验室, 2026."
+    ],
+    "topic_information": {
+      "nature": "graduation_thesis",
+      "source": {
+        "type": "research_project",
+        "research_project": {
+          "level": "other",
+          "other_level": "虚构校级测试项目",
+          "project_number": "FICTIONAL-REF-OVERFLOW-2026"
+        }
+      }
+    }
+  }
+}

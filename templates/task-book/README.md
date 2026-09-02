@@ -93,7 +93,8 @@ PY=/Users/chen/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/b
 "$PY" templates/task-book/test.py
 ```
 
-测试覆盖八类 fixture、模型负向约束、封面四行字段与一行/两行题目对齐、Word 结构与字体、
+测试覆盖公开虚构 fixture（包括参考文献跨页、最终签署区、临近分页的图片及其题注和后续正文）、
+模型负向约束、封面四行字段与一行/两行题目对齐、Word 结构与字体、
 须知 1.5 倍行距、连续表格与上下内边距、空心框内勾选、项目编号横线、自拟题目纵列、
 签名与日期横线、富文本、上下标、图片、四级有序/无序混合列表、长短字段、LaTeX 跨页闭口、字体嵌入、
 A4 几何、文本顺序和中文字形门禁。

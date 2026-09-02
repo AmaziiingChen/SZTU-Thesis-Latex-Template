@@ -47,6 +47,8 @@ FIXTURE_NAMES = (
     "rich-text-list",
     "nested-list",
     "cover-subscript",
+    "reference-overflow",
+    "image-page-break",
 )
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 MM_TO_PT = 72.0 / 25.4
@@ -796,6 +798,12 @@ def assert_word_topic_choices(
 
 def normalized_visible_text(value: str) -> str:
     return re.sub(r"\s+", "", value)
+
+
+def normalized_hyphenation_text(value: str) -> str:
+    """Normalize TeX discretionary line-break hyphens for text-presence checks."""
+
+    return re.sub(r"[\s-]+", "", value)
 
 
 def content_texts(normalized: dict[str, Any]) -> list[str]:
@@ -1572,6 +1580,39 @@ def main() -> int:
                 for item in all_runs
             )
 
+        if name == "reference-overflow":
+            assert normalized["metadata"]["student_name"].startswith("测试")
+            assert normalized["metadata"]["student_id"].startswith("202600000")
+            assert len(normalized["sections"]["references"]) == 24
+
+        if name == "image-page-break":
+            assert normalized["metadata"]["student_name"].startswith("测试")
+            assert normalized["metadata"]["student_id"].startswith("202600000")
+            image_alt = [
+                item.get("descr")
+                for item in document.element.xpath(".//wp:docPr")
+            ]
+            assert image_alt == ["虚构的材料制备、表征、反应和结果分析流程示意图"]
+            basic_paragraphs = main_table.rows[1].cells[0].paragraphs
+            caption_index = next(
+                index
+                for index, paragraph in enumerate(basic_paragraphs)
+                if paragraph.text == "图 1  合成实验流程与数据复核路径"
+            )
+            trailing_index = next(
+                index
+                for index, paragraph in enumerate(basic_paragraphs)
+                if paragraph.text.startswith("图片之后的正文必须继续")
+            )
+            assert trailing_index == caption_index + 1
+            trailing = basic_paragraphs[trailing_index]
+            assert abs(points_or_zero(trailing.paragraph_format.left_indent)) <= 0.01
+            assert abs(
+                points_or_zero(trailing.paragraph_format.first_line_indent)
+                - layout["typography"]["body"]["size_pt"]
+                * layout["paragraphs"]["first_line_indent_em"]
+            ) <= 0.01
+
         if name == "nested-list":
             basic_paragraphs = main_table.rows[1].cells[0].paragraphs
             basic_texts = [item.text for item in basic_paragraphs if item.text.strip()]
@@ -1715,7 +1756,11 @@ def main() -> int:
         extracted = run(["pdftotext", str(pdf_path), "-"], cwd=project_dir)
         compact = normalized_visible_text(extracted)
         for expected in content_texts(normalized):
-            assert normalized_visible_text(expected) in compact, expected
+            if normalized_visible_text(expected) not in compact:
+                assert (
+                    normalized_hyphenation_text(expected)
+                    in normalized_hyphenation_text(extracted)
+                ), expected
         for fixed_text in (
             "深圳技术大学",
             "本科生毕业论文（设计）须知",
@@ -1776,6 +1821,51 @@ def main() -> int:
                 assert r"\textsuperscript{−1}" in data_tex
                 assert r"\textbf{实验要求：}" in data_tex
                 assert r"\TaskFigure{assets/" in data_tex
+            if name == "reference-overflow":
+                reference_pages = []
+                for reference in normalized["sections"]["references"]:
+                    expected = normalized_hyphenation_text(runs_text(reference))[:50]
+                    page_index = next(
+                        index
+                        for index, page in enumerate(pdf.pages)
+                        if expected
+                        in normalized_hyphenation_text(page.extract_text() or "")
+                    )
+                    reference_pages.append(page_index)
+                assert reference_pages == sorted(reference_pages)
+                assert len(set(reference_pages)) >= 2
+                topic_page = next(
+                    index
+                    for index, page in enumerate(pdf.pages)
+                    if normalized_visible_text("四、选题信息：")
+                    in normalized_visible_text(page.extract_text() or "")
+                )
+                assert topic_page >= reference_pages[-1]
+            if name == "image-page-break":
+                caption_text = normalized_visible_text(
+                    "图 1  合成实验流程与数据复核路径"
+                )
+                trailing_text = normalized_visible_text(
+                    "图片之后的正文必须继续保持正常两字符首行缩进"
+                )
+                caption_page = next(
+                    index
+                    for index, page in enumerate(pdf.pages)
+                    if caption_text in normalized_visible_text(page.extract_text() or "")
+                )
+                trailing_page = next(
+                    index
+                    for index, page in enumerate(pdf.pages)
+                    if trailing_text in normalized_visible_text(page.extract_text() or "")
+                )
+                assert trailing_page >= caption_page
+                assert pdf.pages[caption_page].images
+                figure = max(
+                    pdf.pages[caption_page].images,
+                    key=lambda item: float(item["x1"]) - float(item["x0"]),
+                )
+                assert float(figure["x0"]) >= 90.0
+                assert float(figure["x1"]) <= 516.2
 
     assert schedule_indent_cases == {False, True}
     assert_word_cant_split_exceptions(
