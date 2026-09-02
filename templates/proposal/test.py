@@ -30,6 +30,10 @@ from common.python.pdf_geometry import (  # noqa: E402
     clustered,
 )
 from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.regression_fixtures import (  # noqa: E402
+    load_page_range_recipes,
+    materialize_page_range_fixture,
+)
 
 
 def run(command: list[str], *, cwd: Path) -> str:
@@ -125,15 +129,30 @@ def main() -> int:
     assert r"\end{adjustwidth}" not in between_body_and_signature
     assert r"\begin{center}" not in between_body_and_signature
 
-    for name in (
+    fixture_names = (
         "short",
         "normal",
         "long",
         "layout_stress",
         "nested-list",
         "structured-content",
-    ):
-        fixture = proposal_dir / "fixtures" / f"{name}.json"
+        "page-range-maximum",
+    )
+    page_range_recipes = load_page_range_recipes(
+        proposal_dir.parent / "common" / "fixtures" / "page-range-stress-recipes.json"
+    )
+    page_range_recipe = page_range_recipes["proposal"]
+    page_range_fixture = materialize_page_range_fixture(
+        proposal_dir / "fixtures" / page_range_recipe["base_fixture"],
+        page_range_recipe,
+        output_root / "page-range-maximum.json",
+    )
+    for name in fixture_names:
+        fixture = (
+            page_range_fixture
+            if name == "page-range-maximum"
+            else proposal_dir / "fixtures" / f"{name}.json"
+        )
         fixture_data = json.loads(fixture.read_text(encoding="utf-8"))
         assert fixture_data["schema_version"] == "0.2"
         assert "methods_and_means" in fixture_data["sections"]
@@ -380,7 +399,11 @@ def main() -> int:
         match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)
         assert match is not None
         pages = int(match.group(1))
-        assert 1 <= pages <= 8
+        if name == "page-range-maximum":
+            minimum, maximum = page_range_recipe["expected_pdf_pages"]
+            assert minimum <= pages <= maximum
+        else:
+            assert 1 <= pages <= 8
         fonts = run(["pdffonts", str(latex_dir / "main.pdf")], cwd=project_dir)
         assert "SimSun" in fonts
         assert "SimHei" in fonts

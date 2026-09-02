@@ -24,6 +24,10 @@ if str(TEMPLATES_DIR) not in sys.path:
     sys.path.insert(0, str(TEMPLATES_DIR))
 
 from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.regression_fixtures import (  # noqa: E402
+    load_page_range_recipes,
+    materialize_page_range_fixture,
+)
 
 
 def run(command: list[str], *, cwd: Path) -> str:
@@ -174,9 +178,23 @@ def main() -> int:
         "outline-numbering",
         "structured-content",
         "extreme-pagination",
+        "page-range-maximum",
+    )
+    page_range_recipes = load_page_range_recipes(
+        midterm_dir.parent / "common" / "fixtures" / "page-range-stress-recipes.json"
+    )
+    page_range_recipe = page_range_recipes["midterm"]
+    page_range_fixture = materialize_page_range_fixture(
+        midterm_dir / "fixtures" / page_range_recipe["base_fixture"],
+        page_range_recipe,
+        output_root / "page-range-maximum.json",
     )
     for name in fixture_names:
-        fixture = midterm_dir / "fixtures" / f"{name}.json"
+        fixture = (
+            page_range_fixture
+            if name == "page-range-maximum"
+            else midterm_dir / "fixtures" / f"{name}.json"
+        )
         raw = json.loads(fixture.read_text(encoding="utf-8"))
         normalized = word_renderer.validate_data(raw)
         assert normalized["schema_version"] == "0.1"
@@ -536,7 +554,10 @@ def main() -> int:
         match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)
         assert match is not None
         page_count = int(match.group(1))
-        if name == "extreme-pagination":
+        if name == "page-range-maximum":
+            minimum, maximum = page_range_recipe["expected_pdf_pages"]
+            assert minimum <= page_count <= maximum
+        elif name == "extreme-pagination":
             assert 7 <= page_count <= 17
         else:
             assert 2 <= page_count <= 8

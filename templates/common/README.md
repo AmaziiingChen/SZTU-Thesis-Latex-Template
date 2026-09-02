@@ -21,9 +21,13 @@
 - `python/pdf_geometry.py`：PDF 字符包围盒、居中和边线栅格断言。
 - `python/import_diagnostics.py`：开题报告、任务书和中期检查批次的匿名完整性清单，
   区分缺件、同类冲突、跨类别重复、扫描件、无文字证据、加密和解析失败；
+- `python/regression_fixtures.py`：从公开匿名基础夹具确定性生成分页压力数据；生成结果仍是
+  各模板原有 Schema，且只写入 `tmp/`；
 - `latex/sztu-process-form.tex`：连续边框、可跨页正文分区、固定分区和紧密拼接的公共实现；
 - `fixtures/pasted-scientific-text.json`：Word/WPS 粘贴中常见的 Unicode
-  上下标与摄氏度符号回归样例。
+  上下标与摄氏度符号回归样例；
+- `fixtures/page-range-stress-recipes.json`：三类过程文档的匿名页数压力配方，仅供测试读取，
+  不是生产输入格式或版式规范。
 
 公共规则的解释和使用边界见
 [`docs/TEMPLATE_ENGINEERING_GUIDE.md`](../../docs/TEMPLATE_ENGINEERING_GUIDE.md)。

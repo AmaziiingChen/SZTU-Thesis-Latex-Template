@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "cases": {
+    "proposal": {
+      "base_fixture": "long.json",
+      "section_targets": {
+        "significance_and_status": 22,
+        "research_content": 25,
+        "methods_and_means": 18,
+        "research_steps": 18
+      },
+      "reference_target": 30,
+      "expected_pdf_pages": [8, 9]
+    },
+    "task-book": {
+      "base_fixture": "long.json",
+      "section_targets": {
+        "basic_content_and_requirements": 55,
+        "required_materials": 35
+      },
+      "reference_target": 45,
+      "expected_pdf_pages": [10, 12]
+    },
+    "midterm": {
+      "base_fixture": "normal.json",
+      "section_targets": {
+        "main_research_content": 75,
+        "progress": 55
+      },
+      "copy_text_multiplier": 3,
+      "expected_pdf_pages": [15, 17]
+    }
+  }
+}

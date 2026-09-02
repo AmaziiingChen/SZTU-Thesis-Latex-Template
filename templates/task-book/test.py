@@ -35,6 +35,10 @@ from common.python.content import (  # noqa: E402
     starts_with_calendar_date,
 )
 from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.regression_fixtures import (  # noqa: E402
+    load_page_range_recipes,
+    materialize_page_range_fixture,
+)
 
 
 FIXTURE_NAMES = (
@@ -1439,8 +1443,21 @@ def main() -> int:
     fixture_data: dict[str, dict[str, Any]] = {}
     normalized_data: dict[str, dict[str, Any]] = {}
     schedule_indent_cases: set[bool] = set()
-    for name in FIXTURE_NAMES:
-        fixture = task_dir / "fixtures" / f"{name}.json"
+    page_range_recipes = load_page_range_recipes(
+        task_dir.parent / "common" / "fixtures" / "page-range-stress-recipes.json"
+    )
+    page_range_recipe = page_range_recipes["task-book"]
+    page_range_fixture = materialize_page_range_fixture(
+        task_dir / "fixtures" / page_range_recipe["base_fixture"],
+        page_range_recipe,
+        output_root / "page-range-maximum" / "input.json",
+    )
+    for name in (*FIXTURE_NAMES, "page-range-maximum"):
+        fixture = (
+            page_range_fixture
+            if name == "page-range-maximum"
+            else task_dir / "fixtures" / f"{name}.json"
+        )
         raw = json.loads(fixture.read_text(encoding="utf-8"))
         normalized = word_renderer.validate_data(raw)
         if name == "minimal":
@@ -1812,6 +1829,14 @@ def main() -> int:
         pdf_path = latex_dir / "main.pdf"
         info = run(["pdfinfo", str(pdf_path)], cwd=project_dir)
         assert "Page size:       595.28 x 841.89 pts (A4)" in info
+        page_match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)
+        assert page_match is not None
+        page_count = int(page_match.group(1))
+        if name == "page-range-maximum":
+            minimum, maximum = page_range_recipe["expected_pdf_pages"]
+            assert minimum <= page_count <= maximum
+        else:
+            assert 2 <= page_count <= 12
         fonts = run(["pdffonts", str(pdf_path)], cwd=project_dir)
         assert_pdf_fonts(fonts)
         extracted = run(["pdftotext", str(pdf_path), "-"], cwd=project_dir)

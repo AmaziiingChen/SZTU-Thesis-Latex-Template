@@ -37,6 +37,11 @@ from common.python.process_form import (  # noqa: E402
     load_process_document_layout,
     process_form_latex_tokens,
 )
+from common.python.regression_fixtures import (  # noqa: E402
+    RegressionFixtureError,
+    load_page_range_recipes,
+    materialize_page_range_fixture,
+)
 from common.python.typography import (  # noqa: E402
     load_font_policy,
 )
@@ -190,6 +195,37 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory() as temporary_directory:
         temporary_path = Path(temporary_directory)
+        page_range_recipes = load_page_range_recipes(
+            COMMON_DIR / "fixtures" / "page-range-stress-recipes.json"
+        )
+        proposal_stress = materialize_page_range_fixture(
+            TEMPLATES_DIR / "proposal" / "fixtures" / "long.json",
+            page_range_recipes["proposal"],
+            temporary_path / "proposal-page-range.json",
+        )
+        proposal_stress_data = json.loads(
+            proposal_stress.read_text(encoding="utf-8")
+        )
+        assert len(
+            proposal_stress_data["sections"]["significance_and_status"]
+        ) == page_range_recipes["proposal"]["section_targets"][
+            "significance_and_status"
+        ]
+        assert len(proposal_stress_data["sections"]["references"]) == 30
+        assert "第001组匿名分页压力内容" in proposal_stress.read_text(
+            encoding="utf-8"
+        )
+        try:
+            materialize_page_range_fixture(
+                TEMPLATES_DIR / "proposal" / "fixtures" / "long.json",
+                {"section_targets": {"research_content": 1}},
+                temporary_path / "invalid-page-range.json",
+            )
+        except RegressionFixtureError:
+            pass
+        else:
+            raise AssertionError("stress recipes must not remove base content")
+
         blank_pdf = temporary_path / "blank.pdf"
         from pypdf import PdfWriter
 
