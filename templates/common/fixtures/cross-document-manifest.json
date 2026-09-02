@@ -1,0 +1,200 @@
+{
+  "salt": "anonymous-fixture-salt-2026",
+  "records": [
+    {
+      "source_key": "complete-case",
+      "document_type": "proposal",
+      "path": "fixture/complete-proposal.pdf",
+      "evidence": {
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "page_count": 4,
+        "text_char_count": 2400,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    },
+    {
+      "source_key": "complete-case",
+      "document_type": "task-book",
+      "path": "fixture/complete-task-book.pdf",
+      "evidence": {
+        "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "page_count": 4,
+        "text_char_count": 0,
+        "page_image_count": 4,
+        "parser": "fixture",
+        "evidence_status": "scan_only"
+      }
+    },
+    {
+      "source_key": "complete-case",
+      "document_type": "midterm",
+      "path": "fixture/complete-midterm.pdf",
+      "evidence": {
+        "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "page_count": 3,
+        "text_char_count": 1600,
+        "page_image_count": 1,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    },
+    {
+      "source_key": "missing-case",
+      "document_type": "proposal",
+      "path": "fixture/missing-proposal.pdf",
+      "evidence": {
+        "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+        "page_count": 3,
+        "text_char_count": 1200,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    },
+    {
+      "source_key": "collision-case",
+      "document_type": "proposal",
+      "path": "fixture/collision-proposal-a.pdf",
+      "evidence": {
+        "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+        "page_count": 3,
+        "text_char_count": 1000,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    },
+    {
+      "source_key": "collision-case",
+      "document_type": "proposal",
+      "path": "fixture/collision-proposal-b.pdf",
+      "evidence": {
+        "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+        "page_count": 4,
+        "text_char_count": 1100,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    },
+    {
+      "source_key": "collision-case",
+      "document_type": "task-book",
+      "path": "fixture/collision-task-book.pdf",
+      "evidence": {
+        "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "page_count": 4,
+        "text_char_count": 0,
+        "page_image_count": 4,
+        "parser": "fixture",
+        "evidence_status": "scan_only"
+      }
+    },
+    {
+      "source_key": "collision-case",
+      "document_type": "midterm",
+      "path": "fixture/collision-midterm.pdf",
+      "evidence": {
+        "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+        "page_count": 3,
+        "text_char_count": 900,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    },
+    {
+      "source_key": "duplicate-case",
+      "document_type": "proposal",
+      "path": "fixture/duplicate-proposal.pdf",
+      "evidence": {
+        "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "page_count": 3,
+        "text_char_count": 700,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    },
+    {
+      "source_key": "duplicate-case",
+      "document_type": "task-book",
+      "path": "fixture/duplicate-task-book.pdf",
+      "evidence": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "page_count": 4,
+        "text_char_count": 0,
+        "page_image_count": 4,
+        "parser": "fixture",
+        "evidence_status": "scan_only"
+      }
+    },
+    {
+      "source_key": "duplicate-case",
+      "document_type": "midterm",
+      "path": "fixture/duplicate-midterm.pdf",
+      "evidence": {
+        "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "page_count": 3,
+        "text_char_count": 700,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    },
+    {
+      "source_key": "failure-case",
+      "document_type": "proposal",
+      "path": "fixture/failure-proposal.pdf",
+      "evidence": {
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "page_count": 0,
+        "text_char_count": 0,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "parse_failed"
+      }
+    },
+    {
+      "source_key": "failure-case",
+      "document_type": "task-book",
+      "path": "fixture/failure-task-book.pdf",
+      "evidence": {
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "page_count": 4,
+        "text_char_count": 0,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "no_text_evidence"
+      }
+    },
+    {
+      "source_key": "failure-case",
+      "document_type": "midterm",
+      "path": "fixture/failure-midterm.pdf",
+      "evidence": {
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "page_count": 3,
+        "text_char_count": 0,
+        "page_image_count": 0,
+        "parser": "fixture",
+        "evidence_status": "encrypted"
+      }
+    },
+    {
+      "source_key": "out-of-scope-case",
+      "document_type": "thesis",
+      "path": "fixture/out-of-scope-thesis.pdf",
+      "evidence": {
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "page_count": 50,
+        "text_char_count": 30000,
+        "page_image_count": 10,
+        "parser": "fixture",
+        "evidence_status": "text_layer"
+      }
+    }
+  ]
+}

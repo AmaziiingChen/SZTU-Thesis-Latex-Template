@@ -19,6 +19,8 @@
 - `python/outline_numbering.py`：学校允许的五种目录编号格式、中文序数和最多六级的
   结构校验；中期检查与未来毕业论文目录共用该实现；
 - `python/pdf_geometry.py`：PDF 字符包围盒、居中和边线栅格断言。
+- `python/import_diagnostics.py`：开题报告、任务书和中期检查批次的匿名完整性清单，
+  区分缺件、同类冲突、跨类别重复、扫描件、无文字证据、加密和解析失败；
 - `latex/sztu-process-form.tex`：连续边框、可跨页正文分区、固定分区和紧密拼接的公共实现；
 - `fixtures/pasted-scientific-text.json`：Word/WPS 粘贴中常见的 Unicode
   上下标与摄氏度符号回归样例。
@@ -27,6 +29,39 @@
 [`docs/TEMPLATE_ENGINEERING_GUIDE.md`](../../docs/TEMPLATE_ENGINEERING_GUIDE.md)。
 
 新模板必须实际引用公共层；禁止复制一份公共代码后在文档目录中独立演化。
+
+## 私有批次输入诊断
+
+`scripts/build_process_document_manifest.py` 可在本机读取私有 PDF 清单，输出不含姓名、
+原始对象键、文件名、绝对路径或提取文字的匿名 JSON。输入文件格式如下：
+
+```json
+{
+  "documents": [
+    {
+      "source_key": "仅在本机使用的匹配键",
+      "document_type": "proposal",
+      "path": "/本机/私有/文件.pdf"
+    }
+  ]
+}
+```
+
+`document_type` 预期为三件套语义：`proposal`、`task-book`、`midterm`；其他值会作为
+`UNSUPPORTED_DOCUMENT_TYPE` 报告且不参与三件套完整性判断。盐值文件至少
+16 字节，必须与输入和输出一起放在 `references/private/`、`output/**/private/` 或
+`tmp/` 等不提交位置：
+
+```bash
+python3 scripts/build_process_document_manifest.py \
+  --input references/private/process-input.json \
+  --salt-file references/private/process-manifest.salt \
+  --output output/process/private/manifest.json
+```
+
+`scan_only` 只表示 PDF 没有文字层但含页面图像，应进入 OCR 或人工队列；它不表示内容
+为空，也不表示中文字形门禁通过。`text_layer` 同样只证明存在可提取文字，后续仍须独立
+执行中文字形、逐页版式和 Word/WPS 门禁。
 
 从 Word、WPS 或文献网站粘贴的 Unicode 上下标字符（如 `CO₂`、`R²`）
 必须在内容规范化阶段转换为普通字符与 `script=sub/super` 运行属性；

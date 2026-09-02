@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 COMMON_DIR = Path(__file__).resolve().parent
@@ -20,6 +22,11 @@ from common.python.content import (  # noqa: E402
     split_numbered_subitems,
 )
 from common.python.font_files import cjk_emphasis_options  # noqa: E402
+from common.python.import_diagnostics import (  # noqa: E402
+    ImportDiagnosticError,
+    build_process_document_manifest,
+    inspect_pdf,
+)
 from common.python.outline_numbering import (  # noqa: E402
     chinese_number,
     number_outline_levels,
@@ -115,6 +122,145 @@ def main() -> int:
     )
     assert "sztuformflow/.style" in latex_support
     assert r"\newcommand{\SZTUFormTightJoin}" in latex_support
+
+    manifest_fixture = json.loads(
+        (COMMON_DIR / "fixtures" / "cross-document-manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    evidence_by_path = {
+        record["path"]: record["evidence"]
+        for record in manifest_fixture["records"]
+    }
+    manifest_records = [
+        {
+            "source_key": record["source_key"],
+            "document_type": record["document_type"],
+            "path": record["path"],
+        }
+        for record in manifest_fixture["records"]
+    ]
+    manifest = build_process_document_manifest(
+        manifest_records,
+        salt=manifest_fixture["salt"].encode("utf-8"),
+        inspector=lambda path: evidence_by_path[str(path)],
+    )
+    assert manifest["summary"] == {
+        "bundle_count": 5,
+        "document_count": 15,
+        "complete_bundle_count": 3,
+        "issue_count": 11,
+        "evidence_status_counts": {
+            "encrypted": 1,
+            "no_text_evidence": 1,
+            "parse_failed": 1,
+            "scan_only": 3,
+            "text_layer": 9,
+        },
+    }
+    issue_codes = [issue["code"] for issue in manifest["issues"]]
+    assert issue_codes.count("MISSING_DOCUMENT") == 2
+    assert issue_codes.count("SAME_TYPE_COLLISION") == 1
+    assert issue_codes.count("CROSS_TYPE_BYTE_DUPLICATE") == 1
+    assert issue_codes.count("OCR_REQUIRED") == 3
+    assert issue_codes.count("PDF_PARSE_FAILED") == 1
+    assert issue_codes.count("MANUAL_REVIEW_REQUIRED") == 1
+    assert issue_codes.count("PASSWORD_REQUIRED") == 1
+    assert issue_codes.count("UNSUPPORTED_DOCUMENT_TYPE") == 1
+    serialized_manifest = json.dumps(manifest, ensure_ascii=False)
+    for record in manifest_fixture["records"]:
+        assert record["source_key"] not in serialized_manifest
+        assert record["path"] not in serialized_manifest
+        assert Path(record["path"]).name not in serialized_manifest
+    assert "thesis" not in serialized_manifest
+    thesis_issue = next(
+        issue
+        for issue in manifest["issues"]
+        if issue["code"] == "UNSUPPORTED_DOCUMENT_TYPE"
+    )
+    assert "bundle_id" not in thesis_issue
+    assert thesis_issue["supplied_type_id"]
+
+    try:
+        build_process_document_manifest([], salt=b"too-short")
+    except ImportDiagnosticError:
+        pass
+    else:
+        raise AssertionError("short manifest salts must be rejected")
+
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        temporary_path = Path(temporary_directory)
+        blank_pdf = temporary_path / "blank.pdf"
+        from pypdf import PdfWriter
+
+        writer = PdfWriter()
+        writer.add_blank_page(width=595, height=842)
+        with blank_pdf.open("wb") as destination:
+            writer.write(destination)
+        blank_evidence = inspect_pdf(blank_pdf)
+        assert blank_evidence["page_count"] == 1
+        assert blank_evidence["evidence_status"] == "no_text_evidence"
+
+        broken_pdf = temporary_path / "broken.pdf"
+        broken_pdf.write_bytes(b"not a PDF")
+        broken_evidence = inspect_pdf(broken_pdf)
+        assert broken_evidence["evidence_status"] == "parse_failed"
+        assert len(broken_evidence["sha256"]) == 64
+
+        missing_evidence = inspect_pdf(temporary_path / "missing.pdf")
+        assert missing_evidence["evidence_status"] == "parse_failed"
+        assert missing_evidence["parser"] == "filesystem"
+        assert missing_evidence["sha256"] == ""
+
+        cli_input = temporary_path / "private-input.json"
+        cli_salt = temporary_path / "private-salt.txt"
+        cli_output = temporary_path / "anonymous-manifest.json"
+        private_source_key = "private-fixture-key"
+        cli_input.write_text(
+            json.dumps(
+                {
+                    "documents": [
+                        {
+                            "source_key": private_source_key,
+                            "document_type": "proposal",
+                            "path": str(blank_pdf),
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        cli_salt.write_text("private-fixture-salt-2026", encoding="utf-8")
+        cli_result = subprocess.run(
+            [
+                sys.executable,
+                str(
+                    COMMON_DIR.parents[1]
+                    / "scripts"
+                    / "build_process_document_manifest.py"
+                ),
+                "--input",
+                str(cli_input),
+                "--salt-file",
+                str(cli_salt),
+                "--output",
+                str(cli_output),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert cli_result.returncode == 0, cli_result.stderr
+        cli_manifest_text = cli_output.read_text(encoding="utf-8")
+        assert private_source_key not in cli_manifest_text
+        assert str(blank_pdf) not in cli_manifest_text
+        assert blank_pdf.name not in cli_manifest_text
+        cli_manifest = json.loads(cli_manifest_text)
+        assert cli_manifest["summary"]["document_count"] == 1
+        assert {issue["code"] for issue in cli_manifest["issues"]} == {
+            "MANUAL_REVIEW_REQUIRED",
+            "MISSING_DOCUMENT",
+        }
 
     rich = normalize_paragraph(
         {
