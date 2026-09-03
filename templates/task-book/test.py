@@ -419,6 +419,9 @@ def assert_word_typography(
     assert_paragraph_role(document.paragraphs[1], styles["school_name"])
     assert_paragraph_role(document.paragraphs[2], styles["document_title"])
     assert_paragraph_role(document.paragraphs[3], styles["cohort"])
+    assert document.paragraphs[3].text == (
+        f"（ {normalized['metadata']['graduation_year']} 届）"
+    )
     for run in visible_runs(document.paragraphs[3]):
         assert run.bold is True
 
@@ -477,13 +480,13 @@ def assert_word_typography(
             assert_paragraph_role(paragraph, styles["topic_body"])
 
     topic_tables = main_table.rows[4].cells[0].tables
-    for nested in topic_tables[:2]:
+    for nested in topic_tables[:-1]:
         for row in nested.rows:
             for cell in row.cells:
                 for paragraph in cell.paragraphs:
                     if paragraph.text.strip():
                         assert_paragraph_role(paragraph, styles["topic_body"])
-    advisor_signature = topic_tables[2]
+    advisor_signature = topic_tables[-1]
     assert_paragraph_role(
         advisor_signature.rows[0].cells[0].paragraphs[0], styles["topic_body"]
     )
@@ -615,9 +618,10 @@ def assert_word_topic_choices(
 
     checked = "0052"
     unchecked = "00A3"
-    nature_paragraph = next(
-        item for item in paragraphs if item.text.startswith(topic_fixed["nature_label"])
-    )
+    assert len(topic_cell.tables) == 4
+    nature_table, research_table, project_table, final_table = topic_cell.tables
+    assert nature_table.rows[0].cells[0].text == topic_fixed["nature_label"]
+    nature_paragraph = nature_table.rows[0].cells[1].paragraphs[0]
     nature_options = topic_fixed["nature_options"]
     assert nature_options["graduation_design"] in nature_paragraph.text
     assert nature_options["graduation_thesis"] in nature_paragraph.text
@@ -628,18 +632,15 @@ def assert_word_topic_choices(
 
     source = topic["source"]
     source_type = source["type"]
-    assert len(topic_cell.tables) == 3
-    research_table, project_table, final_table = topic_cell.tables
-    research_cell = research_table.rows[0].cells[0]
+    assert research_table.rows[0].cells[0].text == topic_fixed["source_label"]
+    research_cell = research_table.rows[0].cells[1]
     research_line = research_cell.text
-    other_cell = research_table.rows[0].cells[1]
+    other_cell = research_table.rows[0].cells[2]
     project_value_cell = project_table.rows[0].cells[2]
     source_options = topic_fixed["source_options"]
     levels = topic_fixed["research_project_levels"]
     proposer_options = topic_fixed["self_proposed_by_options"]
-    assert research_line.startswith(
-        topic_fixed["source_label"] + source_options["research_project"]
-    )
+    assert research_line.startswith(source_options["research_project"])
     assert levels["national"] in research_line
     assert levels["provincial_ministerial"] in research_line
     assert symbols_in(research_cell._tc) == [
@@ -663,7 +664,7 @@ def assert_word_topic_choices(
     )
     assert other_cell.text == (other_text if other_selected else "")
     assert_bottom_rule(other_cell)
-    assert_no_bottom_rule(research_table.rows[0].cells[2])
+    assert_no_bottom_rule(research_table.rows[0].cells[3])
 
     assert project_table.rows[0].cells[1].text == topic_fixed["project_number_label"]
     expected_project_number = (
@@ -748,26 +749,46 @@ def assert_word_topic_choices(
     usable_width = float(layout["table"]["width_mm"]) - 2 * float(
         layout["table"]["horizontal_padding_mm"]
     )
+    topic_style = layout["typography"]["topic_body"]
     right_inset = float(layout["signature"]["right_inset_mm"])
     other_width = float(layout["signature"].get("topic_other_blank_width_mm", 32.0))
+    option_indent_em = float(
+        layout["signature"].get("topic_option_left_indent_em", 6.0)
+    )
+    option_indent_mm = (
+        float(topic_style["size_pt"]) * option_indent_em * 25.4 / 72.0
+    )
+    assert table_grid_dxa(nature_table) == [
+        twips_from_mm(option_indent_mm),
+        twips_from_mm(usable_width - option_indent_mm),
+    ]
     assert table_grid_dxa(research_table) == [
-        twips_from_mm(usable_width - other_width - right_inset),
+        twips_from_mm(option_indent_mm),
+        twips_from_mm(usable_width - option_indent_mm - other_width - right_inset),
         twips_from_mm(other_width),
         twips_from_mm(right_inset),
     ]
-    topic_style = layout["typography"]["topic_body"]
-    indent_mm = float(topic_style["size_pt"]) * 5 * 25.4 / 72.0
+    project_indent_mm = (
+        float(topic_style["size_pt"])
+        * float(layout["signature"].get("topic_project_left_indent_em", 5.0))
+        * 25.4
+        / 72.0
+    )
     project_label_width = float(
         layout["signature"].get("topic_project_label_width_mm", 25.0)
     )
+    project_blank_width = float(
+        layout["signature"].get("topic_project_blank_width_mm", 65.0)
+    )
     assert table_grid_dxa(project_table) == [
-        twips_from_mm(indent_mm),
+        twips_from_mm(project_indent_mm),
         twips_from_mm(project_label_width),
+        twips_from_mm(project_blank_width),
         twips_from_mm(
-            usable_width - indent_mm - project_label_width - right_inset
+            usable_width - project_indent_mm - project_label_width - project_blank_width
         ),
-        twips_from_mm(right_inset),
     ]
+    assert project_table.rows[0].cells[1].paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.LEFT
 
     signature_label_width = 42.0
     advisor_blank = float(layout["signature"]["advisor_blank_width_mm"])
@@ -780,17 +801,28 @@ def assert_word_topic_choices(
         twips_from_mm(right_inset),
     ]
     assert final_table.rows[0].cells[1].text == signatures["advisor"]
-    topic_indent = float(topic_style["size_pt"]) * float(
-        layout["signature"]["self_proposed_left_indent_em"]
+    option_indent = float(topic_style["size_pt"]) * float(
+        layout["signature"]["topic_option_left_indent_em"]
     )
+    child_indent = float(topic_style["size_pt"]) * float(
+        layout["signature"]["self_proposed_child_left_indent_em"]
+    )
+    assert abs(
+        points_or_zero(practice_paragraph.paragraph_format.left_indent)
+        - option_indent
+    ) <= 0.01
+    assert abs(
+        points_or_zero(self_heading_paragraph.paragraph_format.left_indent)
+        - option_indent
+    ) <= 0.01
     for paragraph in (
-        practice_paragraph,
-        self_heading_paragraph,
         teacher_paragraph,
         student_paragraph,
         joint_paragraph,
     ):
-        assert abs(points_or_zero(paragraph.paragraph_format.left_indent) - topic_indent) <= 0.01
+        assert abs(
+            points_or_zero(paragraph.paragraph_format.left_indent) - child_indent
+        ) <= 0.03
         assert paragraph.alignment == WD_ALIGN_PARAGRAPH.LEFT
     assert final_table.rows[0].cells[1].paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.RIGHT
     assert final_table.rows[0].cells[2].text == ""
@@ -947,6 +979,69 @@ def assert_pdf_closing_bundle(pdf, layout: dict[str, Any]) -> None:
     assert college_page == college_signature_page == len(pdf.pages)
     assert topic_page <= college_page
 
+    topic_words = pdf.pages[topic_page - 1].extract_words()
+    topic_top = float(found["四、选题信息："][1]["top"])
+
+    def topic_word(text: str) -> dict[str, Any]:
+        return next(
+            word
+            for word in topic_words
+            if word["text"] == text and float(word["top"]) > topic_top
+        )
+
+    primary_lefts = [
+        float(topic_word(text)["x0"])
+        for text in ("设计", "1.", "2.", "3.")
+    ]
+    assert max(primary_lefts) - min(primary_lefts) <= 0.8
+    self_proposed_left = float(topic_word("自拟题目")["x0"])
+    child_lefts = [
+        float(topic_word(text)["x0"])
+        for text in ("教师自拟", "学生自拟", "师生共拟")
+    ]
+    assert max(abs(left - self_proposed_left) for left in child_lefts) <= 0.8
+
+    topic_render_page = pdf.pages[topic_page - 1]
+    research_project = topic_word("科研项目")
+    project_number = topic_word("项目编号：")
+    assert abs(float(project_number["x0"]) - float(research_project["x0"])) <= 0.8
+    expected_project_rule_width = (
+        float(layout["signature"]["topic_project_blank_width_mm"]) * MM_TO_PT
+    )
+    project_rules = [
+        edge
+        for edge in topic_render_page.lines
+        if abs(float(edge["bottom"]) - float(edge["top"])) <= 0.2
+        and float(project_number["bottom"]) <= float(edge["top"]) <= float(project_number["bottom"]) + 5.0
+    ]
+    project_rule = min(
+        project_rules,
+        key=lambda edge: abs(float(edge["width"]) - expected_project_rule_width),
+    )
+    assert abs(float(project_rule["width"]) - expected_project_rule_width) <= 0.6
+
+    practice_project = topic_word("实践项目")
+    practice_center = (
+        float(practice_project["top"]) + float(practice_project["bottom"])
+    ) / 2
+    checkbox_rects = [
+        rect
+        for rect in topic_render_page.rects
+        if 5.0 <= float(rect["width"]) <= 10.0
+        and 5.0 <= float(rect["height"]) <= 10.0
+        and float(rect["x0"]) >= float(practice_project["x1"])
+        and abs(
+            (float(rect["top"]) + float(rect["bottom"])) / 2 - practice_center
+        ) <= 4.0
+    ]
+    practice_checkbox = min(checkbox_rects, key=lambda rect: float(rect["x0"]))
+    checkbox_center = (
+        float(practice_checkbox["top"]) + float(practice_checkbox["bottom"])
+    ) / 2
+    assert abs(checkbox_center - practice_center) <= 0.6
+    checkbox_gap = float(practice_checkbox["x0"]) - float(practice_project["x1"])
+    assert 1.5 <= checkbox_gap <= 3.2
+
     topic_form_right = max(
         float(edge["x0"])
         for edge in _long_vertical_edges(pdf.pages[topic_page - 1])
@@ -1021,6 +1116,12 @@ def assert_pdf_cover_geometry(
     assert abs(float(short_rule["width"]) - short_width) <= 0.6
 
     words = page.extract_words(extra_attrs=["fontname", "size"])
+    title_label = next(word for word in words if word["text"] == "题目：")
+    label_to_rule_gap = float(short_rule["x0"]) - float(title_label["x1"])
+    assert label_to_rule_gap >= -0.2
+    assert label_to_rule_gap <= (
+        float(cover["title_label_to_rule_gap_max_mm"]) * MM_TO_PT + 0.2
+    )
     title_words = [
         word
         for word in words
@@ -1092,6 +1193,17 @@ def assert_pdf_cover_geometry(
     )
     expected_cohort = f"（{normalized['metadata']['graduation_year']}届）"
     assert cohort_text == expected_cohort
+    ordered_cohort_chars = sorted(cohort_chars, key=lambda item: float(item["x0"]))
+    year_text = str(normalized["metadata"]["graduation_year"])
+    opening_parenthesis = ordered_cohort_chars[0]
+    first_year_digit = ordered_cohort_chars[1]
+    last_year_digit = ordered_cohort_chars[len(year_text)]
+    cohort_label = ordered_cohort_chars[len(year_text) + 1]
+    expected_inner_gap = float(cover["cohort_inner_gap_em"]) * 14.0
+    opening_gap = float(first_year_digit["x0"]) - float(opening_parenthesis["x1"])
+    label_gap = float(cohort_label["x0"]) - float(last_year_digit["x1"])
+    assert abs(opening_gap - expected_inner_gap) <= 0.8
+    assert abs(label_gap - expected_inner_gap) <= 0.8
     for char in cohort_chars:
         assert "SimHei" in char["fontname"]
         assert abs(float(char["size"]) - 14.0) <= 0.05
@@ -1531,7 +1643,7 @@ def main() -> int:
             if index in {1, 2, 3}:
                 assert paragraph_has_content(cell.paragraphs[-1])
 
-        advisor_table = main_table.rows[4].cells[0].tables[2]
+        advisor_table = main_table.rows[4].cells[0].tables[-1]
         college_table = main_table.rows[5].cells[0].tables[0]
         assert advisor_table.rows[0].cells[1].text == fixed["body"]["signature_labels"]["advisor"]
         assert_signature_table(

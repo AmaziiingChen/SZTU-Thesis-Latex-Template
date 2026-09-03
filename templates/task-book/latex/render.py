@@ -474,23 +474,40 @@ def typography_tex(layout: dict[str, Any]) -> str:
     table_width = float(table["width_mm"])
     right_inset = float(signature["right_inset_mm"])
     topic_size_pt = float(_style(layout, "topic_body")["size_pt"])
-    topic_indent_mm = topic_size_pt * 5 * 25.4 / 72.0
-    self_proposed_indent_mm = (
+    topic_project_indent_mm = (
         topic_size_pt
-        * float(signature.get("self_proposed_left_indent_em", 5.0))
+        * float(signature.get("topic_project_left_indent_em", 5.0))
+        * 25.4
+        / 72.0
+    )
+    topic_option_indent_mm = (
+        topic_size_pt
+        * float(signature.get("topic_option_left_indent_em", 6.0))
+        * 25.4
+        / 72.0
+    )
+    self_proposed_child_indent_mm = (
+        topic_size_pt
+        * float(signature.get("self_proposed_child_left_indent_em", 7.0833))
         * 25.4
         / 72.0
     )
     topic_project_label_width = float(
         signature.get("topic_project_label_width_mm", 25.0)
     )
-    topic_project_blank_width = (
-        table_width
-        - 2 * padding
-        - topic_indent_mm
-        - topic_project_label_width
-        - right_inset
+    topic_project_blank_width = float(
+        signature.get("topic_project_blank_width_mm", 65.0)
     )
+    topic_project_total_width = (
+        topic_project_indent_mm
+        + topic_project_label_width
+        + topic_project_blank_width
+        + right_inset
+    )
+    if topic_project_total_width > table_width - 2 * padding:
+        raise ValueError(
+            "task-book topic project-number field exceeds the usable table width"
+        )
 
     def paragraph_number(primary: str, fallback: str | None = None, default: float = 0.0) -> float:
         if primary in paragraphs:
@@ -560,6 +577,7 @@ def typography_tex(layout: dict[str, Any]) -> str:
             rf"\newcommand{{\SZTUSchoolNameTop}}{{{float(cover['school_name_top_mm']):g}mm}}",
             rf"\newcommand{{\SZTUDocumentTitleTop}}{{{float(cover['document_title_top_mm']):g}mm}}",
             rf"\newcommand{{\SZTUCohortTop}}{{{float(cover['cohort_top_mm']):g}mm}}",
+            rf"\newcommand{{\SZTUCohortInnerGap}}{{{float(cover.get('cohort_inner_gap_em', 0.25)):g}em}}",
             rf"\newcommand{{\SZTUTitleFieldTop}}{{{float(cover['title_field_top_mm']):g}mm}}",
             rf"\newcommand{{\SZTUMetadataRowOneTop}}{{{float(cover['metadata_rows_top_mm'][0]):g}mm}}",
             rf"\newcommand{{\SZTUMetadataRowTwoTop}}{{{float(cover['metadata_rows_top_mm'][1]):g}mm}}",
@@ -595,13 +613,16 @@ def typography_tex(layout: dict[str, Any]) -> str:
             rf"\newcommand{{\SZTUSignatureRightInset}}{{{float(signature['right_inset_mm']):g}mm}}",
             rf"\newcommand{{\SZTUTeacherSignatureBlank}}{{{float(signature.get('teacher_blank_width_mm', signature.get('advisor_blank_width_mm'))):g}mm}}",
             rf"\newcommand{{\SZTUCollegeSignatureBlank}}{{{float(signature.get('college_leader_blank_width_mm', signature.get('college_blank_width_mm'))):g}mm}}",
-            rf"\newcommand{{\SZTUTopicIndent}}{{{topic_indent_mm:g}mm}}",
-            rf"\newcommand{{\SZTUSelfProposedIndent}}{{{self_proposed_indent_mm:g}mm}}",
+            rf"\newcommand{{\SZTUTopicProjectIndent}}{{{topic_project_indent_mm:g}mm}}",
+            rf"\newcommand{{\SZTUTopicOptionIndent}}{{{topic_option_indent_mm:g}mm}}",
+            rf"\newcommand{{\SZTUSelfProposedChildIndent}}{{{self_proposed_child_indent_mm:g}mm}}",
             rf"\newcommand{{\SZTUTopicOtherBlank}}{{{float(signature.get('topic_other_blank_width_mm', 32.0)):g}mm}}",
             rf"\newcommand{{\SZTUTopicProjectLabelWidth}}{{{topic_project_label_width:g}mm}}",
             rf"\newcommand{{\SZTUTopicProjectBlank}}{{{topic_project_blank_width:g}mm}}",
             rf"\newcommand{{\SZTUTopicUnderlineGap}}{{{float(signature.get('topic_underline_gap_mm', 0.0)):g}mm}}",
+            rf"\newcommand{{\SZTUTopicCheckboxGap}}{{{float(signature.get('topic_checkbox_gap_em', 0.12)):g}em}}",
             rf"\newcommand{{\SZTUCheckboxSize}}{{{float(checkbox.get('size_em', 0.72)):g}em}}",
+            rf"\newcommand{{\SZTUCheckboxBaseline}}{{{float(checkbox.get('baseline_em', 0.03)):g}em}}",
             rf"\newcommand{{\SZTUCheckboxOutlineWidth}}{{{float(checkbox.get('outline_pt', 0.5)):g}pt}}",
             rf"\newcommand{{\SZTUCheckboxTickWidth}}{{{float(checkbox.get('tick_pt', 0.7)):g}pt}}",
             rf"\newcommand{{\SZTUDateYearBlank}}{{{float(signature.get('date_year_blank_width_mm', 12.7)):g}mm}}",
@@ -786,8 +807,10 @@ def fixed_tex(fixed: dict[str, Any]) -> str:
         )
         lines.append(rf"\long\def\{name}{{{escaped}}}")
     before_year, after_year = cohort_format.split("{graduation_year}")
+    before_year = before_year.rstrip()
+    after_year = after_year.lstrip()
     lines.append(
-        rf"\long\def\FixedCohortText{{{tex_escape(before_year)}{{\GraduationYear}}{tex_escape(after_year)}}}"
+        rf"\long\def\FixedCohortText{{{tex_escape(before_year)}\hspace{{\SZTUCohortInnerGap}}{{\GraduationYear}}\hspace{{\SZTUCohortInnerGap}}{tex_escape(after_year)}}}"
     )
     lines.append(
         rf"\long\def\FixedNoticeItems{{{render_notice_items(notice_items)}}}"

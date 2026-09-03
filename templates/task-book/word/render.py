@@ -1035,11 +1035,39 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
     levels = fixed_topic["research_project_levels"]
     proposer_options = fixed_topic["self_proposed_by_options"]
 
-    nature_line = cell.add_paragraph()
+    usable_width = float(LAYOUT["table"]["width_mm"]) - 2 * float(
+        LAYOUT["table"]["horizontal_padding_mm"]
+    )
+    right_inset = float(LAYOUT["signature"]["right_inset_mm"])
+    point_to_mm = 25.4 / 72.0
+    project_indent_em = float(
+        LAYOUT["signature"].get("topic_project_left_indent_em", 5.0)
+    )
+    option_indent_em = float(
+        LAYOUT["signature"].get("topic_option_left_indent_em", 6.0)
+    )
+    child_indent_em = float(
+        LAYOUT["signature"].get("self_proposed_child_left_indent_em", 7.0833)
+    )
+    project_indent_mm = style["size_pt"] * project_indent_em * point_to_mm
+    option_indent_mm = style["size_pt"] * option_indent_em * point_to_mm
+    option_indent_pt = style["size_pt"] * option_indent_em
+    child_indent_pt = style["size_pt"] * child_indent_em
+
+    nature_table = _add_inline_table(
+        cell,
+        (option_indent_mm, usable_width - option_indent_mm),
+    )
+    _write_inline_cell(
+        nature_table.rows[0].cells[0],
+        fixed_topic["nature_label"],
+        style=style,
+    )
+    nature_line = nature_table.rows[0].cells[1].paragraphs[0]
     _format_paragraph(nature_line)
     _append_runs(
         nature_line,
-        plain_runs(f"{fixed_topic['nature_label']}{nature_options['graduation_design']}"),
+        plain_runs(nature_options["graduation_design"]),
         style=style,
     )
     _append_checkbox(
@@ -1062,22 +1090,25 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
     level = project.get("level")
     other_label = project.get("other_level", "")
 
-    usable_width = float(LAYOUT["table"]["width_mm"]) - 2 * float(
-        LAYOUT["table"]["horizontal_padding_mm"]
-    )
-    right_inset = float(LAYOUT["signature"]["right_inset_mm"])
     other_width = float(LAYOUT["signature"].get("topic_other_blank_width_mm", 32.0))
-    research_prefix = usable_width - other_width - right_inset
+    research_options_width = (
+        usable_width - option_indent_mm - other_width - right_inset
+    )
     research_table = _add_inline_table(
         cell,
-        (research_prefix, other_width, right_inset),
+        (option_indent_mm, research_options_width, other_width, right_inset),
     )
-    research_options = research_table.rows[0].cells[0].paragraphs[0]
+    _write_inline_cell(
+        research_table.rows[0].cells[0],
+        fixed_topic["source_label"],
+        style=style,
+    )
+    research_options = research_table.rows[0].cells[1].paragraphs[0]
     _format_paragraph(research_options)
     _append_runs(
         research_options,
         plain_runs(
-            f"{fixed_topic['source_label']}{source_options['research_project']}"
+            f"{source_options['research_project']}"
             f"    {levels['national']}"
         ),
         style=style,
@@ -1097,30 +1128,40 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
     )
     _append_runs(research_options, plain_runs(f"    {levels['other']}"), style=style)
     _write_inline_cell(
-        research_table.rows[0].cells[1],
+        research_table.rows[0].cells[2],
         other_label if research and level == "other" else "",
         style=style,
         alignment=WD_ALIGN_PARAGRAPH.CENTER,
     )
-    _underline_cell(research_table.rows[0].cells[1])
+    _underline_cell(research_table.rows[0].cells[2])
 
-    self_indent_em = float(
-        LAYOUT["signature"].get("self_proposed_left_indent_em", 5.0)
-    )
-    indent_mm = style["size_pt"] * self_indent_em * 25.4 / 72.0
     project_label_width = float(
         LAYOUT["signature"].get("topic_project_label_width_mm", 25.0)
     )
-    project_blank_width = usable_width - indent_mm - project_label_width - right_inset
+    project_blank_width = float(
+        LAYOUT["signature"].get("topic_project_blank_width_mm", 65.0)
+    )
+    project_trailing_width = (
+        usable_width - project_indent_mm - project_label_width - project_blank_width
+    )
+    if project_trailing_width < right_inset:
+        raise ValueError(
+            "task-book topic project-number field exceeds the usable table width"
+        )
     project_table = _add_inline_table(
         cell,
-        (indent_mm, project_label_width, project_blank_width, right_inset),
+        (
+            project_indent_mm,
+            project_label_width,
+            project_blank_width,
+            project_trailing_width,
+        ),
     )
     _write_inline_cell(
         project_table.rows[0].cells[1],
         fixed_topic["project_number_label"],
         style=style,
-        alignment=WD_ALIGN_PARAGRAPH.RIGHT,
+        alignment=WD_ALIGN_PARAGRAPH.LEFT,
     )
     _write_inline_cell(
         project_table.rows[0].cells[2],
@@ -1138,7 +1179,6 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
     )
     _underline_cell(project_table.rows[0].cells[2])
 
-    topic_indent = style["size_pt"] * self_indent_em
     self_alignment = _paragraph_alignment(
         str(LAYOUT["signature"].get("self_proposed_alignment", "left")),
         path="signature.self_proposed_alignment",
@@ -1147,7 +1187,7 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
     _format_paragraph(
         practice,
         alignment=self_alignment,
-        left_indent_pt=topic_indent,
+        left_indent_pt=option_indent_pt,
     )
     _append_checkbox_option(
         practice,
@@ -1163,7 +1203,7 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
     _format_paragraph(
         self_heading,
         alignment=self_alignment,
-        left_indent_pt=topic_indent,
+        left_indent_pt=option_indent_pt,
     )
     _append_runs(
         self_heading,
@@ -1176,7 +1216,7 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
         _format_paragraph(
             paragraph,
             alignment=self_alignment,
-            left_indent_pt=topic_indent,
+            left_indent_pt=child_indent_pt,
         )
         _append_checkbox_option(
             paragraph,
@@ -1199,7 +1239,7 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
     _format_paragraph(
         joint,
         alignment=self_alignment,
-        left_indent_pt=topic_indent,
+        left_indent_pt=child_indent_pt,
     )
     _append_checkbox_option(
         joint,

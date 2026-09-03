@@ -200,7 +200,7 @@
 }
 
 \newcommand{\TaskCheckbox}[1]{%
-  \tikz[baseline=-0.12em]{%
+  \tikz[baseline=\SZTUCheckboxBaseline]{%
     \draw[line width=\SZTUCheckboxOutlineWidth]
       (0,0) rectangle (\SZTUCheckboxSize,\SZTUCheckboxSize);%
     #1%
@@ -211,7 +211,7 @@
   \draw[line width=\SZTUCheckboxTickWidth,line cap=round,line join=round]
     (0.12em,0.36em) -- (0.28em,0.18em) -- (0.61em,0.58em);%
 }}}
-\newcommand{\TaskTopicChoice}[2]{#1\hspace{0.35em}#2}
+\newcommand{\TaskTopicChoice}[2]{#1\hspace{\SZTUTopicCheckboxGap}#2}
 \newcommand{\TaskUnderline}[2]{%
   \tikz[baseline=(field.base)]{%
     \node[
@@ -227,10 +227,10 @@
   }%
 }
 \newcommand{\TaskSelfOptionLine}[1]{%
-  \noindent\hspace*{\SZTUSelfProposedIndent}\TopicText{#1}\par
+  \noindent\hspace*{\SZTUSelfProposedChildIndent}\TopicText{#1}\par
 }
 \newcommand{\TaskSelfSignatureLine}[1]{%
-  \noindent\hspace*{\SZTUSelfProposedIndent}\TopicText{#1}%
+  \noindent\hspace*{\SZTUSelfProposedChildIndent}\TopicText{#1}%
   \hfill
   \SignatureText{\FixedTeacherSignatureLabel\TaskSignatureSlot{\SZTUTeacherSignatureBlank}%
     \hspace*{\SZTUSignatureRightInset}}\par
@@ -344,21 +344,21 @@
   \SectionTitleText{\FixedTopicSectionTitle}\par
   \SZTUFormSectionTitleGap
   \begingroup\setstretch{\SZTUBodyLineSpacing}\raggedright\setlength{\parindent}{0pt}%
-  \TopicText{\FixedTopicNatureLabel\quad
+  \TopicText{\makebox[\SZTUTopicOptionIndent][l]{\FixedTopicNatureLabel}%
     \TaskTopicChoice{\FixedNatureDesignLabel}{\NatureDesignBox}\quad
     \TaskTopicChoice{\FixedNatureThesisLabel}{\NatureThesisBox}}
   \par\vspace{1mm}
-  \TopicText{\FixedTopicSourceLabel\quad
+  \TopicText{\makebox[\SZTUTopicOptionIndent][l]{\FixedTopicSourceLabel}%
     \FixedResearchProjectLabel\quad
     \FixedNationalLabel\NationalProjectBox\quad
     \FixedProvincialLabel\ProvincialProjectBox\quad
     \FixedOtherLevelLabel\TaskUnderline{\SZTUTopicOtherBlank}{\OtherProjectLevel}}\par
-  \noindent\hspace*{\SZTUTopicIndent}%
-  \TopicText{\makebox[\SZTUTopicProjectLabelWidth][r]{\FixedProjectNumberLabel}}%
+  \noindent\hspace*{\SZTUTopicProjectIndent}%
+  \TopicText{\makebox[\SZTUTopicProjectLabelWidth][l]{\FixedProjectNumberLabel}}%
   \TaskUnderline{\SZTUTopicProjectBlank}{\TopicText{\ProjectNumber}}\par
-  \noindent\hspace*{\SZTUTopicIndent}%
+  \noindent\hspace*{\SZTUTopicOptionIndent}%
   \TopicText{\TaskTopicChoice{\FixedPracticeProjectLabel}{\PracticeProjectBox}}\par
-  \TaskSelfOptionLine{\FixedSelfProposedLabel}
+  \noindent\hspace*{\SZTUTopicOptionIndent}\TopicText{\FixedSelfProposedLabel}\par
   \TaskSelfOptionLine{\FixedTeacherProposedLabel\TeacherProposedBox}
   \TaskSelfOptionLine{\FixedStudentProposedLabel\StudentProposedBox}
   \TaskSelfSignatureLine{\FixedJointProposedLabel\JointProposedBox}
