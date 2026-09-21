@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from datetime import date
@@ -27,6 +28,7 @@ from common.python.content import (  # noqa: E402
     ContentDataError as DataError,
     display_width,
     figure_caption_runs,
+    list_marker_text,
     normalize_content_block,
     normalize_paragraph,
     plain_runs,
@@ -34,9 +36,10 @@ from common.python.content import (  # noqa: E402
     prepare_figure_content,
     require_object,
     require_text,
+    resolve_list_marker,
     runs_text,
 )
-from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.process_form import disable_word_numbering, set_word_cell_vertical_padding, load_process_document_layout  # noqa: E402
 from common.python.equation import add_numbered_omml_table, append_omml  # noqa: E402
 from common.python.outline_numbering import (  # noqa: E402
     number_outline_levels,
@@ -68,6 +71,9 @@ METADATA_LIMITS = {
     "class_name": 30,
     "advisor": 30,
 }
+FIXED_DIRECTORY_PREFIX = ("摘要", "Abstract")
+FIXED_DIRECTORY_SUFFIX = ("参考文献", "致谢")
+FIXED_DIRECTORY_TITLES = frozenset((*FIXED_DIRECTORY_PREFIX, *FIXED_DIRECTORY_SUFFIX))
 
 
 def validate_data(raw: Any) -> dict[str, Any]:
@@ -140,9 +146,12 @@ def validate_data(raw: Any) -> dict[str, Any]:
             raise DataError(
                 f"{path}.level must be an integer from 1 to {maximum_outline_depth}"
             )
-        if index == 0 and level != 1:
+        title = normalize_paragraph(item.get("title"), f"{path}.title", 200)
+        if runs_text(title).strip() in FIXED_DIRECTORY_TITLES:
+            continue
+        if not clean_directory and level != 1:
             raise DataError("the first directory item must be level 1")
-        if level > previous_level + 1:
+        if clean_directory and level > previous_level + 1:
             raise DataError(f"{path}.level skips an outline level")
         previous_level = level
         number = item.get("number")
@@ -152,9 +161,12 @@ def validate_data(raw: Any) -> dict[str, Any]:
             {
                 "level": level,
                 "number": number,
-                "title": normalize_paragraph(item.get("title"), f"{path}.title", 200),
+                "title": title,
             }
         )
+
+    if not clean_directory:
+        raise DataError("sections.directory must contain at least one numbered body item")
 
     if numbering_style is not None:
         canonical_numbers = number_outline_levels(
@@ -162,6 +174,18 @@ def validate_data(raw: Any) -> dict[str, Any]:
         )
         for item, number in zip(clean_directory, canonical_numbers, strict=True):
             item["number"] = number
+
+    clean_directory = [
+        *(
+            {"level": 1, "number": None, "title": plain_runs(title)}
+            for title in FIXED_DIRECTORY_PREFIX
+        ),
+        *clean_directory,
+        *(
+            {"level": 1, "number": None, "title": plain_runs(title)}
+            for title in FIXED_DIRECTORY_SUFFIX
+        ),
+    ]
 
     clean_sections: dict[str, Any] = {"directory": clean_directory}
     if numbering_style is not None:
@@ -229,7 +253,7 @@ def _append_runs(paragraph, runs: list[dict[str, Any]], *, style: dict[str, Any]
         pieces = re.findall(r"[\x00-\x7f]+|[^\x00-\x7f]+", rich_run["text"])
         for piece in pieces:
             run = paragraph.add_run(piece)
-            _set_run_font(run, style=style, bold=rich_run["bold"])
+            _set_run_font(run, style=style, bold=bool(style.get("bold", False) or rich_run["bold"]))
             run.italic = rich_run["italic"]
             run.font.subscript = rich_run["script"] == "sub"
             run.font.superscript = rich_run["script"] == "super"
@@ -406,6 +430,18 @@ def _append_data_table(cell, block: dict[str, Any]) -> None:
     _set_table_geometry(table, widths)
     _set_table_borders(table, border_pt=float(config["border_pt"]))
     _set_table_cell_margins(table, float(config["cell_padding_mm"]))
+    if block.get("style", "grid") == "three_line":
+        _set_table_borders(table, border_pt=None)
+        for row_index, row in enumerate(table.rows):
+            for target in row.cells:
+                borders = OxmlElement("w:tcBorders")
+                for edge in ("top", "bottom", "left", "right"):
+                    rule = OxmlElement(f"w:{edge}")
+                    visible = (row_index == 0 and edge in {"top", "bottom"}) or (row_index == len(table.rows) - 1 and edge == "bottom")
+                    rule.set(qn("w:val"), "single" if visible else "nil")
+                    rule.set(qn("w:sz"), str(round(float(config["border_pt"]) * 8)))
+                    borders.append(rule)
+                target._tc.get_or_add_tcPr().append(borders)
     _set_repeat_table_header(table.rows[0])
     for row in table.rows:
         _prevent_row_split(row)
@@ -469,17 +505,19 @@ def _append_equation(cell, block: dict[str, Any]) -> None:
 def _append_figure_group(cell, block: dict[str, Any], *, data_dir: Path) -> None:
     config = LAYOUT["figure_group"]
     count = len(block["items"])
+    columns = min(block.get("columns", count), count)
     total_width = float(config["width_mm"])
     gap = float(config["column_gap_mm"])
-    item_width = (total_width - gap * (count - 1)) / count
-    widths = [item_width] * count
-    table = cell.add_table(rows=1, cols=count)
+    item_width = (total_width - gap * (columns - 1)) / columns
+    widths = [item_width] * columns
+    table = cell.add_table(rows=math.ceil(count / columns), cols=columns)
     _set_table_geometry(table, widths)
     _set_table_borders(table, border_pt=None)
     _set_table_cell_margins(table, gap / 2)
-    _prevent_row_split(table.rows[0])
+    for row in table.rows:
+        _prevent_row_split(row)
     for index, item in enumerate(block["items"]):
-        target = table.rows[0].cells[index]
+        target = table.rows[index // columns].cells[index % columns]
         target.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
         paragraph = target.paragraphs[0]
         _format_paragraph(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)
@@ -497,7 +535,7 @@ def _append_figure_group(cell, block: dict[str, Any], *, data_dir: Path) -> None
         subcaption = target.add_paragraph()
         _format_paragraph(subcaption, alignment=WD_ALIGN_PARAGRAPH.CENTER)
         subcaption.paragraph_format.keep_together = True
-        subcaption.paragraph_format.keep_with_next = True
+        subcaption.paragraph_format.keep_with_next = index // columns == (count - 1) // columns
         _append_runs(subcaption, plain_runs(item["subfigure_label"]), style=BODY)
         if item["caption_runs"]:
             _append_runs(subcaption, item["caption_runs"], style=BODY)
@@ -512,12 +550,6 @@ def _append_figure_group(cell, block: dict[str, Any], *, data_dir: Path) -> None
     _append_runs(caption, figure_caption_runs(block), style=BODY)
 
 
-def _list_marker(block_type: str, item: dict[str, Any], index: int, depth: int) -> str:
-    if block_type == "ordered_list":
-        return item["marker"] or f"{index}、"
-    return UNORDERED_LIST_MARKERS[depth - 1]
-
-
 def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
     if not 1 <= depth <= LIST_MAX_DEPTH:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
@@ -528,8 +560,10 @@ def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
             left_indent_pt=depth * LIST_LEVEL_INDENT_PT + LIST_HANGING_INDENT_PT,
             first_line_indent_pt=-LIST_HANGING_INDENT_PT,
         )
-        marker = _list_marker(block["type"], item, index, depth)
-        _append_runs(paragraph, plain_runs(f"{marker} "), style=BODY)
+        marker = resolve_list_marker(
+            block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+        )
+        _append_runs(paragraph, plain_runs(list_marker_text(marker)), style=BODY)
         _append_runs(paragraph, item["runs"], style=BODY)
         if item["children"]:
             _append_list_block(cell, item["children"], depth=depth + 1)
@@ -605,6 +639,10 @@ def _fill_student_sections(table, data: dict[str, Any], *, data_dir: Path) -> No
             _append_runs(paragraph, plain_runs(f"{item['number']} "), style=BODY)
         _append_runs(paragraph, item["title"], style=BODY)
     research_heading = _new_paragraph(directory_cell, indent=True)
+    research_heading.paragraph_format.space_before = Pt(
+        LAYOUT["paragraphs"]["research_heading_space_before_pt"]
+    )
+    research_heading.paragraph_format.keep_with_next = True
     _append_runs(research_heading, plain_runs("主要研究内容："), style=BODY)
     _append_content_blocks(
         directory_cell,
@@ -649,10 +687,13 @@ def _fill_teacher_fixed_rows(table) -> None:
             paragraph = cell.paragraphs[0] if line_index == 0 else cell.add_paragraph()
             _format_paragraph(paragraph)
             style = TEACHER_HEADER if row_index == 6 else TEACHER_BODY
+            disable_word_numbering(paragraph)
+            if row_index == 6:
+                paragraph.paragraph_format.keep_with_next = True
             _append_runs(paragraph, plain_runs(text), style=style)
 
 
-def _fill_signature_region(cell, *, label: str, signer: str, min_height_mm: float) -> None:
+def _fill_signature_region(cell, *, label: str, signer: str, min_height_mm: float, blank_width_mm: float) -> None:
     _clear_cell(cell)
     label_paragraph = cell.paragraphs[0]
     _format_paragraph(label_paragraph)
@@ -662,6 +703,7 @@ def _fill_signature_region(cell, *, label: str, signer: str, min_height_mm: floa
         _format_paragraph(paragraph)
     signature = cell.add_paragraph()
     _format_paragraph(signature, alignment=WD_ALIGN_PARAGRAPH.RIGHT)
+    signature.paragraph_format.right_indent = Mm(blank_width_mm)
     _append_runs(signature, plain_runs(signer), style=SIGNATURE)
     date_paragraph = cell.add_paragraph()
     _format_paragraph(date_paragraph, alignment=WD_ALIGN_PARAGRAPH.RIGHT)
@@ -704,6 +746,9 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
 
     for row_index in range(4):
         _set_row_min_height(table.rows[row_index], LAYOUT["row_min_heights_mm"]["metadata"])
+    for cell in table.rows[3].cells:
+        set_word_cell_vertical_padding(cell, LAYOUT["table"]["title_vertical_padding_mm"])
+
     _fill_student_sections(table, data, data_dir=data_path.resolve().parent)
     _set_row_min_height(table.rows[5], LAYOUT["section_min_heights_mm"]["progress"])
     _fill_teacher_fixed_rows(table)
@@ -716,6 +761,7 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
         label="存在的问题及后期指导工作意见：",
         signer="指导教师签名：",
         min_height_mm=LAYOUT["section_min_heights_mm"]["teacher_opinion"],
+        blank_width_mm=LAYOUT["signature"]["teacher_blank_width_mm"],
     )
     _set_row_min_height(table.rows[13], LAYOUT["section_min_heights_mm"]["teacher_opinion"])
     _fill_signature_region(
@@ -723,6 +769,7 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
         label="审查小组检查意见：",
         signer="审查小组负责人签名：",
         min_height_mm=LAYOUT["section_min_heights_mm"]["review_group_opinion"],
+        blank_width_mm=LAYOUT["signature"]["review_blank_width_mm"],
     )
     _set_row_min_height(table.rows[14], LAYOUT["section_min_heights_mm"]["review_group_opinion"])
 

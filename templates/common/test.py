@@ -19,6 +19,8 @@ from common.python.content import (  # noqa: E402
     normalize_content_block,
     normalize_paragraph,
     prepare_equation_content,
+    list_marker_text,
+    resolve_list_marker,
     split_numbered_subitems,
 )
 from common.python.font_files import cjk_emphasis_options  # noqa: E402
@@ -48,6 +50,10 @@ from common.python.typography import (  # noqa: E402
 
 
 def main() -> int:
+    assert resolve_list_marker("ordered_list", None, 1, 1, ("•",)) == "1."
+    assert resolve_list_marker("ordered_list", "（一）", 1, 1, ("•",)) == "（一）"
+    assert resolve_list_marker("unordered_list", None, 1, 1, ("•", "◦")) == "•"
+    assert list_marker_text("1.") == "1.\u2009"
     policy = load_font_policy()
     assert policy["fallback_allowed"] is False
     assert policy["roles"]["cjk_body"]["word_family"] == "宋体"

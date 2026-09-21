@@ -24,7 +24,7 @@
 - macOS：MacTeX/TeX Live + Texifier，命令行默认使用 `latexmk -xelatex`。
 - Windows：TeX Live + TeXstudio，编译器使用 XeLaTeX，文献链使用 `xelatex -> bibtex -> xelatex -> xelatex` 或 latexmk。
 - 编码：全部源文件使用 UTF-8。
-- 字体：优先使用系统规范字体，缺失时使用同类开源/系统字体回退；不在仓库中新增分发来源不明的商业字体。
+- 字体：按各模板规格精确加载所需字体，缺失即停止编译，不允许静默回退；商业字体不进入 Git。
 
 ## Agent 使用边界
 

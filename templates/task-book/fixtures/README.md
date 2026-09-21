@@ -14,6 +14,7 @@
 ## 已覆盖的主要边界
 
 - `minimal` / `normal`：最短与常规内容。
+- `normal` 的长封面题目同时覆盖 Word/WPS 单元格内边距导致的二次换行：两行题目及四行元数据必须留在封面。
 - `feedback-regression`：既有反馈回归。
 - `layout-stress`：封面长字段、长题目和日期前缀。
 - `long` / `page-break`：长正文与连续表格跨页。

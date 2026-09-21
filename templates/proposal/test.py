@@ -104,6 +104,7 @@ def main() -> int:
     assert layout["signature_regions"]["opinion_transition_gap_mm"] == 1.0
     assert layout["paragraphs"]["list_max_depth"] == 4
     assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
+    assert layout["paragraphs"]["list_marker_gap_em"] == 0.25
 
     latex_template = (proposal_dir / "latex" / "main.tex").read_text(encoding="utf-8")
     assert r"\input{proposal-typography.tex}" in latex_template
@@ -210,6 +211,12 @@ def main() -> int:
                 for run in paragraph.runs
             ]
             assert any(run.text == "[1]" and run.font.superscript for run in significance_runs)
+            methods_text = table.rows[5].cells[0].text
+            assert "采用模板蒸馏方法" in methods_text
+            assert "完成官方文件的结构分析" in methods_text
+            assert "1、采用模板蒸馏方法" not in methods_text
+            assert "2、采用确定性程序" not in methods_text
+            assert "1、完成官方文件的结构分析" not in methods_text
         for row_index, cell_index in ((0, 0), (1, 0), (1, 2), (1, 5), (2, 0), (2, 2)):
             cell = table.rows[row_index].cells[cell_index]
             assert cell.vertical_alignment == WD_CELL_VERTICAL_ALIGNMENT.CENTER
@@ -277,6 +284,8 @@ def main() -> int:
             assert trailing.paragraph_format.left_indent is None
             assert trailing.paragraph_format.first_line_indent.pt == 21.0
             assert "1、先说明方法选择依据" not in table.rows[5].cells[0].text
+            assert "1.\u2009建立结构化测试数据" in table.rows[5].cells[0].text
+            assert "2.\u2009比较 Word 与 LaTeX 输出" in table.rows[5].cells[0].text
             method_intro = next(
                 p for p in method_paragraphs if p.text.startswith("先说明方法选择依据")
             )
@@ -315,16 +324,13 @@ def main() -> int:
                 "虚构的开题报告单图回归示意图",
             ]
             research_cell_paragraphs = research_cell.paragraphs
-            image_caption_index = next(
-                index
-                for index, paragraph in enumerate(research_cell_paragraphs)
-                if paragraph.text == "图 1-2 开题报告单图回归示意"
+            image_paragraph = next(
+                paragraph for paragraph in research_cell_paragraphs
+                if paragraph.text.strip() == "图 1-2 开题报告单图回归示意"
             )
-            image_caption = research_cell_paragraphs[image_caption_index]
-            image_paragraph = research_cell_paragraphs[image_caption_index - 1]
-            assert image_paragraph.paragraph_format.keep_with_next
+            assert image_paragraph._p.xpath(".//w:drawing")
+            assert image_paragraph._p.xpath(".//w:br")
             assert image_paragraph.paragraph_format.keep_together
-            assert image_caption.paragraph_format.keep_together
             for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
                 assert f"<{math_tag}" in document.element.xml
             assert "效率等于输出浓度" in document.element.xml
@@ -347,6 +353,8 @@ def main() -> int:
                     assert rf"\ProposalListItem{{{depth}}}{{{marker}}}" in data_tex
                 assert r"\ProposalParagraph{列表结束后" in data_tex
                 assert r"H\textsubscript{2}O" in data_tex
+                assert r"\ProposalListItem{1}{1.}{建立结构化测试数据}" in data_tex
+                assert r"\ProposalListItem{1}{2.}{比较 Word 与 LaTeX 输出}" in data_tex
             continue
 
         latex_dir = output_root / f"latex-{name}"
@@ -393,6 +401,11 @@ def main() -> int:
             assert r"\textsuperscript{[1]}" in data_tex
             for marker in ("（1）", "（2）", "（3）"):
                 assert rf"\NestedOrderedItem{{{marker}}}" in data_tex
+            assert "采用模板蒸馏方法" in data_tex
+            assert "完成官方文件的结构分析" in data_tex
+            assert "1、采用模板蒸馏方法" not in data_tex
+            assert "2、采用确定性程序" not in data_tex
+            assert "1、完成官方文件的结构分析" not in data_tex
         if name == "long":
             assert "第一阶段完成" in data_tex
             assert "1、第一阶段完成" not in data_tex
@@ -401,6 +414,8 @@ def main() -> int:
                 assert rf"\ProposalListItem{{{depth}}}{{{marker}}}" in data_tex
             assert r"\ProposalParagraph{列表结束后" in data_tex
             assert r"H\textsubscript{2}O" in data_tex
+            assert r"\ProposalListItem{1}{1.}{建立结构化测试数据}" in data_tex
+            assert r"\ProposalListItem{1}{2.}{比较 Word 与 LaTeX 输出}" in data_tex
         if name == "structured-content":
             assert r"\begin{tblr}" in data_tex
             assert r"\begin{minipage}[t]{0.4891\linewidth}" in data_tex

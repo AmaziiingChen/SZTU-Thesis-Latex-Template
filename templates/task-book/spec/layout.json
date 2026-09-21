@@ -123,6 +123,7 @@
     "title_latex_two_line_rule_offset_mm": 0.6,
     "title_latex_two_line_subscript_rule_offset_mm": 1.5,
     "title_cell_vertical_padding_mm": 0.5,
+    "title_cell_horizontal_padding_mm": 1.5,
     "underline_pt": 0.5
   },
   "notice": {
@@ -139,9 +140,10 @@
     "body_line_spacing": 1.0,
     "notice_line_spacing": 1.5,
     "first_line_indent_em": 2.0,
-    "list_first_level_indent_em": 0.0,
+    "list_first_level_indent_em": 2.0,
     "list_level_indent_em": 2.0,
     "list_hanging_indent_em": 2.0,
+    "list_marker_gap_em": 0.25,
     "list_max_depth": 4,
     "unordered_list_markers": ["•", "◦", "▪", "▫"],
     "schedule_date_prefix_no_indent": true,
@@ -177,6 +179,7 @@
     "topic_project_label_width_mm": 25.0,
     "topic_project_blank_width_mm": 65.0,
     "topic_project_value_alignment": "center",
+    "topic_project_value_baseline_shift_mm": 0.4,
     "topic_underline_gap_mm": 0.0,
     "topic_project_left_indent_em": 7.0833,
     "topic_option_left_indent_em": 6.0,

@@ -16,10 +16,11 @@ CJK_FAKE_SLANT_FACTOR = 0.2
 def font_roots(local_font_dir: Path | None = None) -> list[Path]:
     roots: list[Path] = []
     if local_font_dir is not None:
-        roots.append(local_font_dir)
+        roots.insert(0, local_font_dir)
     extra = os.environ.get("SZTU_FONT_DIR")
     if extra:
         roots.extend(Path(item).expanduser() for item in extra.split(os.pathsep) if item)
+    roots.append(Path(__file__).resolve().parents[3] / "fonts.local")
     if sys.platform == "darwin":
         roots.extend(
             [
@@ -35,6 +36,8 @@ def font_roots(local_font_dir: Path | None = None) -> list[Path]:
         )
     elif os.name == "nt":
         roots.append(Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts")
+        if os.environ.get("LOCALAPPDATA"):
+            roots.append(Path(os.environ["LOCALAPPDATA"]) / "Microsoft/Windows/Fonts")
     else:
         roots.extend(
             [
@@ -52,20 +55,22 @@ def font_roots(local_font_dir: Path | None = None) -> list[Path]:
     return unique
 
 
-def resolve_font_files(
+def discover_font_files(
     required_keys: list[str], *, local_font_dir: Path | None = None
-) -> dict[str, Path]:
+) -> tuple[dict[str, Path], list[str]]:
     policy = load_font_policy()
     definitions = policy["font_files"]
     unknown = set(required_keys) - set(definitions)
     if unknown:
         raise ValueError(f"unknown required font file keys: {sorted(unknown)}")
 
-    index: dict[str, Path] = {}
+    indexes: list[dict[str, Path]] = []
     for root in font_roots(local_font_dir):
-        for path in root.rglob("*"):
+        index: dict[str, Path] = {}
+        for path in sorted(root.rglob("*")):
             if path.is_file():
                 index.setdefault(path.name.casefold(), path.resolve())
+        indexes.append(index)
 
     resolved: dict[str, Path] = {}
     missing: list[str] = []
@@ -83,6 +88,7 @@ def resolve_font_files(
         path = next(
             (
                 index[name.casefold()]
+                for index in indexes
                 for name in definition["candidates"]
                 if name.casefold() in index
             ),
@@ -92,10 +98,17 @@ def resolve_font_files(
             missing.append(f"{key} ({'/'.join(definition['candidates'])})")
         else:
             resolved[key] = path
+    return resolved, missing
+
+
+def resolve_font_files(
+    required_keys: list[str], *, local_font_dir: Path | None = None
+) -> dict[str, Path]:
+    resolved, missing = discover_font_files(required_keys, local_font_dir=local_font_dir)
     if missing:
         raise FileNotFoundError(
-            "required official fonts are missing; font substitution is forbidden: "
-            + ", ".join(missing)
+            "缺少必需字体：" + ", ".join(missing)
+            + "。请安装对应字体，或用 SZTU_FONT_DIR 指定字体文件夹；不会自动替换字体。"
         )
     return resolved
 

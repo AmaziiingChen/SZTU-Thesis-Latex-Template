@@ -23,6 +23,7 @@ if str(TEMPLATES_DIR) not in sys.path:
 from common.python.content import (  # noqa: E402
     display_width,
     figure_caption_runs,
+    resolve_list_marker,
     starts_with_calendar_date,
 )
 from common.python.font_files import (  # noqa: E402
@@ -353,19 +354,17 @@ def render_figure_group(
     )
 
 
-def _list_marker(block: dict[str, Any], item: dict[str, Any], index: int, depth: int) -> str:
-    if block["type"] == "ordered_list":
-        return item["marker"] or f"（{index}）"
-    return UNORDERED_LIST_MARKERS[depth - 1]
-
-
 def render_list_block(block: dict[str, Any], *, depth: int = 1) -> str:
     if not 1 <= depth <= LIST_MAX_DEPTH:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
     marker_indent = LIST_FIRST_LEVEL_INDENT_EM + (depth - 1) * LIST_LEVEL_INDENT_EM
     rendered: list[str] = []
     for index, item in enumerate(block["items"], start=1):
-        marker = tex_escape(_list_marker(block, item, index, depth))
+        marker = tex_escape(
+            resolve_list_marker(
+                block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+            )
+        )
         rendered.append(
             rf"\TaskListItem{{{marker_indent:g}}}{{{marker}}}{{{rich_runs(item['runs'])}}}"
         )
@@ -603,6 +602,7 @@ def typography_tex(layout: dict[str, Any]) -> str:
             rf"\newcommand{{\SZTUNoticeLineSpacing}}{{{float(paragraphs['notice_line_spacing']):g}}}",
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{float(paragraphs['first_line_indent_em']):g}em}}",
             rf"\newcommand{{\SZTUListHangingIndent}}{{{paragraph_number('list_hanging_indent_em', default=2.0):g}em}}",
+            rf"\newcommand{{\SZTUListMarkerGap}}{{{paragraph_number('list_marker_gap_em', default=0.25):g}em}}",
             rf"\newcommand{{\SZTUScheduleLabelWidth}}{{{paragraph_number('schedule_period_width_em', 'schedule_label_width_em', 11.0):g}em}}",
             rf"\newcommand{{\SZTUTitleRowMinHeight}}{{{height('title_row', 'title'):g}mm}}",
             rf"\newcommand{{\SZTUBasicMinHeight}}{{{height('basic_content_and_requirements', 'basic_content'):g}mm}}",
@@ -619,6 +619,7 @@ def typography_tex(layout: dict[str, Any]) -> str:
             rf"\newcommand{{\SZTUTopicOtherBlank}}{{{float(signature.get('topic_other_blank_width_mm', 32.0)):g}mm}}",
             rf"\newcommand{{\SZTUTopicProjectLabelWidth}}{{{topic_project_label_width:g}mm}}",
             rf"\newcommand{{\SZTUTopicProjectBlank}}{{{topic_project_blank_width:g}mm}}",
+            rf"\newcommand{{\SZTUTopicProjectValueShift}}{{{float(signature.get('topic_project_value_baseline_shift_mm', 0.0)):g}mm}}",
             rf"\newcommand{{\SZTUTopicUnderlineGap}}{{{float(signature.get('topic_underline_gap_mm', 0.0)):g}mm}}",
             rf"\newcommand{{\SZTUTopicCheckboxGap}}{{{float(signature.get('topic_checkbox_gap_em', 0.12)):g}em}}",
             rf"\newcommand{{\SZTUCheckboxSize}}{{{float(checkbox.get('size_em', 0.72)):g}em}}",

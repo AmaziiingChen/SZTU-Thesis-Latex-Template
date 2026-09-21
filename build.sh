@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # 从仓库根目录生成 sztuthesis_main.pdf（XeLaTeX + BibTeX）。
 # 用法：
+#   bash build.sh --check-fonts      # 仅检查并保存本机字体配置
+#   bash build.sh --font-dir "/字体目录" # 指定目录并编译（下次自动记住）
 #   bash build.sh                    # 增量编译（优先 latexmk）
 #   bash build.sh --clean            # 先清理辅助文件再全量编译（冷启动等价）
 #   bash build.sh --coverimg         # 编译后将 PDF 第 1 页导出为 images/cover.jpg
@@ -38,7 +40,7 @@ run_xelatex() {
 clean_aux() {
   # 不删 .pdf；与 latexmk -C 相比更保守，避免误删用户其它 pdf
   if command -v latexmk >/dev/null 2>&1; then
-    latexmk -C -silent "$MAIN_TEX" >/dev/null 2>&1 || true
+    latexmk -c -silent "$MAIN_TEX" >/dev/null 2>&1 || true
   fi
   rm -f ./*.aux ./*.bbl ./*.blg ./*.out ./*.toc ./*.lof ./*.lot ./*.fls ./*.fdb_latexmk \
     ./content/*.aux 2>/dev/null || true
@@ -67,10 +69,24 @@ export_cover_jpg() {
 }
 
 DO_COVERIMG=0
+DO_CLEAN=0
+CHECK_ONLY=0
+FONT_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --clean|-c)
-      clean_aux
+      DO_CLEAN=1
+      ;;
+    --check-fonts)
+      CHECK_ONLY=1
+      ;;
+    --font-dir)
+      if [[ $# -lt 2 || -z "$2" ]]; then
+        printf '%s\n' '--font-dir 后需要字体文件夹路径。' >&2
+        exit 2
+      fi
+      FONT_ARGS=(--font-dir "$2")
+      shift
       ;;
     --coverimg)
       DO_COVERIMG=1
@@ -80,12 +96,20 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      printf '未知参数: %s\n用法: bash build.sh [--clean] [--coverimg]\n' "$1" >&2
+      printf '未知参数: %s\n用法: bash build.sh [--clean] [--coverimg] [--check-fonts] [--font-dir 字体目录]\n' "$1" >&2
       exit 2
       ;;
   esac
   shift
 done
+
+if ! command -v python3 >/dev/null 2>&1; then
+  printf '%s\n' '字体检查需要 Python 3。请安装后重试；已有 PDF 保持不变。' >&2
+  exit 1
+fi
+python3 scripts/check_fonts.py "${FONT_ARGS[@]+${FONT_ARGS[@]}}"
+if [[ "$CHECK_ONLY" -eq 1 ]]; then exit 0; fi
+if [[ "$DO_CLEAN" -eq 1 ]]; then clean_aux; fi
 
 if command -v latexmk >/dev/null 2>&1; then
   need_cmd latexmk

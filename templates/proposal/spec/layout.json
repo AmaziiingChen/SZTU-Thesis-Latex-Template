@@ -32,6 +32,7 @@
     "nested_list_left_indent_em": 1.0,
     "list_level_indent_em": 2.0,
     "list_hanging_indent_em": 2.0,
+    "list_marker_gap_em": 0.25,
     "list_max_depth": 4,
     "unordered_list_markers": ["•", "◦", "▪", "▫"],
     "reference_first_line_indent_em": 0.0
@@ -44,6 +45,7 @@
   },
   "table": {
     "border_pt": 0.48,
+    "title_vertical_padding_mm": 1.5,
     "horizontal_padding_mm": 2.0,
     "top_bottom_padding_mm": 1.0,
     "flow_vertical_padding_mm": 0.8,

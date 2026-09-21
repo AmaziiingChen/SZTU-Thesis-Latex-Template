@@ -263,7 +263,8 @@ def assert_cover_structure(
 ) -> None:
     title_table, info_table, _main_table = document.tables
     title_style = layout["typography"]["cover_title_value"]
-    line_capacity = float(layout["cover"]["title_underline_width_mm"]) / (
+    line_capacity = (float(layout["cover"]["title_underline_width_mm"])
+        - 2 * float(layout["cover"]["title_cell_horizontal_padding_mm"])) / (
         float(title_style["size_pt"]) * 25.4 / 72.0
     )
     expected_title_lines = sum(
@@ -295,6 +296,10 @@ def assert_cover_structure(
         )
         assert value_cell.paragraphs[0].alignment == expected_alignment
         assert value_cell.vertical_alignment == WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        usable_twips = int(value_cell._tc.tcPr.tcW.w) - sum(
+            cell_margin_dxa(value_cell, edge) for edge in ("left", "right")
+        )
+        assert display_width(value_cell.text) * float(title_style["size_pt"]) * 20 <= usable_twips
         assert_bottom_rule(value_cell)
         assert cell_margin_dxa(value_cell, "bottom") >= twips_from_mm(
             layout["cover"]["title_underline_clearance_mm"]
@@ -515,6 +520,7 @@ def assert_word_indents(
     list_first = body_size * float(
         layout["paragraphs"]["list_first_level_indent_em"]
     )
+    assert abs(list_first - body_size * 2.0) <= 0.01
     list_level = body_size * float(layout["paragraphs"]["list_level_indent_em"])
     list_hanging = body_size * float(
         layout["paragraphs"]["list_hanging_indent_em"]
@@ -524,11 +530,12 @@ def assert_word_indents(
     def assert_list(block: dict[str, Any], cell, *, depth: int = 1) -> None:
         for index, item in enumerate(block["items"], start=1):
             if block["type"] == "ordered_list":
-                marker = item.get("marker") or f"（{index}）"
-                text = marker + runs_text(item["runs"])
+                explicit_marker = item.get("marker")
+                marker = explicit_marker or f"{index}."
+                text = f"{marker}\u2009{runs_text(item['runs'])}"
             else:
                 marker = unordered_markers[depth - 1]
-                text = f"{marker} {runs_text(item['runs'])}"
+                text = f"{marker}\u2009{runs_text(item['runs'])}"
             paragraph = next(item for item in cell.paragraphs if item.text == text)
             marker_indent = list_first + (depth - 1) * list_level
             assert abs(
@@ -676,6 +683,20 @@ def assert_word_topic_choices(
     assert_bottom_rule(project_value_cell)
     assert project_value_cell.paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.CENTER
     assert points_or_zero(project_value_cell.paragraphs[0].paragraph_format.space_after) == 0.0
+    expected_position = -round(
+        float(layout["signature"]["topic_project_value_baseline_shift_mm"])
+        * 72.0
+        / 25.4
+        * 2.0
+    )
+    if expected_project_number:
+        assert project_value_cell.paragraphs[0].runs
+        assert all(
+            run._r.get_or_add_rPr().find(qn("w:position")) is not None
+            and int(run._r.get_or_add_rPr().find(qn("w:position")).get(qn("w:val")))
+            == expected_position
+            for run in project_value_cell.paragraphs[0].runs
+        )
     assert_no_bottom_rule(project_table.rows[0].cells[3])
 
     practice_paragraph = next(
@@ -963,7 +984,11 @@ def assert_pdf_form_geometry(pdf, *, fixture_name: str) -> None:
         assert next_top <= 82.5
 
 
-def assert_pdf_closing_bundle(pdf, layout: dict[str, Any]) -> None:
+def assert_pdf_closing_bundle(
+    pdf,
+    layout: dict[str, Any],
+    normalized: dict[str, Any],
+) -> None:
     found: dict[str, tuple[int, dict[str, Any]]] = {}
     for page_index, page in enumerate(pdf.pages, start=1):
         for word in page.extract_words():
@@ -1019,6 +1044,11 @@ def assert_pdf_closing_bundle(pdf, layout: dict[str, Any]) -> None:
         key=lambda edge: abs(float(edge["width"]) - expected_project_rule_width),
     )
     assert abs(float(project_rule["width"]) - expected_project_rule_width) <= 0.6
+    source = normalized["sections"]["topic_information"]["source"]
+    if source["type"] == "research_project":
+        project_value = topic_word(source["research_project"]["project_number"])
+        project_value_gap = float(project_rule["top"]) - float(project_value["bottom"])
+        assert 0.2 <= project_value_gap <= 2.5
 
     practice_project = topic_word("实践项目")
     practice_center = (
@@ -1506,9 +1536,10 @@ def main() -> int:
     assert layout["cover"]["title_latex_two_line_subscript_rule_offset_mm"] == 1.5
     assert layout["cover"]["title_cell_vertical_padding_mm"] == 0.5
     assert layout["paragraphs"]["notice_line_spacing"] == 1.5
-    assert layout["paragraphs"]["list_first_level_indent_em"] == 0.0
+    assert layout["paragraphs"]["list_first_level_indent_em"] == 2.0
     assert layout["paragraphs"]["list_level_indent_em"] == 2.0
     assert layout["paragraphs"]["list_hanging_indent_em"] == 2.0
+    assert layout["paragraphs"]["list_marker_gap_em"] == 0.25
     assert layout["paragraphs"]["list_max_depth"] == 4
     assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
     assert layout["notice"]["item_space_after_pt"] == 0.0
@@ -1529,6 +1560,7 @@ def main() -> int:
     assert layout["signature"]["advisor_blank_width_mm"] == 45.0
     assert layout["signature"]["college_leader_blank_width_mm"] == 50.0
     assert layout["signature"]["right_inset_mm"] == 7.5
+    assert layout["signature"]["topic_project_value_baseline_shift_mm"] == 0.4
     assert layout["required_font_files"] == [
         "STXingkai",
         "SimHei",
@@ -1798,11 +1830,11 @@ def main() -> int:
             basic_paragraphs = main_table.rows[1].cells[0].paragraphs
             basic_texts = [item.text for item in basic_paragraphs if item.text.strip()]
             for expected in (
-                "• 一级无序：建立公共内容模型",
-                "（1）二级有序：表达 H2O 富文本",
-                "▪ 三级无序：保持双路渲染一致",
-                "A.四级有序：验证深度上限",
-                "• 一级无序：验证同级项目连续排列",
+                "•\u2009一级无序：建立公共内容模型",
+                "（1）\u2009二级有序：表达 H2O 富文本",
+                "▪\u2009三级无序：保持双路渲染一致",
+                "A.\u2009四级有序：验证深度上限",
+                "•\u2009一级无序：验证同级项目连续排列",
                 "列表结束后，本段恢复为普通正文首行缩进。",
             ):
                 assert expected in basic_texts
@@ -1830,10 +1862,10 @@ def main() -> int:
                 if item.text.strip()
             ]
             for expected in (
-                "（1）收集官方模板与规范",
-                "（2）整理结构化验收记录",
-                "◦ 记录 Word 结果",
-                "◦ 记录 LaTeX 结果",
+                "1.\u2009收集官方模板与规范",
+                "2.\u2009整理结构化验收记录",
+                "◦\u2009记录 Word 结果",
+                "◦\u2009记录 LaTeX 结果",
                 "资料列表结束后继续填写普通段落。",
             ):
                 assert expected in materials_texts
@@ -1844,10 +1876,10 @@ def main() -> int:
                 assets_dir=output_root / name / "latex-structure-assets",
             ).replace(r"\nobreak{}", "")
             for expected in (
-                r"\TaskListItem{0}{•}{一级无序：建立公共内容模型",
-                r"\TaskListItem{2}{（1）}{二级有序：表达 H\textsubscript{2}O",
-                r"\TaskListItem{4}{▪}{三级无序：保持双路渲染一致",
-                r"\TaskListItem{6}{A.}{四级有序：验证深度上限",
+                r"\TaskListItem{2}{•}{一级无序：建立公共内容模型",
+                r"\TaskListItem{4}{（1）}{二级有序：表达 H\textsubscript{2}O",
+                r"\TaskListItem{6}{▪}{三级无序：保持双路渲染一致",
+                r"\TaskListItem{8}{A.}{四级有序：验证深度上限",
                 r"\TaskBodyParagraph{列表结束后",
             ):
                 assert expected in rendered_blocks
@@ -1905,6 +1937,7 @@ def main() -> int:
         assert r"\newcommand{\SZTUTeacherSignatureBlank}{45mm}" in typography_tex
         assert r"\newcommand{\SZTUCollegeSignatureBlank}{50mm}" in typography_tex
         assert r"\newcommand{\SZTUSignatureRightInset}{7.5mm}" in typography_tex
+        assert r"\newcommand{\SZTUTopicProjectValueShift}{0.4mm}" in typography_tex
         if name == "layout-stress":
             assert r"\TaskScheduleDateParagraph{2026年1—2月：" in data_tex
             assert r"\TaskScheduleDateParagraph{2025年10月—11月：" in data_tex
@@ -1916,10 +1949,10 @@ def main() -> int:
         if name == "nested-list":
             nested_data_tex = data_tex.replace(r"\nobreak{}", "")
             for expected in (
-                r"\TaskListItem{0}{•}{一级无序：建立公共内容模型",
-                r"\TaskListItem{2}{（1）}{二级有序：表达 H\textsubscript{2}O",
-                r"\TaskListItem{4}{▪}{三级无序：保持双路渲染一致",
-                r"\TaskListItem{6}{A.}{四级有序：验证深度上限",
+                r"\TaskListItem{2}{•}{一级无序：建立公共内容模型",
+                r"\TaskListItem{4}{（1）}{二级有序：表达 H\textsubscript{2}O",
+                r"\TaskListItem{6}{▪}{三级无序：保持双路渲染一致",
+                r"\TaskListItem{8}{A.}{四级有序：验证深度上限",
                 r"\TaskBodyParagraph{列表结束后",
             ):
                 assert expected in nested_data_tex
@@ -1994,7 +2027,7 @@ def main() -> int:
             assert_pdf_notice_geometry(pdf)
             assert_pdf_title_row_geometry(pdf, layout)
             assert_pdf_form_geometry(pdf, fixture_name=name)
-            assert_pdf_closing_bundle(pdf, layout)
+            assert_pdf_closing_bundle(pdf, layout, normalized)
             chars = [
                 char
                 for page in pdf.pages

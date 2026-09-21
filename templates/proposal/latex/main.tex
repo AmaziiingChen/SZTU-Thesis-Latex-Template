@@ -92,7 +92,7 @@
   \setlength{\leftskip}{#1\ProposalListLevelIndentLength}%
   \addtolength{\leftskip}{\ProposalListHangingIndentLength}%
   \setlength{\parindent}{-\ProposalListHangingIndentLength}%
-  \justifying #2\hspace{0.5em}#3\par
+  \justifying #2\hspace{\SZTUListMarkerGap}#3\par
   \endgroup
 }
 \newcommand{\MethodsSection}{%
@@ -125,7 +125,7 @@
     colspec={Q[c,m,wd=29.64mm]Q[c,m,wd=29.09mm]Q[c,m,wd=12.70mm]Q[c,m,wd=16.67mm]Q[c,m,wd=11.46mm]Q[c,m,wd=12.49mm]Q[c,m,wd=34.80mm]},
     columns={colsep=0pt},
     rows={valign=m,rowsep=0pt},
-    row{1}={ht=8.2mm},
+    row{1}={ht=8.2mm,rowsep=\SZTUTitleVerticalPadding},
     row{2}={ht=10.85mm},
     row{3}={ht=12.96mm},
     stretch=0,

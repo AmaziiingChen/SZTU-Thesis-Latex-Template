@@ -47,7 +47,7 @@
   \setlength{\leftskip}{#1\MidtermListLevelIndentLength}%
   \addtolength{\leftskip}{\MidtermListHangingIndentLength}%
   \setlength{\parindent}{-\MidtermListHangingIndentLength}%
-  \Body{#2\hspace{0.5em}#3}\par
+  \Body{#2\hspace{\SZTUListMarkerGap}#3}\par
   \endgroup
 }
 \newcommand{\MidtermOutlineItem}[3]{%
@@ -94,6 +94,7 @@
   columns={colsep=\SZTUCellHorizontalPadding},
   rows={valign=m,rowsep=0pt},
   row{1-4}={ht=\SZTUMetadataRowHeight},
+  row{4}={rowsep=\SZTUTitleVerticalPadding},
   stretch=0,
   hlines={\SZTUFormRuleWidth},
   vlines={\SZTUFormRuleWidth}
@@ -110,6 +111,7 @@
   \SZTUFormSectionTitleGap
   \MidtermParagraph{目录：}
   \DirectoryContent
+  \par\vspace{\SZTUResearchHeadingGap}
   \MidtermParagraph{主要研究内容：}
   \ResearchContent
   \par\vspace*{\SZTUFlowEndSpace}

@@ -19,7 +19,7 @@ if str(TEMPLATES_DIR) not in sys.path:
 
 from common.python.content import (  # noqa: E402
     figure_caption_runs,
-    has_explicit_numbering,
+    resolve_list_marker,
     split_numbered_subitems,
 )
 from common.python.font_files import (  # noqa: E402
@@ -96,11 +96,13 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUPageBottomMargin}}{{{page['bottom_margin_mm']:g}mm}}",
             rf"\newcommand{{\SZTUPageLeftMargin}}{{{page['left_margin_mm']:g}mm}}",
             rf"\newcommand{{\SZTUPageRightMargin}}{{{page['right_margin_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUTitleVerticalPadding}}{{{table['title_vertical_padding_mm']:g}mm}}",
             *process_form_latex_tokens(layout),
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUNestedListLeftIndent}}{{{paragraphs['nested_list_left_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUListLevelIndent}}{{{paragraphs['list_level_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUListHangingIndent}}{{{paragraphs['list_hanging_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUListMarkerGap}}{{{paragraphs['list_marker_gap_em']:g}em}}",
             rf"\newcommand{{\SZTUImageMaxHeight}}{{{layout['image']['max_height_mm']:g}mm}}",
             rf"\newcommand{{\SZTUStudentSignatureHeight}}{{{signatures['student_min_height_mm']:g}mm}}",
             rf"\newcommand{{\SZTUReviewSignatureHeight}}{{{signatures['review_min_height_mm']:g}mm}}",
@@ -149,18 +151,16 @@ def paragraphs(items: list[list[dict]], *, indent: bool = True) -> str:
     return ("\\par\n" + prefix).join(prefix + rich_runs(item) for item in items)
 
 
-def _list_marker(block: dict, item: dict, index: int, depth: int) -> str:
-    if block["type"] == "ordered_list":
-        return item["marker"] or f"{index}、"
-    return UNORDERED_LIST_MARKERS[depth - 1]
-
-
 def render_list_block(block: dict, *, depth: int = 1) -> str:
     if not 1 <= depth <= LIST_MAX_DEPTH:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
     rendered = []
     for index, item in enumerate(block["items"], start=1):
-        marker = tex_escape(_list_marker(block, item, index, depth))
+        marker = tex_escape(
+            resolve_list_marker(
+                block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+            )
+        )
         rendered.append(
             rf"\ProposalListItem{{{depth}}}{{{marker}}}{{{rich_runs(item['runs'])}}}"
         )
@@ -314,12 +314,12 @@ def render_text_blocks(
     return "\n".join(rendered)
 
 
-def numbered_paragraphs(items: list[list[dict]]) -> str:
+def method_paragraphs(items: list[list[dict]]) -> str:
     rendered_items = []
-    for index, item in enumerate(items, start=1):
+    for item in items:
         split_item = split_numbered_subitems(item)
         lead = split_item[0] if split_item else item
-        rendered = rich_runs(lead) if has_explicit_numbering(lead) else rf"{index}、{rich_runs(lead)}"
+        rendered = rich_runs(lead)
         if split_item:
             _, subitems, continuations = split_item
             rendered += "\n" + "\n".join(
@@ -341,7 +341,7 @@ def render_method_blocks(
     assets_dir: Path,
 ) -> str:
     if all(item["type"] == "paragraph" for item in items):
-        return numbered_paragraphs([item["runs"] for item in items])
+        return method_paragraphs([item["runs"] for item in items])
     return render_text_blocks(items, data_dir=data_dir, assets_dir=assets_dir)
 
 

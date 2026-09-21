@@ -29,7 +29,9 @@ if str(TEMPLATES_DIR) not in sys.path:
 from common.python.content import (  # noqa: E402
     display_width,
     figure_caption_runs,
+    list_marker_text,
     plain_runs,
+    resolve_list_marker,
     starts_with_calendar_date,
 )
 from common.python.font_files import font_roots, resolve_font_files  # noqa: E402
@@ -444,12 +446,17 @@ def _add_cover(document: Document, data: dict[str, Any], fixed: dict[str, Any]) 
 
     title_style = styles["cover_title_value"]
     title_em_mm = float(title_style["size_pt"]) * 25.4 / 72.0
+    title_horizontal_padding = float(LAYOUT["cover"]["title_cell_horizontal_padding_mm"])
+    title_usable_width = (
+        float(LAYOUT["cover"]["title_underline_width_mm"])
+        - 2 * title_horizontal_padding
+    )
     title_lines = _split_runs_for_cover_title(
         metadata["title"],
         line_capacity=float(
             LAYOUT["cover"].get(
                 "title_line_capacity_units",
-                float(LAYOUT["cover"]["title_underline_width_mm"]) / title_em_mm,
+                title_usable_width / title_em_mm,
             )
         ),
         max_lines=int(LAYOUT["cover"]["title_max_lines"]),
@@ -469,8 +476,8 @@ def _add_cover(document: Document, data: dict[str, Any], fixed: dict[str, Any]) 
         for cell in row.cells:
             _set_cell_margins(
                 cell,
-                left=1.5,
-                right=1.5,
+                left=title_horizontal_padding,
+                right=title_horizontal_padding,
                 top=title_cell_vertical_padding,
                 bottom=title_cell_vertical_padding,
             )
@@ -782,12 +789,6 @@ def _append_figure_group(cell, block: dict[str, Any], *, data_dir: Path) -> None
     _append_runs(caption, figure_caption_runs(block), style=style)
 
 
-def _list_marker(block_type: str, item: dict[str, Any], index: int, depth: int) -> str:
-    if block_type == "ordered_list":
-        return item["marker"] or f"（{index}）"
-    return UNORDERED_LIST_MARKERS[depth - 1]
-
-
 def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
     if not 1 <= depth <= LIST_MAX_DEPTH:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
@@ -801,8 +802,10 @@ def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
             left_indent_pt=marker_indent + LIST_HANGING_INDENT_PT,
             first_line_indent_pt=-LIST_HANGING_INDENT_PT,
         )
-        marker = _list_marker(block["type"], item, index, depth)
-        marker_text = marker if block["type"] == "ordered_list" else f"{marker} "
+        marker = resolve_list_marker(
+            block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+        )
+        marker_text = list_marker_text(marker)
         _append_runs(paragraph, plain_runs(marker_text), style=style)
         _append_runs(paragraph, item["runs"], style=style)
         if item["children"]:
@@ -983,6 +986,7 @@ def _write_inline_cell(
     *,
     style: dict[str, Any],
     alignment: WD_ALIGN_PARAGRAPH = WD_ALIGN_PARAGRAPH.LEFT,
+    baseline_shift_mm: float = 0.0,
 ) -> None:
     paragraph = cell.paragraphs[0]
     _format_paragraph(paragraph, alignment=alignment)
@@ -991,6 +995,12 @@ def _write_inline_cell(
         plain_runs(runs) if isinstance(runs, str) else runs,
         style=style,
     )
+    if baseline_shift_mm:
+        position_half_points = -round(baseline_shift_mm * 72.0 / 25.4 * 2.0)
+        for run in paragraph.runs:
+            position = OxmlElement("w:position")
+            position.set(qn("w:val"), str(position_half_points))
+            run._r.get_or_add_rPr().append(position)
 
 
 def _underline_cell(cell) -> None:
@@ -1175,6 +1185,9 @@ def _topic_lines(cell, topic: dict[str, Any], fixed_topic: dict[str, Any], signa
                 )
             ),
             path="signature.topic_project_value_alignment",
+        ),
+        baseline_shift_mm=float(
+            LAYOUT["signature"].get("topic_project_value_baseline_shift_mm", 0.0)
         ),
     )
     _underline_cell(project_table.rows[0].cells[2])

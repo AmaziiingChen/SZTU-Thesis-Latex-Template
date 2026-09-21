@@ -1,0 +1,125 @@
+{
+  "version": "0.1",
+  "authority": {
+    "year": 2026,
+    "official_docx_sha256": "707a07c312b2a84d0d43ff7bb24756703e730d7a236bcc39dfc507177e31976c",
+    "written_spec_sha256": "caa283de4cfc005b68a5728f6758e0d785730b95519f274e6fceaff3a3c0d57b"
+  },
+  "page": {
+    "width_mm": 210.0,
+    "height_mm": 297.0,
+    "top_margin_mm": 25.4,
+    "bottom_margin_mm": 25.4,
+    "left_margin_mm": 31.7,
+    "right_margin_mm": 31.7,
+    "header_distance_mm": 15.0,
+    "footer_distance_mm": 17.5
+  },
+  "fonts": {
+    "body_cjk": "SimSun",
+    "heading_cjk": "SimHei",
+    "abstract_cjk": "KaiTi",
+    "title_cjk": "STZhongsong",
+    "latin": "Times New Roman",
+    "fallback_allowed": false
+  },
+  "typography": {
+    "cover_document_title_pt": 22.0,
+    "cover_topic_label_pt": 16.0,
+    "cover_topic_value_pt": 22.0,
+    "cover_field_pt": 16.0,
+    "thesis_title_pt": 22.0,
+    "abstract_label_pt": 14.0,
+    "abstract_body_pt": 12.0,
+    "heading_1_pt": 18.0,
+    "heading_2_pt": 16.0,
+    "heading_3_pt": 15.0,
+    "body_pt": 12.0,
+    "caption_pt": 10.5,
+    "reference_pt": 10.5,
+    "header_footer_pt": 9.0,
+    "line_spacing": 1.5,
+    "effective_paragraph_gap_pt": 7.8,
+    "first_line_indent_em": 2.0
+  },
+  "header": {
+    "chinese_abstract_visible": false,
+    "chinese_abstract_rule_visible": false,
+    "english_abstract_visible": true,
+    "english_abstract_rule_visible": true,
+    "body_visible": true,
+    "text_pattern": "深圳技术大学本科毕业论文—{title}",
+    "rule_pt": 0.75
+  },
+  "footer": {
+    "abstract_number_style": "upper_roman",
+    "abstract_start": 1,
+    "body_number_style": "arabic",
+    "body_start": 1,
+    "body_pattern": "第 {page} 页 共 {section_pages} 页"
+  },
+  "headings": {
+    "toc_title": "目录",
+    "chapter_number_suffix": ".",
+    "chapter_alignment": "center",
+    "section_alignment": "left",
+    "subsection_alignment": "left"
+  },
+  "abstracts": {
+    "body_labels": [
+      "【摘要】",
+      "【关键词】",
+      "【Abstract】",
+      "【Key words】"
+    ],
+    "toc_labels": [
+      "摘要",
+      "Abstract"
+    ],
+    "toc_labels_bracketed": false
+  },
+  "numbering": {
+    "figure_pattern": "{chapter}-{item}",
+    "table_pattern": "{chapter}-{item}",
+    "equation_pattern": "{chapter}-{item}",
+    "citation_style": "black_superscript_brackets"
+  },
+  "captions": {
+    "figure_position": "below",
+    "table_position": "above",
+    "alignment": "center",
+    "terminal_punctuation_allowed": false,
+    "forbidden_terminal_punctuation": "。．.!！？?；;：:,，、"
+  },
+  "references": {
+    "standard": "GB/T 7714-2015",
+    "style": "numerical",
+    "sort_order": "first_citation",
+    "heading_text": "参考文献",
+    "heading_pt": 18.0,
+    "heading_cjk": "SimHei",
+    "heading_bold": true,
+    "heading_alignment": "center",
+    "label_pt": 12.0,
+    "body_pt": 10.5,
+    "cjk": "KaiTi",
+    "latin": "Times New Roman",
+    "line_spacing": 1.5,
+    "item_spacing_pt": 0.0,
+    "first_line_indent_pt": 0.0,
+    "hanging_indent_mode": "align_continuation_with_entry_text",
+    "citation_pt": 12.0,
+    "citation_position": "superscript",
+    "citation_brackets": "square",
+    "citation_color": "000000",
+    "compress_consecutive": true,
+    "url_breakable": true,
+    "minimum_entries": 10,
+    "minimum_foreign_entries": 2
+  },
+  "tables": {
+    "default_style": "three_line",
+    "continuation_label": "续表 {number}",
+    "repeat_header_on_page_break": true
+  }
+}

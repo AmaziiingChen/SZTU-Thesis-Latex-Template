@@ -35,9 +35,19 @@
 *.py[cod]
 __pycache__/
 /tmp/
+/.pnpm-store/
+/.worktrees/
+/output/
+/test/
 
 # Local-only thesis, proposal, and other reference samples.
 /references/private/*
 !/references/private/README.md
 /output/**/private/
+/output/pdf/thesis-calibrated.pdf
 /templates/*/fonts.local/
+
+# Machine-specific font files and resolved paths.
+/fonts.local/
+/sztu-fonts.local.tex
+/sztu-fonts.local.json

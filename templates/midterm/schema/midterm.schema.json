@@ -53,6 +53,7 @@
         },
         "directory": {
           "type": "array",
+          "description": "需要编号的论文主体目录；摘要、Abstract、参考文献和致谢由渲染器固定置入。",
           "minItems": 1,
           "maxItems": 150,
           "items": {"$ref": "#/$defs/outlineItem"}

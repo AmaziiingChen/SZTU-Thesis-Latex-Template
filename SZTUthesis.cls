@@ -91,51 +91,126 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 % 字符串处理
 \RequirePackage{xstring}
 
-% 参考文献格式 GBT7714-2005
+% 2026 届模板固定使用 GB/T 7714—2015 数字顺序制（随仓库版本 v2.1）。
 % 来自https://github.com/CTeX-org/gbt7714-bibtex-style
 % \RequirePackage{natbib} % gbt7714.sty已经包含了natbib宏包
-\RequirePackage{gbt7714}
+\RequirePackage[sort&compress]{gbt7714}
 
-% 跨平台字体选择：优先使用 Windows 规范字体，其次使用 macOS
-% 对应字体，最后回退到 TeX Live 自带的 Fandol 字体。这样无需在
-% 仓库中分发微软字体，也能在 macOS / Windows / Linux 上编译。
-\IfFontExistsTF{SimSun}
-  {\def\sztu@font@cjkmain{SimSun}}
-  {\IfFontExistsTF{Songti SC}
-    {\def\sztu@font@cjkmain{Songti SC}}
-    {\IfFontExistsTF{STSong}
-      {\def\sztu@font@cjkmain{STSong}}
-      {\def\sztu@font@cjkmain{FandolSong-Regular.otf}}}}
-\IfFontExistsTF{SimHei}
-  {\def\sztu@font@cjksans{SimHei}}
-  {\IfFontExistsTF{Heiti SC}
-    {\def\sztu@font@cjksans{Heiti SC}}
-    {\IfFontExistsTF{PingFang SC}
-      {\def\sztu@font@cjksans{PingFang SC}}
-      {\def\sztu@font@cjksans{FandolHei-Regular.otf}}}}
-\IfFontExistsTF{FangSong}
-  {\def\sztu@font@cjkmono{FangSong}}
-  {\IfFontExistsTF{STFangsong}
-    {\def\sztu@font@cjkmono{STFangsong}}
-    {\def\sztu@font@cjkmono{FandolFang-Regular.otf}}}
-\IfFontExistsTF{KaiTi}
-  {\def\sztu@font@cjkkai{KaiTi}}
-  {\IfFontExistsTF{Kaiti SC}
-    {\def\sztu@font@cjkkai{Kaiti SC}}
-    {\IfFontExistsTF{STKaiti}
-      {\def\sztu@font@cjkkai{STKaiti}}
-      {\def\sztu@font@cjkkai{FandolKai-Regular.otf}}}}
+% 2026 官方范例要求精确使用宋体、黑体、楷体、华文中宋和
+% Times New Roman。缺失时停止编译，不允许静默回退到系统默认字体或
+% Fandol。macOS 的 Microsoft Word 自带未注册到系统字体册的 KaiTi，
+% 因此允许从其合法安装目录直接加载。
+\def\sztu@font@cjkmain{SimSun}
+\def\sztu@font@cjksans{SimHei}
+\def\sztu@font@cjkmono{SimSun}
+\def\sztu@font@cjkkai{KaiTi}
+\newif\ifsztu@mainfile
+\newif\ifsztu@sansfile
+\newif\ifsztu@kaifile
+\newif\ifsztu@timesfile
+\sztu@mainfilefalse
+\sztu@sansfilefalse
+\sztu@kaifilefalse
+\sztu@timesfilefalse
 
-\setCJKmainfont[AutoFakeBold]{\sztu@font@cjkmain}
-\setCJKsansfont[AutoFakeBold]{\sztu@font@cjksans}
-\setCJKmonofont[AutoFakeBold]{\sztu@font@cjkmono}
+\def\sztu@font@zhongsong{STZhongsong.ttf}
+\def\sztu@font@times{Times New Roman.ttf}
+\def\sztu@font@timesbold{Times New Roman Bold.ttf}
+\def\sztu@font@timesitalic{Times New Roman Italic.ttf}
+\def\sztu@font@timesbolditalic{Times New Roman Bold Italic.ttf}
+\def\sztu@path@cjkmain{}
+\def\sztu@path@cjksans{}
+\def\sztu@path@cjkkai{}
+\def\sztu@path@zhongsong{}
+\def\sztu@path@times{}
+\def\sztu@path@timesbold{}
+\def\sztu@path@timesitalic{}
+\def\sztu@path@timesbolditalic{}
+\newif\ifsztu@configured
+\sztu@configuredfalse
+\InputIfFileExists{sztu-fonts.local.tex}{}{}
+\ifsztu@configured
+  \sztu@mainfiletrue
+  \sztu@sansfiletrue
+  \sztu@kaifiletrue
+  \sztu@timesfiletrue
+  \let\sztu@font@cjkmono\sztu@font@cjkmain
+  \def\sztu@checkfont#1{%
+    \IfFileExists{\csname sztu@path@#1\endcsname\csname sztu@font@#1\endcsname}{}{%
+      \ClassError{SZTUthesis}{Configured font #1 is missing}%
+        {Run python3 scripts/check_fonts.py to refresh local font paths.}}}
+  \sztu@checkfont{cjkmain}
+  \sztu@checkfont{cjksans}
+  \sztu@checkfont{cjkkai}
+  \sztu@checkfont{zhongsong}
+  \sztu@checkfont{times}
+  \sztu@checkfont{timesbold}
+  \sztu@checkfont{timesitalic}
+  \sztu@checkfont{timesbolditalic}
+\else
+\IfFontExistsTF{simsun.ttf}{%
+  \sztu@mainfiletrue
+  \def\sztu@font@cjkmain{simsun.ttf}%
+  \def\sztu@font@cjkmono{simsun.ttf}%
+}{%
+  \IfFontExistsTF{SimSun}{}{%
+    \ClassError{SZTUthesis}{Required font SimSun is missing}%
+      {Install the official SimSun font before compiling. Font substitution is forbidden.}%
+  }%
+}
+\IfFontExistsTF{simhei.ttf}{%
+  \sztu@sansfiletrue
+  \def\sztu@font@cjksans{simhei.ttf}%
+}{%
+  \IfFontExistsTF{SimHei.ttf}{%
+    \sztu@sansfiletrue
+    \def\sztu@font@cjksans{SimHei.ttf}%
+  }{\IfFontExistsTF{SimHei}{}{%
+    \ClassError{SZTUthesis}{Required font SimHei is missing}%
+      {Install the official SimHei font before compiling. Font substitution is forbidden.}%
+  }}%
+}
+\IfFontExistsTF{simkai.ttf}{%
+  \sztu@kaifiletrue
+  \def\sztu@font@cjkkai{simkai.ttf}%
+}{\IfFontExistsTF{Kaiti.ttf}{%
+  \sztu@kaifiletrue
+  \def\sztu@font@cjkkai{Kaiti.ttf}%
+}{\IfFontExistsTF{KaiTi}{}{%
+    \ClassError{SZTUthesis}{Required font KaiTi is missing}%
+      {Run python3 scripts/check_fonts.py before compiling. Font substitution is forbidden.}%
+}}}
+\IfFileExists{STZhongsong.ttf}{}{%
+  \ClassError{SZTUthesis}{Required font STZhongsong.ttf is missing}%
+    {Restore STZhongsong.ttf in the project root before compiling.}}
+\IfFontExistsTF{Times New Roman.ttf}{%
+  \sztu@timesfiletrue
+}{\IfFontExistsTF{Times New Roman}{}{%
+    \ClassError{SZTUthesis}{Required font Times New Roman is missing}%
+      {Install Times New Roman before compiling. Font substitution is forbidden.}%
+}}
+
+\fi
+
+\ifsztu@mainfile
+  \setCJKmainfont[Path={\sztu@path@cjkmain},AutoFakeBold]{\sztu@font@cjkmain}
+  \setCJKmonofont[Path={\sztu@path@cjkmain},AutoFakeBold]{\sztu@font@cjkmain}
+\else
+  \setCJKmainfont[AutoFakeBold]{\sztu@font@cjkmain}
+  \setCJKmonofont[AutoFakeBold]{\sztu@font@cjkmono}
+\fi
+\ifsztu@sansfile
+  \setCJKsansfont[Path={\sztu@path@cjksans},AutoFakeBold]{\sztu@font@cjksans}
+\else
+  \setCJKsansfont[AutoFakeBold]{\sztu@font@cjksans}
+\fi
 \ClassInfo{SZTUthesis}{CJK fonts: main=\sztu@font@cjkmain,
   sans=\sztu@font@cjksans, mono=\sztu@font@cjkmono,
   kai=\sztu@font@cjkkai}
 
 % 页面布局 %
 % -------------------------------------------------------%
-\geometry{top=25.4mm,bottom=25.4mm,left=31mm,right=31mm}
+\geometry{top=25.4mm,bottom=25.4mm,left=31.7mm,right=31.7mm}
 % 给页眉留足空间（否则会有 \headheight is too small的warning）
 \setlength{\headheight}{14.5pt}
 % “磅”是衡量印刷字体大小的单位,约等于七十二分之一英寸。
@@ -143,14 +218,24 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 % 磅和 LaTeX的 pt- points (大约 1/72 inch) 是一致的。
 \renewcommand*{\baselinestretch}{1.5}   % 几倍行间距
 \setlength{\baselineskip}{16pt}         % 基准行间距
-\setlength{\parskip}{12pt}              % 基准段间距（word行距与字体有关，这里用12pt近似word五号宋体行间距）
+\setlength{\parskip}{7.8pt}             % Word 段前段后 0.5 行的有效段间距
 
 
 % 设置字体 %
 % -------------------------------------------------------%
-\IfFontExistsTF{Times New Roman}
-  {\setmainfont{Times New Roman}}
-  {\setmainfont{TeX Gyre Termes}}
+\ifsztu@timesfile
+  \setmainfont[
+    Path={\sztu@path@times},
+    BoldFeatures={Path={\sztu@path@timesbold}},
+    ItalicFeatures={Path={\sztu@path@timesitalic}},
+    BoldItalicFeatures={Path={\sztu@path@timesbolditalic}},
+    BoldFont={\sztu@font@timesbold},
+    ItalicFont={\sztu@font@timesitalic},
+    BoldItalicFont={\sztu@font@timesbolditalic}]
+    {\sztu@font@times}
+\else
+  \setmainfont{Times New Roman}
+\fi
 \IfFontExistsTF{Courier New}
   {\setmonofont{Courier New}}
   {\setmonofont{TeX Gyre Cursor}}
@@ -167,16 +252,28 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 % 重定义ctex定义好的宋体和黑体，以支持伪加粗AutoFakeBold
 % 即支持类似word里的给黑体、宋体等中文字体加粗的操作，用\bfseries
 \let\heiti\relax
-\newCJKfontfamily[hei]\heiti{\sztu@font@cjksans}[AutoFakeBold]
+\ifsztu@sansfile
+  \newCJKfontfamily[hei]\heiti{\sztu@font@cjksans}[Path={\sztu@path@cjksans},AutoFakeBold]
+\else
+  \newCJKfontfamily[hei]\heiti{\sztu@font@cjksans}[AutoFakeBold]
+\fi
 \let\songti\relax
-\newCJKfontfamily[song]\songti{\sztu@font@cjkmain}[AutoFakeBold]
+\ifsztu@mainfile
+  \newCJKfontfamily[song]\songti{\sztu@font@cjkmain}[Path={\sztu@path@cjkmain},AutoFakeBold]
+\else
+  \newCJKfontfamily[song]\songti{\sztu@font@cjkmain}[AutoFakeBold]
+\fi
 \let\kaishu\relax
-\newCJKfontfamily[kai]\kaishu{\sztu@font@cjkkai}[AutoFakeBold]
+\ifsztu@kaifile
+  \newCJKfontfamily[kai]\kaishu{\sztu@font@cjkkai}[Path={\sztu@path@cjkkai},AutoFakeBold]
+\else
+  \newCJKfontfamily[kai]\kaishu{\sztu@font@cjkkai}[AutoFakeBold]
+\fi
 
 \let\huawenxingkai\relax
 \newCJKfontfamily[hwxk]\huawenxingkai{STXingkai.ttf}[AutoFakeBold]
 \let\huawenzhongsong\relax
-\newCJKfontfamily[hwzs]\huawenzhongsong{STZhongsong.ttf}[AutoFakeBold]
+\newCJKfontfamily[hwzs]\huawenzhongsong{\sztu@font@zhongsong}[Path={\sztu@path@zhongsong},AutoFakeBold]
 \let\huawenxinwei\relax
 \newCJKfontfamily[hwxw]\huawenxinwei{STXinwei.ttf}[AutoFakeBold]
 
@@ -334,13 +431,13 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 %               {before-code}%定义标题前的内容
 %               [after-code]%定义标题后的内容
 \newcommand{\sectionbreak}{\clearpage}  % 大章前分页
-\titleformat{\section}{\zihao{-2}\centering \bfseries \heiti}{\thesection}{1em}{}
+\titleformat{\section}{\zihao{-2}\centering \bfseries \heiti}{\thesection.}{1em}{}
 \titleformat{\subsection}{\zihao{3} \bfseries \heiti}{\thesubsection}{1em}{}
 \titleformat{\subsubsection}{\zihao{-3} \bfseries \heiti}{\thesubsubsection}{1em}{}
 % 设置章节标题的段间距，默认0.5段间距足够了，去掉章节标题自带的段间距
-\titlespacing{\section}{0pt}{0pt}{0pt}%{0.3em}{0.3em}
-\titlespacing{\subsection}{0pt}{0pt}{0pt}%{0.3em}{0.3em}
-\titlespacing{\subsubsection}{0pt}{0pt}{0pt}%{0.3em}{0.3em}
+\titlespacing{\section}{0pt}{7.8pt}{7.8pt}
+\titlespacing{\subsection}{0pt}{7.8pt}{7.8pt}
+\titlespacing{\subsubsection}{0pt}{7.8pt}{7.8pt}
 % 定义在目录中的格式
 % \titlecontents{标题名}
 %               [左间距]
@@ -351,7 +448,7 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 \titlecontents{section}
               [0.75em] % 按样例目录左侧是和前置部分文字左侧对齐的
               {\zihao{4} \songti}
-              {\contentslabel {1em}}
+              {\contentslabel[\thecontentslabel.]{1.5em}}
               {\hspace*{-1em}}
               {\titlerule*[0.5pc]{.}\contentspage}
 
@@ -382,19 +479,27 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 \newcommand{\setheader}{
     \pagestyle{fancy}
     \fancyhf{}
-    \fancyhead[C]{\songti \zihao{-5} 深圳技术大学本科毕业论文— \titlecnSingleLine }
+    \renewcommand{\headrulewidth}{0.75pt}
+    \fancyhead[C]{\songti \zihao{-5} 深圳技术大学本科毕业论文—\titlecnSingleLine}
 }
 % 摘要页码格式
 \newcommand{\setabstractfooter}{
-    \setcounter{page}{1} % 重置页码编号
+    \pagestyle{fancy}
+    \fancyhf{}
+    \renewcommand{\headrulewidth}{0pt}
     \pagenumbering{Roman}
+    \fancyfoot[C]{\zihao{-5} \thepage}
+}
+% 英文摘要恢复文字页眉和横线，但延续中文摘要的 Roman 页码。
+\newcommand{\setenglishabstractheader}{
+    \setheader
     \fancyfoot[C]{\zihao{-5} \thepage}
 }
 % 正文页码格式
 \newcommand{\setfooter}{
-    \setcounter{page}{1} % 重置页码编号
+    \setheader
     \pagenumbering{arabic}
-    \fancyfoot[C]{\zihao{-5} 第 \thepage\ 页，共 \pageref{LastPage}\ 页}
+    \fancyfoot[C]{\zihao{-5} 第 \thepage\ 页 共 \pageref{LastPage}\ 页}
 }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 4. 中文摘要
@@ -411,14 +516,14 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 
     \vspace{0.5cm}
 
-    \noindent {\zihao{4} \bfseries \kaishu 【摘\quad 要】} % “摘要”两个字为四号楷体
+    \noindent {\zihao{-4}\kaishu【{\zihao{4}\bfseries 摘要}\zihao{-4}】}
     \zihao{-4}\kaishu \noindent % 内容为小四号楷体
 }
 % 显示中文关键词和分类号
 {
     \begin{flushleft}
         \noindent 
-        {\zihao{4} \bfseries \kaishu 【关键词】} % “关键词”三个字为四号楷体
+        {\zihao{-4}\kaishu【{\zihao{4}\bfseries 关键词}\zihao{-4}】}
         {\zihao{-4} \kaishu \@keywordscn} \par % 内容为小四号楷体
     \end{flushleft}
 }
@@ -436,13 +541,13 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 
     \vspace{0.5cm}
 
-    \noindent {\zihao{4} \bfseries 【Abstract】~} % 四号
+    \noindent {\zihao{-4}【{\zihao{4}\bfseries Abstract}\zihao{-4}】~}
     \zihao{-4} \noindent % 小四号
 }
 {
     \begin{flushleft}
         \noindent 
-        {\zihao{4} \bfseries 【Key words】~} %四号
+        {\zihao{-4}【{\zihao{4}\bfseries Key words}\zihao{-4}】~}
         {\zihao{-4} \@keywordsen} \par % 小四号
     \end{flushleft}
 }
@@ -596,24 +701,38 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 
 % 6. 参考文献 %
 % ------------------------------------------------------%
-% 学校《撰写规范》对「注释与参考文献」条目的字体、行距另有说明；本模板中 \setreference 使用小二号黑体居中标题、五号楷体文献表（与规范文本可能不完全一致，按需自行改 cls）。
-\newcommand{\setreference}
-{
-    \setlength{\bibsep}{2ex} % 参考文献条目间距
-    % 临时修改section标题样式
-    \renewcommand{\refname}{参考文献}
-    \titleformat{\section}{\centering \bfseries \zihao{-2} \heiti}{\thesection}{1em}{}
-    % \addcontentsline{toc}{section}{参考文献}
-    % { \zihao{-2} \bfseries \heiti 参考文献 \par}
-    \phantomsection % 使得hyperref目录能够跳转到正确的位置
-    \addcontentsline{toc}{section}{参考文献} % 由于参考文献不是section，这句把参考文献加入目录
-	\zihao{5} \kaishu
-	\bibliographystyle{gbt7714-numerical}
-    \bibliography{thesis-references}
-    \newpage
-    
-    % % 改回section样式 
-    % \titleformat{\section}{\zihao{3} \bfseries \heiti}{\thesection}{1em}{}
+% 可选参数为 BibTeX 数据库名；正式论文默认读取 thesis-references，公开压力样例
+% 可以复用同一版式实现而不触碰学生数据。
+\newcommand{\setreference}[1][thesis-references]{%
+    \begingroup
+    \renewcommand{\refname}{参考文献}%
+    \renewcommand{\bibsection}{%
+        \clearpage
+        \phantomsection
+        \addcontentsline{toc}{section}{参考文献}%
+        \vspace*{7.8pt}% 段前 0.5 行
+        {\centering\zihao{-2}\bfseries\heiti 参考文献\par}%
+        \vspace{7.8pt}% 段后 0.5 行
+    }%
+    % 文献编号用小四楷体；正文五号，中文楷体、西文 Times New Roman。
+    % natbib 的数字列表使续行与编号后的条目正文起点对齐。
+    \renewcommand{\bibnumfmt}[1]{{\zihao{-4}\kaishu[##1]}\hfill}%
+    \renewcommand{\bibfont}{%
+        \zihao{5}\kaishu
+        \linespread{1.5}\selectfont
+        \setlength{\parindent}{0pt}%
+        \setlength{\parskip}{0pt}%
+    }%
+    \setlength{\bibsep}{0pt}% 条目之间不增加额外段距
+    \urlstyle{same}% URL 保持 Times New Roman，并沿 gbt7714 的断行点换行
+    % xdvipdfmx 无法让同一个外链注释跨物理页；参考文献中的长 URL/DOI
+    % 保留可复制文本但不创建外链，避免条目恰好跨页时产生损坏的 PDF 注释。
+    \let\url\nolinkurl
+    \def\href##1##2{##2}%
+    \bibliographystyle{gbt7714-numerical}%
+    \bibliography{#1}%
+    \clearpage
+    \endgroup
 }
 % 7. 致谢 %
 % 作者对给予指导、各类资助和协助完成研究工作以及提供各种对论文工作有利条件的单位及个人表示感谢。

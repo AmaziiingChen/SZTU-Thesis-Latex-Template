@@ -1,0 +1,168 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "王若明",
+    "college": "新材料与新能源学院",
+    "major": "光源与照明",
+    "class_name": "光电二班",
+    "advisor": "陈明",
+    "check_date": "2026-03-26",
+    "title": {
+      "type": "paragraph",
+      "runs": [
+        {
+          "text": "基于光谱—空间特征融合的深度学习高光谱分类方法研究"
+        }
+      ]
+    }
+  },
+  "sections": {
+    "directory": [
+      {
+        "level": 1,
+        "number": "1",
+        "title": "绪论"
+      },
+      {
+        "level": 2,
+        "number": "1.1",
+        "title": "研究背景与意义"
+      },
+      {
+        "level": 2,
+        "number": "1.2",
+        "title": "国内外研究现状"
+      },
+      {
+        "level": 1,
+        "number": "2",
+        "title": "理论基础与数据预处理"
+      },
+      {
+        "level": 2,
+        "number": "2.1",
+        "title": "高光谱数据特点"
+      },
+      {
+        "level": 2,
+        "number": "2.2",
+        "title": "光谱与空间特征构建"
+      },
+      {
+        "level": 1,
+        "number": "3",
+        "title": "模型设计与实现"
+      },
+      {
+        "level": 2,
+        "number": "3.1",
+        "title": "网络结构"
+      },
+      {
+        "level": 2,
+        "number": "3.2",
+        "title": "损失函数与训练策略"
+      },
+      {
+        "level": 1,
+        "number": "4",
+        "title": "实验结果与分析"
+      },
+      {
+        "level": 1,
+        "number": "5",
+        "title": "总结与展望"
+      }
+    ],
+    "main_research_content": [
+      "工具插入回归测试。",
+      {
+        "type": "data_table",
+        "style": "three_line",
+        "columns": [
+          {
+            "header": "测试条件"
+          },
+          {
+            "header": "测量结果"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              "样本甲",
+              "10.2"
+            ]
+          },
+          {
+            "cells": [
+              "样本乙",
+              "12.4"
+            ]
+          }
+        ],
+        "caption": "表格测试"
+      },
+      {
+        "type": "data_table",
+        "style": "grid",
+        "columns": [
+          {
+            "header": "测试条件"
+          },
+          {
+            "header": "测量结果"
+          }
+        ],
+        "rows": [
+          {
+            "cells": [
+              "样本甲",
+              "10.2"
+            ]
+          },
+          {
+            "cells": [
+              "样本乙",
+              "12.4"
+            ]
+          }
+        ],
+        "caption": "普通表格测试"
+      }
+    ],
+    "progress": [
+      "完成四张图的组合排版。",
+      {
+        "type": "figure_group",
+        "id": "fig-tools_0001",
+        "chapter": 1,
+        "columns": 2,
+        "caption": "组合图排版测试",
+        "items": [
+          {
+            "path": "assets/research-workflow.png",
+            "alt": "示例图片1",
+            "caption": "条件1"
+          },
+          {
+            "path": "assets/research-workflow.png",
+            "alt": "示例图片2",
+            "caption": "条件2"
+          },
+          {
+            "path": "assets/research-workflow.png",
+            "alt": "示例图片3",
+            "caption": "条件3"
+          },
+          {
+            "path": "assets/research-workflow.png",
+            "alt": "示例图片4",
+            "caption": "条件4"
+          }
+        ]
+      },
+      "如{{fig:fig-tools_0001}}所示。"
+    ]
+  }
+}

@@ -66,13 +66,13 @@
 \section{图像布局}
 \label{sec.figure}
 
-\emph{学校对图片只有小标题要求，没有进一步的子图要求，我们按科技论文常规排版来}
+学校对图片只有小标题要求，没有进一步的子图要求，我们按科技论文常规排版。
 
 \subsection{单图布局}
 
 \lipsum
 
-\emph{单图布局如图~\ref{F.sztu_single} 所示。}
+单图布局如图~\ref{F.sztu_single} 所示。
 
 \begin{figure}[hbt]
 \centering
@@ -98,11 +98,12 @@
 
 第二段占位文字：\lipsum[2]
 
-图~\ref{F.here_fixed} 使用 \pkg{float} 宏包提供的 \texttt{H} 说明符；本模板已在 \cls{SZTUthesis.cls} 中加载 \pkg{float}，正文中直接写 \verb|\begin{figure}[H]| 即可。
+图~\ref{F.here_fixed} 使用固定位置说明符。本模板已经加载所需宏包，正文可直接使用
+固定位置的插图环境。
 
 \subsection{横排布局}
 
-\emph{横排布局如图~\ref{F.sztu_row} 所示。}
+横排布局如图~\ref{F.sztu_row} 所示。
 
 \begin{figure}[!htb]
     \centering
@@ -137,7 +138,7 @@
 \lipsum
 
 \subsection{竖排布局}
-\emph{竖排布局如图\ref{F.sztu_col}所示。}
+竖排布局如图\ref{F.sztu_col}所示。
 
 \begin{figure}[!htb]
     \centering
@@ -181,7 +182,7 @@
     \label{F.sztu_col_row}
 \end{figure}
 
-\emph{竖排多图横排布局如图~\ref{F.sztu_col_row} 所示。注意看(a)、(b)编号与图关系。}
+竖排多图横排布局如图~\ref{F.sztu_col_row} 所示。注意看(a)、(b)编号与图关系。
 
 
 \subsection{横排多图竖排布局}
@@ -208,7 +209,7 @@
     \label{F.sztu_row_col}
 \end{figure}
 
-\emph{横排多图竖排布局如图~\ref{F.sztu_row_col} 所示。注意看(a)、(b)编号与图关系。}
+横排多图竖排布局如图~\ref{F.sztu_row_col} 所示。注意看(a)、(b)编号与图关系。
 
 \subsection{本章小结}
 本章示例图片布局。
@@ -216,6 +217,7 @@
 这里再测试一下不同章节的公式编号
 \begin{equation}
 p_{i} = \frac{e^{-\varepsilon_{i}/kT}}{\sum_{j=1}^{M}e^{-\varepsilon_{j}/kT}}
+\label{E.chapter-two}
 \end{equation}
 
 \newpage    % 两个章节之间分页，不想分的话可注释掉
@@ -225,7 +227,7 @@ p_{i} = \frac{e^{-\varepsilon_{i}/kT}}{\sum_{j=1}^{M}e^{-\varepsilon_{j}/kT}}
 
 \begin{table}[htb]
   \centering
-  \caption{学校文件里对表格的要求不是很高，不过按照学术论文的一般规范，表格为三线表。}
+  \caption{学校文件里对表格的要求不是很高，不过按照学术论文的一般规范，表格为三线表}
   \label{T.example}
   \begin{tabular}{llllll}
   \hline
@@ -243,7 +245,7 @@ p_{i} = \frac{e^{-\varepsilon_{i}/kT}}{\sum_{j=1}^{M}e^{-\varepsilon_{j}/kT}}
 \end{tabular}
 \end{table}
 
-\emph{表格如表~\ref{T.example} 所示，\LaTeX 表格技巧很多，这里不再详细介绍。}
+表格如表~\ref{T.example} 所示，\LaTeX 表格技巧很多，这里不再详细介绍。
 
 \lipsum
 
@@ -253,7 +255,7 @@ p_{i} = \frac{e^{-\varepsilon_{i}/kT}}{\sum_{j=1}^{M}e^{-\varepsilon_{j}/kT}}
 
 \lipsum
 
-\emph{公式插入示例如公式~\eqref{E.example} 所示。}
+公式插入示例如公式~\eqref{E.example} 所示。
 \begin{equation}
 \gamma_x=
 \begin{cases}

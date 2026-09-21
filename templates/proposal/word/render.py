@@ -26,7 +26,7 @@ from common.python.content import (  # noqa: E402
     ContentDataError as DataError,
     display_width,
     figure_caption_runs,
-    has_explicit_numbering,
+    list_marker_text,
     normalize_content_block,
     normalize_paragraph,
     plain_runs,
@@ -34,10 +34,11 @@ from common.python.content import (  # noqa: E402
     prepare_figure_content,
     require_object,
     require_text,
+    resolve_list_marker,
     runs_text,
     split_numbered_subitems,
 )
-from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.process_form import set_word_cell_vertical_padding, load_process_document_layout  # noqa: E402
 from common.python.equation import add_numbered_omml_table, append_omml  # noqa: E402
 
 
@@ -247,12 +248,6 @@ def _fill_section(
         _remove_paragraph(paragraph)
 
 
-def _list_marker(block_type: str, item: dict[str, Any], index: int, depth: int) -> str:
-    if block_type == "ordered_list":
-        return item["marker"] or f"{index}、"
-    return UNORDERED_LIST_MARKERS[depth - 1]
-
-
 def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
     if not 1 <= depth <= LIST_MAX_DEPTH:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
@@ -263,8 +258,12 @@ def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
             depth * LIST_LEVEL_INDENT_PT + LIST_HANGING_INDENT_PT
         )
         paragraph.paragraph_format.first_line_indent = Pt(-LIST_HANGING_INDENT_PT)
-        marker = _list_marker(block["type"], item, index, depth)
-        _append_runs(paragraph, plain_runs(f"{marker} "), size_pt=BODY_SIZE_PT)
+        marker = resolve_list_marker(
+            block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+        )
+        _append_runs(
+            paragraph, plain_runs(list_marker_text(marker)), size_pt=BODY_SIZE_PT
+        )
         _append_runs(paragraph, item["runs"], size_pt=BODY_SIZE_PT)
         if item["children"]:
             _append_list_block(cell, item["children"], depth=depth + 1)
@@ -476,13 +475,11 @@ def _append_image(cell, block: dict[str, Any], *, data_dir: Path) -> None:
     run.add_picture(str(image_path), width=Mm(width_mm), height=Mm(height_mm))
     _set_picture_alt(run, block["alt"])
 
-    caption = cell.add_paragraph()
-    _format_body_paragraph(caption, references=False, indent=False)
-    caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    caption.paragraph_format.keep_together = True
-    caption.paragraph_format.space_before = Pt(3)
-    caption.paragraph_format.space_after = Pt(3)
-    _append_runs(caption, figure_caption_runs(block), size_pt=BODY_SIZE_PT)
+    # WPS may ignore keep_with_next across paragraphs inside a split table row.
+    # Keep the inline image and its caption in one indivisible paragraph.
+    paragraph.add_run().add_break()
+    paragraph.paragraph_format.space_after = Pt(3)
+    _append_runs(paragraph, figure_caption_runs(block), size_pt=BODY_SIZE_PT)
 
 
 def _append_text_content_blocks(
@@ -585,14 +582,12 @@ def _fill_methods_section(
         if not all(item["type"] == "paragraph" for item in items):
             _append_text_content_blocks(cell, items, data_dir=data_dir)
             continue
-        for index, item in enumerate(items, start=1):
+        for item in items:
             runs = item["runs"]
             split_item = split_numbered_subitems(runs)
             paragraph = cell.add_paragraph()
             _format_body_paragraph(paragraph, references=False)
             lead = split_item[0] if split_item else runs
-            if not has_explicit_numbering(lead):
-                _append_runs(paragraph, plain_runs(f"{index}、"), size_pt=BODY_SIZE_PT)
             _append_runs(paragraph, lead, size_pt=BODY_SIZE_PT)
             if split_item:
                 _, subitems, continuations = split_item
@@ -636,6 +631,9 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
     # college names, or majors to wrap without being clipped by an exact height.
     for row_index in (0, 1, 2):
         table.rows[row_index].height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
+
+    for cell in table.rows[0].cells:
+        set_word_cell_vertical_padding(cell, LAYOUT["table"]["title_vertical_padding_mm"])
 
     metadata = data["metadata"]
     for row_index, cell_index in ((0, 0), (1, 0), (1, 2), (1, 5), (2, 0), (2, 2)):

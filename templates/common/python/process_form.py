@@ -12,6 +12,41 @@ from .typography import load_document_layout
 COMMON_DIR = Path(__file__).resolve().parents[1]
 LATEX_SUPPORT_NAME = "sztu-process-form.tex"
 
+
+def disable_word_numbering(paragraph) -> None:
+    """Disable both direct and style-inherited numbering for explicit text labels."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    properties = paragraph._p.get_or_add_pPr()
+    for old in list(properties.findall(qn("w:numPr"))):
+        properties.remove(old)
+    numbering = OxmlElement("w:numPr")
+    identifier = OxmlElement("w:numId")
+    identifier.set(qn("w:val"), "0")
+    numbering.append(identifier)
+    properties.append(numbering)
+
+def set_word_cell_vertical_padding(cell, padding_mm: float) -> None:
+    """Set only top/bottom insets, preserving the template's horizontal margins."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.shared import Mm
+
+    properties = cell._tc.get_or_add_tcPr()
+    margins = properties.find(qn("w:tcMar"))
+    if margins is None:
+        margins = OxmlElement("w:tcMar")
+        properties.append(margins)
+    for side in ("top", "bottom"):
+        edge = margins.find(qn(f"w:{side}"))
+        if edge is None:
+            edge = OxmlElement(f"w:{side}")
+            margins.append(edge)
+        edge.set(qn("w:w"), str(Mm(padding_mm).twips))
+        edge.set(qn("w:type"), "dxa")
+
+
 _TABLE_NUMBER_TOKENS = (
     "border_pt",
     "horizontal_padding_mm",
@@ -24,6 +59,7 @@ _PARAGRAPH_NUMBER_TOKENS = (
     "first_line_indent_em",
     "list_level_indent_em",
     "list_hanging_indent_em",
+    "list_marker_gap_em",
 )
 
 

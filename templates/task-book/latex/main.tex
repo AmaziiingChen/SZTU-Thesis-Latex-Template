@@ -169,7 +169,7 @@
   \setlength{\leftskip}{#1em}%
   \addtolength{\leftskip}{\SZTUListHangingIndent}%
   \setlength{\parindent}{-\SZTUListHangingIndent}%
-  \makebox[\SZTUListHangingIndent][l]{#2}#3\par
+  #2\hspace{\SZTUListMarkerGap}#3\par
   \endgroup
 }
 \newcommand{\TaskScheduleDateParagraph}[1]{%
@@ -355,7 +355,8 @@
     \FixedOtherLevelLabel\TaskUnderline{\SZTUTopicOtherBlank}{\OtherProjectLevel}}\par
   \noindent\hspace*{\SZTUTopicProjectIndent}%
   \TopicText{\makebox[\SZTUTopicProjectLabelWidth][l]{\FixedProjectNumberLabel}}%
-  \TaskUnderline{\SZTUTopicProjectBlank}{\TopicText{\ProjectNumber}}\par
+  \TaskUnderline{\SZTUTopicProjectBlank}{%
+    \raisebox{-\SZTUTopicProjectValueShift}[0pt][0pt]{\TopicText{\ProjectNumber}}}\par
   \noindent\hspace*{\SZTUTopicOptionIndent}%
   \TopicText{\TaskTopicChoice{\FixedPracticeProjectLabel}{\PracticeProjectBox}}\par
   \noindent\hspace*{\SZTUTopicOptionIndent}\TopicText{\FixedSelfProposedLabel}\par

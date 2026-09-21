@@ -22,7 +22,7 @@ from common.python.font_files import (  # noqa: E402
     resolve_font_files,
     tex_font_parts,
 )
-from common.python.content import figure_caption_runs  # noqa: E402
+from common.python.content import figure_caption_runs, resolve_list_marker  # noqa: E402
 from common.python.equation import latex_display  # noqa: E402
 from common.python.process_form import (  # noqa: E402
     copy_process_form_latex_support,
@@ -114,12 +114,15 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUColFourContent}}{{{columns[3] - 2 * padding - column_rule_share_mm:g}mm}}",
             rf"\newcommand{{\SZTUTableContentWidth}}{{{table['width_mm'] - 2 * padding - 2 * rule_mm - 0.001:g}mm}}",
             rf"\newcommand{{\SZTUTitleContentWidth}}{{{sum(columns[1:]) - 2 * padding - 2 * rule_mm:g}mm}}",
+            rf"\newcommand{{\SZTUTitleVerticalPadding}}{{{table['title_vertical_padding_mm']:g}mm}}",
             *process_form_latex_tokens(layout),
+            rf"\newcommand{{\SZTUResearchHeadingGap}}{{{paragraphs['research_heading_space_before_pt']:g}pt}}",
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUOutlineLevelIndent}}{{{paragraphs['outline_level_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUOutlineHangingIndent}}{{{paragraphs['outline_hanging_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUListLevelIndent}}{{{paragraphs['list_level_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUListHangingIndent}}{{{paragraphs['list_hanging_indent_em']:g}em}}",
+            rf"\newcommand{{\SZTUListMarkerGap}}{{{paragraphs['list_marker_gap_em']:g}em}}",
             rf"\newcommand{{\SZTUMetadataRowHeight}}{{{row_heights['metadata']:g}mm}}",
             rf"\newcommand{{\SZTUTeacherHeaderHeight}}{{{row_heights['teacher_header']:g}mm}}",
             rf"\newcommand{{\SZTUTeacherFirstHeight}}{{{row_heights['teacher_option_first']:g}mm}}",
@@ -274,6 +277,17 @@ def render_equation(block: dict) -> str:
 
 
 def render_data_table(block: dict) -> str:
+    fragment_size = int(LAYOUT["embedded_table"]["rows_per_fragment"])
+    if len(block["rows"]) > fragment_size:
+        separator = rf"\par\vspace{{{LAYOUT['embedded_table']['fragment_gap_pt']:g}pt}}" + "\n"
+        return separator.join(
+            render_data_table({
+                **block,
+                "rows": block["rows"][start:start + fragment_size],
+                "caption_runs": block["caption_runs"] if start + fragment_size >= len(block["rows"]) else None,
+            })
+            for start in range(0, len(block["rows"]), fragment_size)
+        )
     alignments = {"left": "l", "center": "c", "right": "r"}
     colspec = "".join(
         rf"X[{column['width_weight']:g},{alignments[column['alignment']]},m]"
@@ -295,10 +309,11 @@ def render_data_table(block: dict) -> str:
         else ""
     )
     border = float(LAYOUT["embedded_table"]["border_pt"])
+    rules = (f"hline{{1,2,Z}}={{{border:g}pt}}" if block.get("style", "grid") == "three_line" else f"hlines={{{border:g}pt}},vlines={{{border:g}pt}}")
     options = (
         f"width=\\linewidth,colspec={{{colspec}}},"
         "columns={colsep=1.2mm},rows={valign=m,rowsep=1.2mm},"
-        f"hlines={{{border:g}pt}},vlines={{{border:g}pt}}"
+        + rules
     )
     return (
         r"\par\noindent\begin{minipage}{\linewidth}\centering" "\n"
@@ -318,7 +333,8 @@ def render_figure_group(
     assets_dir: Path,
 ) -> str:
     count = len(block["items"])
-    width_fraction = (1.0 - 0.025 * (count - 1)) / count
+    columns = min(block.get("columns", count), count)
+    width_fraction = (1.0 - 0.025 * (columns - 1)) / columns
     items = []
     for item in block["items"]:
         source = _resolve_image(item["path"], data_dir)
@@ -336,19 +352,16 @@ def render_figure_group(
             rf"\vspace{{2pt}}\Body{{{subcaption}}}\par\end{{minipage}}"
         )
     caption = rich_runs(figure_caption_runs(block))
-    return (
-        r"\par\noindent\begin{minipage}{\linewidth}\centering" "\n"
-        + r"\hfill".join(items)
-        + "\n"
-        + rf"\vspace{{3pt}}\Body{{{caption}}}\par"
-        + r"\end{minipage}\par"
-    )
-
-
-def _list_marker(block: dict, item: dict, index: int, depth: int) -> str:
-    if block["type"] == "ordered_list":
-        return item["marker"] or f"{index}、"
-    return UNORDERED_LIST_MARKERS[depth - 1]
+    rows = []
+    for start in range(0, count, columns):
+        last_row = start + columns >= count
+        rows.append(
+            r"\par\noindent\begin{minipage}{\linewidth}\centering" + "\n"
+            + r"\hfill".join(items[start:start + columns])
+            + (rf"\par\vspace{{3pt}}\Body{{{caption}}}\par" if last_row else "")
+            + r"\end{minipage}\par"
+        )
+    return (rf"\vspace{{{LAYOUT['figure_group']['row_gap_mm']:g}mm}}" + "\n").join(rows)
 
 
 def render_list_block(block: dict, *, depth: int = 1) -> str:
@@ -356,7 +369,11 @@ def render_list_block(block: dict, *, depth: int = 1) -> str:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
     rendered = []
     for index, item in enumerate(block["items"], start=1):
-        marker = tex_escape(_list_marker(block, item, index, depth))
+        marker = tex_escape(
+            resolve_list_marker(
+                block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+            )
+        )
         rendered.append(
             rf"\MidtermListItem{{{depth}}}{{{marker}}}{{{rich_runs(item['runs'])}}}"
         )

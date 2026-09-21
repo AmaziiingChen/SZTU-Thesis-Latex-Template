@@ -49,10 +49,12 @@
     "first_line_indent_em": 2.0,
     "list_level_indent_em": 2.0,
     "list_hanging_indent_em": 2.0,
+    "list_marker_gap_em": 0.25,
     "list_max_depth": 4,
     "unordered_list_markers": ["•", "◦", "▪", "▫"],
     "outline_level_indent_em": 2.0,
     "outline_hanging_indent_em": 1.5,
+    "research_heading_space_before_pt": 12.0,
     "caption_space_before_pt": 3.0,
     "caption_space_after_pt": 3.0
   },
@@ -68,6 +70,7 @@
     "width_mm": 150.32,
     "column_widths_mm": [25.03, 48.54, 29.9, 46.85],
     "border_pt": 0.5,
+    "title_vertical_padding_mm": 1.5,
     "horizontal_padding_mm": 1.905,
     "top_bottom_padding_mm": 0.0,
     "flow_vertical_padding_mm": 1.5,
@@ -97,6 +100,8 @@
     "source_prefix": "来源："
   },
   "embedded_table": {
+    "rows_per_fragment": 8,
+    "fragment_gap_pt": 6.0,
     "width_mm": 142.0,
     "border_pt": 0.5,
     "cell_padding_mm": 1.2,
@@ -106,6 +111,7 @@
   "figure_group": {
     "width_mm": 142.0,
     "column_gap_mm": 3.0,
+    "row_gap_mm": 3.0,
     "max_item_height_mm": 75.0
   },
   "equation": {

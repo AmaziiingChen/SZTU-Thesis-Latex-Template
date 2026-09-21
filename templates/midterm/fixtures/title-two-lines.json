@@ -1,0 +1,156 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "王若明",
+    "college": "新材料与新能源学院",
+    "major": "光源与照明",
+    "class_name": "光电二班",
+    "advisor": "陈明",
+    "check_date": "2026-03-26",
+    "title": "烧结助剂与烧结参数对透明陶瓷显微结构和光学性能影响的实验分析与优化研究"
+  },
+  "sections": {
+    "directory": [
+      {
+        "level": 1,
+        "number": "1",
+        "title": "绪论"
+      },
+      {
+        "level": 2,
+        "number": "1.1",
+        "title": "研究背景与意义"
+      },
+      {
+        "level": 2,
+        "number": "1.2",
+        "title": "国内外研究现状"
+      },
+      {
+        "level": 1,
+        "number": "2",
+        "title": "理论基础与数据预处理"
+      },
+      {
+        "level": 2,
+        "number": "2.1",
+        "title": "高光谱数据特点"
+      },
+      {
+        "level": 2,
+        "number": "2.2",
+        "title": "光谱与空间特征构建"
+      },
+      {
+        "level": 1,
+        "number": "3",
+        "title": "模型设计与实现"
+      },
+      {
+        "level": 2,
+        "number": "3.1",
+        "title": "网络结构"
+      },
+      {
+        "level": 2,
+        "number": "3.2",
+        "title": "损失函数与训练策略"
+      },
+      {
+        "level": 1,
+        "number": "4",
+        "title": "实验结果与分析"
+      },
+      {
+        "level": 1,
+        "number": "5",
+        "title": "总结与展望"
+      }
+    ],
+    "main_research_content": [
+      {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "本课题针对高光谱图像波段多、样本少和空间相关性强的特点，研究光谱特征与空间特征的协同表达。模型输入包含反射率序列 "
+          },
+          {
+            "text": "x",
+            "italic": true
+          },
+          {
+            "text": "i",
+            "script": "sub"
+          },
+          {
+            "text": " 及其邻域信息，并以分类准确率 "
+          },
+          {
+            "text": "OA",
+            "bold": true
+          },
+          {
+            "text": "、平均准确率和 Kappa 系数作为评价指标。"
+          }
+        ]
+      },
+      {
+        "type": "ordered_list",
+        "items": [
+          {
+            "marker": "（1）",
+            "content": "完成公开数据集的清洗、归一化和训练集划分。"
+          },
+          {
+            "marker": "（2）",
+            "content": "构建融合一维光谱分支与二维空间分支的特征提取网络。"
+          },
+          {
+            "marker": "（3）",
+            "content": "与传统机器学习模型和经典卷积网络进行对比实验。"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "预期形成可复现实验流程，并分析模型在不同训练样本比例下的稳定性。"
+          }
+        ]
+      }
+    ],
+    "progress": [
+      {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "目前已完成文献调研、需求分析和数据预处理程序，实现了基线模型并完成第一轮实验。"
+          }
+        ]
+      },
+      {
+        "type": "ordered_list",
+        "items": [
+          {
+            "content": "已整理国内外相关文献 42 篇，完成研究现状归纳。"
+          },
+          {
+            "content": "已完成数据加载、标准化、样本划分和结果可视化模块。"
+          },
+          {
+            "content": "已搭建基础网络并在两个公开数据集上完成初步训练。"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "下一阶段将完成消融实验、参数敏感性分析和论文主体撰写，整体进度与任务书计划一致。"
+          }
+        ]
+      }
+    ]
+  }
+}

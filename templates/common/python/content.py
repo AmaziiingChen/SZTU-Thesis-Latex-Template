@@ -356,6 +356,7 @@ def normalize_content_block(
             "id",
             "chapter",
             "items",
+            "columns",
             "caption",
             "source_citation_key",
         }
@@ -377,6 +378,9 @@ def normalize_content_block(
         raw_items = block.get("items")
         if not isinstance(raw_items, list) or not 2 <= len(raw_items) <= 4:
             raise ContentDataError(f"{path}.items must contain 2 to 4 images")
+        columns = block.get("columns", len(raw_items))
+        if isinstance(columns, bool) or not isinstance(columns, int) or not 1 <= columns <= 4:
+            raise ContentDataError(f"{path}.columns must be from 1 to 4")
         items = []
         for index, raw_item in enumerate(raw_items):
             item_path = f"{path}.items[{index}]"
@@ -409,6 +413,7 @@ def normalize_content_block(
             "type": "figure_group",
             "chapter": chapter,
             "items": items,
+            "columns": columns,
             "caption_runs": normalize_paragraph(
                 block.get("caption"), f"{path}.caption", max_length
             ),
@@ -419,9 +424,12 @@ def normalize_content_block(
             normalized["source_citation_key"] = source_citation_key
         return normalized
     if block.get("type") == "data_table":
-        unknown = set(block) - {"type", "columns", "rows", "caption"}
+        unknown = set(block) - {"type", "columns", "rows", "caption", "style"}
         if unknown:
             raise ContentDataError(f"unknown fields in {path}: {sorted(unknown)}")
+        style = block.get("style", "grid")
+        if style not in {"grid", "three_line"}:
+            raise ContentDataError(f"{path}.style must be grid or three_line")
         raw_columns = block.get("columns")
         if not isinstance(raw_columns, list) or not 2 <= len(raw_columns) <= 8:
             raise ContentDataError(f"{path}.columns must contain 2 to 8 columns")
@@ -481,6 +489,7 @@ def normalize_content_block(
             )
         return {
             "type": "data_table",
+            "style": style,
             "columns": columns,
             "rows": rows,
             "caption_runs": normalize_paragraph(
@@ -599,6 +608,30 @@ def normalize_list_block(
             }
         )
     return {"type": list_type, "items": clean_items}
+
+
+def resolve_list_marker(
+    list_type: str,
+    explicit_marker: str | None,
+    index: int,
+    depth: int,
+    unordered_markers: list[str] | tuple[str, ...],
+) -> str:
+    """Resolve one process-document list marker without changing explicit input."""
+    if list_type == "ordered_list":
+        return explicit_marker or f"{index}."
+    if list_type != "unordered_list":
+        raise ContentDataError(f"unsupported list type: {list_type}")
+    if not 1 <= depth <= len(unordered_markers):
+        raise ContentDataError(
+            f"unordered list depth must be between 1 and {len(unordered_markers)}"
+        )
+    return unordered_markers[depth - 1]
+
+
+def list_marker_text(marker: str) -> str:
+    """Join a list marker to its body with the process-form narrow gap."""
+    return f"{marker}\u2009"
 
 
 def _iter_content_run_groups(block: dict[str, Any]):

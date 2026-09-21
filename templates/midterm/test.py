@@ -134,6 +134,7 @@ def main() -> int:
     assert layout["table"]["section_title_content_gap_mm"] == 0.0
     assert layout["paragraphs"]["list_max_depth"] == 4
     assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
+    assert layout["paragraphs"]["list_marker_gap_em"] == 0.25
     assert layout["image"]["max_height_mm"] == 180.0
     assert layout["signature"]["teacher_blank_width_mm"] == 45.0
     assert layout["signature"]["review_blank_width_mm"] == 35.0
@@ -198,7 +199,17 @@ def main() -> int:
         raw = json.loads(fixture.read_text(encoding="utf-8"))
         normalized = word_renderer.validate_data(raw)
         assert normalized["schema_version"] == "0.1"
-        assert normalized["sections"]["directory"][0]["level"] == 1
+        directory = normalized["sections"]["directory"]
+        assert [word_renderer.runs_text(item["title"]) for item in directory[:2]] == [
+            "摘要",
+            "Abstract",
+        ]
+        assert [word_renderer.runs_text(item["title"]) for item in directory[-2:]] == [
+            "参考文献",
+            "致谢",
+        ]
+        assert all(item["number"] is None for item in (*directory[:2], *directory[-2:]))
+        assert directory[2]["level"] == 1
         if name == "long-with-image":
             research = normalized["sections"]["main_research_content"]
             progress = normalized["sections"]["progress"]
@@ -293,6 +304,14 @@ def main() -> int:
         assert "存在的问题及后期指导工作意见：" in table.rows[13].cells[0].text
         assert "审查小组负责人签名：" in table.rows[14].cells[0].text
         assert "指导教师填写栏目（在正确项后方框内划√）" in table.rows[6].cells[0].text
+        for row in table.rows[6:13]:
+            for paragraph in row.cells[0].paragraphs:
+                assert paragraph._p.xpath('./w:pPr/w:numPr/w:numId/@w:val') == ["0"]
+        assert all(p.paragraph_format.keep_with_next for p in table.rows[6].cells[0].paragraphs)
+        assert all(run.bold for run in table.rows[6].cells[0].paragraphs[0].runs if run.text)
+        for row_index, width_key in ((13, "teacher_blank_width_mm"), (14, "review_blank_width_mm")):
+            signer = next(p for p in table.rows[row_index].cells[0].paragraphs if "签名：" in p.text)
+            assert abs(signer.paragraph_format.right_indent.mm - layout["signature"][width_key]) < 0.02
 
         for row_index, cell_index in (
             (0, 0), (0, 1), (0, 2), (0, 3),
@@ -348,7 +367,17 @@ def main() -> int:
             and paragraph.paragraph_format.first_line_indent.pt == 21.0
             for paragraph in body_paragraphs
         )
-        first_outline = directory_cell.paragraphs[2]
+        assert [paragraph.text for paragraph in directory_cell.paragraphs[2:4]] == [
+            "摘要",
+            "Abstract",
+        ]
+        assert [paragraph.text for paragraph in directory_cell.paragraphs[research_start - 2 : research_start]] == [
+            "参考文献",
+            "致谢",
+        ]
+        assert directory_cell.paragraphs[research_start].paragraph_format.space_before.pt == 12.0
+        assert directory_cell.paragraphs[research_start].paragraph_format.keep_with_next
+        first_outline = directory_cell.paragraphs[4]
         assert first_outline.paragraph_format.left_indent is not None
         assert first_outline.paragraph_format.left_indent.pt == 36.75
         assert first_outline.paragraph_format.first_line_indent is not None
@@ -363,7 +392,9 @@ def main() -> int:
             for p in progress_body
         )
         if any(block["type"] == "ordered_list" for block in normalized["sections"]["progress"]):
-            list_paragraphs = [p for p in progress_body if re.match(r"^(?:（\d+）|\d+、)", p.text)]
+            list_paragraphs = [
+                p for p in progress_body if re.match(r"^(?:（\d+）|\d+[、.])", p.text)
+            ]
             assert list_paragraphs
             assert all(p.paragraph_format.first_line_indent.pt == -21.0 for p in list_paragraphs)
             assert all(p.paragraph_format.left_indent.pt == 42.0 for p in list_paragraphs)
@@ -427,6 +458,8 @@ def main() -> int:
             trailing = by_prefix["列表结束后"]
             assert trailing.paragraph_format.left_indent is None
             assert trailing.paragraph_format.first_line_indent.pt == 21.0
+            assert "1.\u2009已完成公共列表结构设计" in progress_cell.text
+            assert "第二步：\u2009已完成旧有序列表兼容验证" in progress_cell.text
             nested_runs = [run_item for paragraph in body_paragraphs for run_item in paragraph.runs]
             assert any(run_item.text == "2" and run_item.font.subscript for run_item in nested_runs)
             assert normalized["sections"]["main_research_content"][1]["type"] == "unordered_list"
@@ -488,6 +521,8 @@ def main() -> int:
                     assert rf"\MidtermListItem{{{depth}}}{{{marker}}}" in data_tex
                 assert r"\MidtermParagraph{列表结束后" in data_tex
                 assert r"H\textsubscript{2}O" in data_tex
+                assert r"\MidtermListItem{1}{1.}{已完成公共列表结构设" in data_tex
+                assert r"\MidtermListItem{1}{第二步：}{已完成旧有序列表兼容验" in data_tex
             continue
 
         latex_dir = output_root / f"latex-{name}"
@@ -551,6 +586,8 @@ def main() -> int:
                 assert rf"\MidtermListItem{{{depth}}}{{{marker}}}" in data_tex
             assert r"\MidtermParagraph{列表结束后" in data_tex
             assert r"H\textsubscript{2}O" in data_tex
+            assert r"\MidtermListItem{1}{1.}{已完成公共列表结构设" in data_tex
+            assert r"\MidtermListItem{1}{第二步：}{已完成旧有序列表兼容验" in data_tex
         if name == "structured-content":
             assert r"\begin{tblr}{width=\linewidth" in data_tex
             assert r"\begin{minipage}[t]{0.4875\linewidth}" in data_tex
@@ -608,6 +645,11 @@ def main() -> int:
 
         with pdfplumber.open(pdf_path) as pdf:
             first_page = pdf.pages[0]
+            if name == "normal":
+                thanks = first_page.search("致谢")[-1]
+                heading = first_page.search("主要研究内容：")[-1]
+                # Normal fixture keeps this boundary on one page: extra blank-line gap.
+                assert heading["top"] - thanks["bottom"] >= 16.0
             if name == "extreme-pagination":
                 assert sum(len(page.images) for page in pdf.pages) >= 8
             teacher_bundle_pages = {}
@@ -720,17 +762,25 @@ def main() -> int:
     numbered = copy.deepcopy(invalid)
     numbered["sections"]["numbering_style"] = "chapter_section_hierarchy"
     numbered["sections"]["directory"] = [
+        {"level": 1, "title": "摘要"},
+        {"level": 1, "title": "Abstract"},
         {"level": 1, "number": "旧编号", "title": "一级"},
         {"level": 2, "number": "旧编号", "title": "二级"},
         {"level": 3, "number": "旧编号", "title": "三级"},
         {"level": 4, "number": "旧编号", "title": "四级"},
         {"level": 5, "number": "旧编号", "title": "五级"},
         {"level": 6, "number": "旧编号", "title": "六级"},
+        {"level": 1, "title": "参考文献"},
+        {"level": 1, "title": "致谢"},
     ]
     normalized_numbered = word_renderer.validate_data(numbered)
     assert [
         item["number"] for item in normalized_numbered["sections"]["directory"]
-    ] == ["第一章", "第一节", "一、", "（一）", "1.", "(1)"]
+    ] == [None, None, "第一章", "第一节", "一、", "（一）", "1.", "(1)", None, None]
+    assert [
+        word_renderer.runs_text(item["title"])
+        for item in normalized_numbered["sections"]["directory"]
+    ] == ["摘要", "Abstract", "一级", "二级", "三级", "四级", "五级", "六级", "参考文献", "致谢"]
     numbered_tex = latex_renderer.data_tex(
         normalized_numbered,
         data_dir=midterm_dir / "fixtures",

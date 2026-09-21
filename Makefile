@@ -7,17 +7,20 @@ BIB_DIR = .
 
 # Option for latexmk
 LATEXMK_OPT_BASE = -xelatex -gg -silent
-LATEXMK_OPT = $(LATEXMK_OPT_BASE) -f
+LATEXMK_OPT = $(LATEXMK_OPT_BASE)
 LATEXMK_OPT_PVC = $(LATEXMK_OPT_BASE) -pvc
 
 all: $(THESIS).pdf
 
-.PHONY : all cleanall pvc view wordcount git zip
+.PHONY : all cleanall pvc view wordcount git zip fonts $(THESIS).pdf
 
-$(THESIS).pdf : $(THESIS).tex $(TEX_DIR)/*.tex $(BIB_DIR)/*.bib SZTUthesis.cls Makefile
-	-latexmk $(LATEXMK_OPT) $(THESIS)
+$(THESIS).pdf : $(THESIS).tex $(TEX_DIR)/*.tex $(BIB_DIR)/*.bib SZTUthesis.cls Makefile build.sh scripts/check_fonts.py
+	bash build.sh
 
-pvc :
+fonts:
+	bash build.sh --check-fonts
+
+pvc : fonts
 	latexmk $(LATEXMK_OPT_PVC) $(THESIS)
 
 view : $(THESIS).pdf

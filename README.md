@@ -32,10 +32,10 @@ LaTeX利用设置好的模板，可以编译为格式统一的pdf。
 2. 学位论文诚信声明；
 3. 目录；
 4. 中文摘要；
-5. 论文正文；
-6. 参考文献；
-7. 致谢。
-8. 英文摘要；
+5. 英文摘要；
+6. 论文正文；
+7. 参考文献；
+8. 致谢；
 9. 附录（必要时）；
 
 ## 版本状况
@@ -98,10 +98,11 @@ Word/LaTeX 双路工程原型。LaTeX 与结构回归已完成，Word/WPS 的目
 bash build.sh --clean
 ```
 
-2026 届开题报告模板严格使用宋体（SimSun）、黑体（SimHei）和 Times New Roman，
-缺少任何一套字体时停止编译，不允许回退到系统默认字体或 Fandol。安装与预检方法见
-[`templates/proposal/README.md`](templates/proposal/README.md#必需字体禁止自动替换)。
-仓库根目录的历史毕业论文模板仍按其原有字体策略运行，后续将依据对应官方规范单独校准。
+2026 届毕业论文校准版严格使用宋体（SimSun）、黑体（SimHei）、楷体（KaiTi）、
+华文中宋（STZhongsong）和 Times New Roman；缺少任何一套字体时停止编译，不允许回退
+到系统默认字体或 Fandol。安装、摘要页眉切换和回归方法见
+[`templates/thesis/README.md`](templates/thesis/README.md)。开题报告等过程文档的字体要求
+以各自目录的 README 为准。
 
 ### Linux
 
@@ -189,3 +190,7 @@ vscode怎么装扩展不用赘述了
 - ctrl+alt+c：清除辅助文件
 - ctrl+alt+v：查看编译的pdf文件(预览)
 - ctrl+alt+j：正向搜索。当设置`"latex-workshop.view.pdf.viewer": "tab";`时，在LaTeX源文件中按下快捷键，定位到PDF文档相应位置。
+
+## 字体检查与换机
+
+编译前运行 `bash build.sh --check-fonts`；已有字体目录可用 `--font-dir "/字体目录"` 指定并记住。新电脑设置、编辑器使用与测试文件位置见[字体使用指南](docs/FONTS.md)。

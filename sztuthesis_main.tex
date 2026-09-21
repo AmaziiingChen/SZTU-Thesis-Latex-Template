@@ -6,7 +6,11 @@
 \setstretch{1.5}
 \hypersetup{
 colorlinks=true,
-linkcolor=black
+linkcolor=black,
+citecolor=black,
+urlcolor=black,
+filecolor=black,
+hypertexnames=false
 }
 
 \newcommand\pkg[1]{\texttt{#1}\textsuperscript{\sffamily PKG}}
@@ -15,7 +19,6 @@ linkcolor=black
 \newcommand\oper[1]{\texttt{#1}}
 \newcommand\cls[1]{\texttt{#1}\textsuperscript{\sffamily CLS}}
 \newcommand\bib[1]{\texttt{#1}\textsuperscript{\sffamily BIB}}
-\renewcommand\emph[1]{\textbf{#1}}
 \newcommand\format[1]{\textsf{#1}}
 
 %算法
@@ -66,8 +69,12 @@ linkcolor=black
 \numberwithin{table}{section}
 \renewcommand{\thefigure}{\thesection-\arabic{figure}}
 \renewcommand{\thetable}{\thesection-\arabic{table}}
+\renewcommand{\theequation}{\thesection-\arabic{equation}}
+\renewcommand{\thealgorithm}{\thesection-\arabic{algorithm}}
 
 \begin{document}
+% 校徽源文件为 PDF 1.6；同步输出版本，避免 xdvipdfmx 在封面嵌入时降级告警。
+\special{pdf:minorversion 6}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 封面
 % -----------------------------------------------%
@@ -90,7 +97,7 @@ linkcolor=black
 % 目录
 % -------------------------------------------%
 {
-\renewcommand{\contentsname}{\hfill \heiti \zihao{-2} 目\quad 录\hfill}  
+\renewcommand{\contentsname}{\hfill \heiti \zihao{-2} 目录\hfill}
     \zihao{4}
     \setlength{\parskip}{6pt}               % 段间距，补偿latex行间距计算（与word的差距）
     \renewcommand*{\baselinestretch}{1.5}   % 行间距
@@ -98,16 +105,12 @@ linkcolor=black
 }
 \newpage
 
-% 去掉页眉章节序号后面的“.”
-\renewcommand{\sectionmark}[1]{\markright{\thesection~ #1}} 
-\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\sectionmark}[1]{\markright{\thesection.\ #1}}
 
 
 
 % 正文内容 
 % --------------------------------------------%
-
-\setheader
 
 % 可以使用include命令导入tex文件，从而避免过多修改本文件。
 
@@ -130,7 +133,11 @@ linkcolor=black
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % 英文摘要
     % -----------------------------------------------%
-    \include{content/abstracten}
+    \setenglishabstractheader
+    \input{content/abstracten}
+    % 先在本局部页式仍生效时，将英文摘要按 Roman 页码和摘要页眉完整出页。
+    % 否则短摘要会在分组结束后恢复空页式，或与正文页码切换落在同一物理页。
+    \clearpage
 }
 \setfooter
 % 正文
@@ -166,7 +173,7 @@ linkcolor=black
 
 \setreference
 
-\include{content/additional}
+\input{content/additional}
 
 % 附录（非必需）排在致谢之后，与《撰写规范》装订顺序一致；以下为示例，正式论文可删改。
 \setcounter{secnumdepth}{3}
