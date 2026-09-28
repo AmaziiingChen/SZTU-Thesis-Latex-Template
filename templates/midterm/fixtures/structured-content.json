@@ -19,7 +19,7 @@
       {"level": 1, "title": "结果分析"}
     ],
     "main_research_content": [
-      {"type": "paragraph", "runs": [{"text": "研究围绕多源实验记录的统一表达展开，将参数、测量结果和图像证据分别保存为具有明确语义的内容块。表格只承担可比较数据，图片组用于呈现同一实验条件下的并列结果，计算式见{{eq:eq-efficiency0001}}。"}]},
+      {"type": "paragraph", "runs": [{"text": "研究围绕多源实验记录的统一表达展开，将参数、测量结果和图像证据分别保存为具有明确语义的内容块。表格只承担可比较数据，图片组用于呈现同一实验条件下的并列结果，计算式见{{eq:eq-efficiency0001}}。局部关系 "}, {"type": "inline_equation", "expression": {"type": "square_root", "body": {"type": "text", "value": "x"}}, "alt": "x 的平方根"}, {"text": " 用于对照。"}]},
       {
         "type": "data_table",
         "columns": [

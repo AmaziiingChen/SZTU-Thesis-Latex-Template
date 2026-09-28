@@ -132,7 +132,14 @@ def main() -> int:
     assert layout["table"]["flow_vertical_padding_mm"] == 1.5
     assert layout["table"]["flow_end_space_mm"] == 4.0
     assert layout["table"]["section_title_content_gap_mm"] == 0.0
+    assert layout["table"]["title_row_content_min_height_mm"] == 6.4
+    assert (
+        layout["table"]["title_row_content_min_height_mm"]
+        + 2 * layout["table"]["title_vertical_padding_mm"]
+        == layout["row_min_heights_mm"]["metadata"]
+    )
     assert layout["paragraphs"]["list_max_depth"] == 4
+    assert layout["paragraphs"]["outline_level_indent_em"] == 1.0
     assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
     assert layout["paragraphs"]["list_marker_gap_em"] == 0.25
     assert layout["image"]["max_height_mm"] == 180.0
@@ -172,6 +179,8 @@ def main() -> int:
 
     fixture_names = (
         "minimal",
+        "title-two-lines",
+        "editable-headings",
         "normal",
         "layout-stress",
         "long-with-image",
@@ -245,6 +254,7 @@ def main() -> int:
             assert equations[0]["equation_label"] == "(3-1)"
             assert "{{eq:" not in research[0]["runs"][0]["text"]
             assert "(3-1)" in research[0]["runs"][0]["text"]
+            assert research[0]["runs"][1]["type"] == "inline_equation"
             assert figure_groups[0]["figure_label"] == "图 3-1"
             assert [item["subfigure_label"] for item in figure_groups[0]["items"]] == [
                 "（a）",
@@ -382,8 +392,53 @@ def main() -> int:
         assert first_outline.paragraph_format.left_indent.pt == 36.75
         assert first_outline.paragraph_format.first_line_indent is not None
         assert first_outline.paragraph_format.first_line_indent.pt == -15.75
+        if name == "normal":
+            second_outline = directory_cell.paragraphs[5]
+            assert second_outline.paragraph_format.left_indent.pt == 47.25
+            assert second_outline.paragraph_format.first_line_indent.pt == -15.75
 
         progress_cell = table.rows[5].cells[0]
+        if name == "editable-headings":
+            assert sum(p.text == "主要研究内容：" for p in directory_cell.paragraphs) == 1
+            assert progress_cell.text.count("毕业论文（设计）工作进展情况（详述）：") == 1
+            assert progress_cell.paragraphs[0].text == "毕业论文（设计）工作进展情况（详述）："
+            assert all(run.font.size.pt == 12.0 for run in progress_cell.paragraphs[0].runs)
+            heading_tex = latex_renderer.data_tex(
+                normalized, data_dir=fixture.parent, assets_dir=output_root / "editable-heading-assets"
+            )
+            assert heading_tex.count(r"\long\def\ResearchHeading{") == 1
+            assert heading_tex.count(r"\long\def\ProgressHeading{") == 1
+            assert r"\long\def\ResearchContent{\MidtermParagraph{本课题" in heading_tex
+            assert r"\long\def\ProgressContent{\MidtermParagraph{已完成" in heading_tex
+            deleted = copy.deepcopy(raw)
+            deleted["sections"]["main_research_content"].pop(0)
+            deleted["sections"]["progress"].pop(0)
+            deleted_fixture = output_root / "editable-headings-deleted.json"
+            deleted_fixture.write_text(json.dumps(deleted, ensure_ascii=False), encoding="utf-8")
+            deleted_docx = output_root / "editable-headings-deleted.docx"
+            word_renderer.render(official_template, deleted_fixture, deleted_docx, overwrite=True)
+            deleted_table = Document(deleted_docx).tables[0]
+            assert all(p.text != "主要研究内容：" for p in deleted_table.rows[4].cells[0].paragraphs)
+            assert "毕业论文（设计）工作进展情况（详述）：" not in deleted_table.rows[5].cells[0].text
+            assert deleted_table.rows[5].cells[0].paragraphs[0].runs[0].font.size.pt == 10.5
+            deleted_tex = latex_renderer.data_tex(
+                word_renderer.validate_data(deleted),
+                data_dir=deleted_fixture.parent,
+                assets_dir=output_root / "editable-heading-deleted-assets",
+            )
+            assert r"\long\def\ResearchHeading{}" in deleted_tex
+            assert r"\long\def\ProgressHeading{}" in deleted_tex
+            renamed = copy.deepcopy(raw)
+            renamed["sections"]["main_research_content"][0] = "研究目标与内容："
+            renamed["sections"]["progress"][0] = "当前工作进展："
+            renamed_fixture = output_root / "editable-headings-renamed.json"
+            renamed_fixture.write_text(json.dumps(renamed, ensure_ascii=False), encoding="utf-8")
+            renamed_docx = output_root / "editable-headings-renamed.docx"
+            word_renderer.render(official_template, renamed_fixture, renamed_docx, overwrite=True)
+            renamed_table = Document(renamed_docx).tables[0]
+            assert sum(p.text == "研究目标与内容：" for p in renamed_table.rows[4].cells[0].paragraphs) == 1
+            assert renamed_table.rows[5].cells[0].paragraphs[0].text == "当前工作进展："
+            assert "毕业论文（设计）工作进展情况（详述）：" not in renamed_table.rows[5].cells[0].text
         progress_body = [p for p in progress_cell.paragraphs[1:] if p.text.strip()]
         assert progress_body
         assert any(
@@ -480,6 +535,7 @@ def main() -> int:
             assert "改进方法流程示意图" in document.element.xml
             assert "图 3-1 两种方法的处理流程对比" in progress_cell.text
             document_xml = document.element.xml
+            assert any(paragraph._p.xpath("./m:oMath/m:rad") for paragraph in directory_cell.paragraphs)
             for math_tag in ("m:oMathPara", "m:f", "m:sSub", "m:sSup", "m:rad"):
                 assert f"<{math_tag}" in document_xml
             assert "效率等于输入输出浓度差" in document_xml
@@ -552,6 +608,7 @@ def main() -> int:
         assert "AutoFakeBold=3" in fonts_tex
         assert r"\newcommand{\SZTUTitleSize}{\zihao{-2}}" in typography_tex
         assert r"\newcommand{\SZTUDataSize}{\zihao{5}}" in typography_tex
+        assert r"\newcommand{\SZTUTitleContentMinHeight}{6.4mm}" in typography_tex
         assert r"\newcommand{\SZTUFormRuleWidth}{0.5pt}" in typography_tex
         assert r"\newcommand{\SZTUFlowVerticalPadding}{1.5mm}" in typography_tex
         assert r"\newcommand{\SZTUFlowEndSpace}{4mm}" in typography_tex
@@ -559,6 +616,7 @@ def main() -> int:
         assert "sztuformflow/.style" in process_form_tex
         assert r"\newcommand{\SZTUListLevelIndent}{2em}" in typography_tex
         assert r"\newcommand{\SZTUListHangingIndent}{2em}" in typography_tex
+        assert r"\newcommand{\SZTUOutlineLevelIndent}{1em}" in typography_tex
         assert r"\newcommand{\SZTUTeacherOpinionHeight}{84mm}" in typography_tex
         assert r"\newcommand{\SZTUReviewOpinionHeight}{72mm}" in typography_tex
         assert r"\newcommand{\SZTUProgressMinHeight}{55.12mm}" in typography_tex
@@ -597,6 +655,7 @@ def main() -> int:
             assert r"\frac{" in data_tex
             assert r"_{out}" in data_tex and r"_{in}" in data_tex
             assert r"\sqrt{{x}^{2}}" in data_tex
+            assert r"$\sqrt{x}$" in data_tex
             assert r"\input" not in data_tex
             assert "(3-1)" in data_tex and "{{eq:" not in data_tex
         if name == "extreme-pagination":
@@ -645,11 +704,43 @@ def main() -> int:
 
         with pdfplumber.open(pdf_path) as pdf:
             first_page = pdf.pages[0]
+            if name in {"minimal", "title-two-lines"}:
+                horizontal_rules = sorted({
+                    round(line["top"], 2)
+                    for line in first_page.lines
+                    if abs(line["top"] - line["bottom"]) < 0.4
+                })
+                assert len(horizontal_rules) >= 5
+                row_heights_mm = [
+                    (bottom - top) * 25.4 / 72.0
+                    for top, bottom in zip(horizontal_rules[:4], horizontal_rules[1:5])
+                ]
+                assert all(9.3 <= height <= 9.8 for height in row_heights_mm[:3])
+                if name == "minimal":
+                    assert abs(row_heights_mm[3] - row_heights_mm[0]) <= 0.3
+                else:
+                    assert row_heights_mm[3] >= row_heights_mm[0] + 1.5
             if name == "normal":
                 thanks = first_page.search("致谢")[-1]
                 heading = first_page.search("主要研究内容：")[-1]
                 # Normal fixture keeps this boundary on one page: extra blank-line gap.
                 assert heading["top"] - thanks["bottom"] >= 16.0
+                directory_x = first_page.search("摘要")[0]["x0"]
+                level_two_x = first_page.search("1.1", regex=False)[0]["x0"]
+                assert abs(level_two_x - directory_x - 10.5) < 1.0
+                first_marker = first_page.search("（1）")[0]
+                assert 4.0 < heading["x0"] - first_marker["x0"] < 8.0
+                wrapped_line = next(
+                    line for line in first_page.extract_text_lines()
+                    if "签质量与训练验证边界" in line["text"]
+                )
+                assert abs(wrapped_line["x0"] - heading["x0"] - 21.0) < 1.0
+                progress_body = first_page.search("目前已完成文献调研")[0]
+                progress_marker = next(
+                    match for match in first_page.search("1.", regex=False)
+                    if match["top"] > progress_body["top"]
+                )
+                assert abs(progress_marker["x0"] - progress_body["x0"]) < 1.0
             if name == "extreme-pagination":
                 assert sum(len(page.images) for page in pdf.pages) >= 8
             teacher_bundle_pages = {}

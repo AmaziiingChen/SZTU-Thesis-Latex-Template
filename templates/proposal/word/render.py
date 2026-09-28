@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,9 @@ from common.python.content import (  # noqa: E402
     split_numbered_subitems,
 )
 from common.python.process_form import set_word_cell_vertical_padding, load_process_document_layout  # noqa: E402
-from common.python.equation import add_numbered_omml_table, append_omml  # noqa: E402
+from common.python.equation import add_numbered_omml_table, append_omml, append_inline_omml  # noqa: E402
+from common.python.font_files import resolve_font_files  # noqa: E402
+from common.python.list_layout import marker_advance_pt  # noqa: E402
 
 
 SCHEMA_VERSION = "0.2"
@@ -57,6 +60,11 @@ SECTION_KEYS = (
     "methods_and_means",
     "research_steps",
     "references",
+)
+INTRO_KEYS = (
+    "research_content_intro",
+    "methods_and_means_intro",
+    "research_steps_intro",
 )
 ADVISOR_TITLE_PATTERN = re.compile(r"(?:老师|教授|副教授|讲师|博士|硕士|导师)$")
 TITLE_DISPLAY_WIDTH_LIMIT = 64.0
@@ -108,10 +116,15 @@ def validate_data(raw: Any) -> dict[str, Any]:
         raise DataError("metadata.advisor must contain the name only, without a title")
 
     sections = require_object(data.get("sections"), "sections")
-    unknown_sections = set(sections) - set(SECTION_KEYS)
+    unknown_sections = set(sections) - set(SECTION_KEYS) - set(INTRO_KEYS)
     if unknown_sections:
         raise DataError(f"unknown section fields: {sorted(unknown_sections)}")
     clean_sections: dict[str, Any] = {}
+    for key in INTRO_KEYS:
+        value = sections.get(key, "")
+        if not isinstance(value, str) or len(value) > 200 or "\n" in value or "\r" in value:
+            raise DataError(f"sections.{key} must be a single-line string of at most 200 characters")
+        clean_sections[key] = value
     for key in SECTION_KEYS:
         value = sections.get(key)
         if not isinstance(value, list) or not value:
@@ -168,6 +181,9 @@ def _set_run_font(run, *, name: str, size_pt: float, bold: bool = False) -> None
 
 def _append_runs(paragraph, runs: list[dict[str, Any]], *, size_pt: float) -> None:
     for rich_run in runs:
+        if rich_run.get("type") == "inline_equation":
+            append_inline_omml(paragraph, rich_run["expression"])
+            continue
         pieces = re.findall(r"[\x00-\x7f]+|[^\x00-\x7f]+", rich_run["text"])
         for piece in pieces:
             run = paragraph.add_run(piece)
@@ -176,6 +192,13 @@ def _append_runs(paragraph, runs: list[dict[str, Any]], *, size_pt: float) -> No
             run.italic = rich_run["italic"]
             run.font.subscript = rich_run["script"] == "sub"
             run.font.superscript = rich_run["script"] == "super"
+
+
+def _append_hidden_equation_alt(paragraph, alt: str) -> None:
+    start = len(paragraph.runs)
+    _append_runs(paragraph, [{"text": alt, "script": "normal", "italic": False, "bold": False}], size_pt=BODY_SIZE_PT)
+    for run in paragraph.runs[start:]:
+        run.font.hidden = True
 
 
 def _remove_paragraph(paragraph) -> None:
@@ -226,6 +249,13 @@ def _format_body_paragraph(paragraph, *, references: bool, indent: bool = True) 
     )
 
 
+def _format_section_label(cell) -> None:
+    label = cell.paragraphs[0]
+    label.paragraph_format.space_before = Pt(0)
+    label.paragraph_format.space_after = Pt(0)
+    label.paragraph_format.line_spacing = LINE_SPACING
+
+
 def _fill_section(
     cell,
     paragraphs: list[list[dict[str, Any]]],
@@ -248,19 +278,34 @@ def _fill_section(
         _remove_paragraph(paragraph)
 
 
+@lru_cache(maxsize=1)
+def _list_font_files() -> tuple[Path, Path]:
+    fonts = resolve_font_files(["SimSun", "Times New Roman"])
+    return fonts["Times New Roman"], fonts["SimSun"]
+
+
 def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
     if not 1 <= depth <= LIST_MAX_DEPTH:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
     for index, item in enumerate(block["items"], start=1):
         paragraph = cell.add_paragraph()
         _format_body_paragraph(paragraph, references=False, indent=False)
-        paragraph.paragraph_format.left_indent = Pt(
-            depth * LIST_LEVEL_INDENT_PT + LIST_HANGING_INDENT_PT
-        )
-        paragraph.paragraph_format.first_line_indent = Pt(-LIST_HANGING_INDENT_PT)
         marker = resolve_list_marker(
             block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
         )
+        latin_font, cjk_font = _list_font_files()
+        hanging_indent_pt = max(
+            LIST_HANGING_INDENT_PT,
+            marker_advance_pt(
+                marker,
+                size_pt=BODY_SIZE_PT,
+                latin_font=latin_font,
+                cjk_font=cjk_font,
+            ),
+        )
+        marker_start_pt = FIRST_LINE_INDENT_PT + (depth - 1) * LIST_LEVEL_INDENT_PT
+        paragraph.paragraph_format.left_indent = Pt(marker_start_pt + hanging_indent_pt)
+        paragraph.paragraph_format.first_line_indent = Pt(-hanging_indent_pt)
         _append_runs(
             paragraph, plain_runs(list_marker_text(marker)), size_pt=BODY_SIZE_PT
         )
@@ -525,11 +570,9 @@ def _append_text_content_blocks(
                 center.paragraph_format.space_after = Pt(
                     LAYOUT["equation"]["space_after_pt"]
                 )
-                fallback = center.add_run(block["alt"])
-                _set_run_font(fallback, name=BODY_CJK_FONT, size_pt=BODY_SIZE_PT)
-                fallback.font.hidden = True
+                _append_hidden_equation_alt(center, block["alt"])
                 _set_run_font(
-                    paragraphs[2].runs[0], name=BODY_CJK_FONT, size_pt=BODY_SIZE_PT
+                    paragraphs[2].runs[0], name=BODY_LATIN_FONT, size_pt=BODY_SIZE_PT
                 )
                 continue
             paragraph = cell.add_paragraph()
@@ -542,15 +585,17 @@ def _append_text_content_blocks(
                 LAYOUT["equation"]["space_after_pt"]
             )
             paragraph.paragraph_format.keep_together = True
-            fallback = paragraph.add_run(block["alt"])
-            _set_run_font(fallback, name=BODY_CJK_FONT, size_pt=BODY_SIZE_PT)
-            fallback.font.hidden = True
+            _append_hidden_equation_alt(paragraph, block["alt"])
             append_omml(paragraph, block["expression"])
         else:
             raise AssertionError(f"unsupported normalized block: {block['type']}")
 
 
-def _fill_text_content_section(cell, blocks: list[dict[str, Any]], *, data_dir: Path) -> None:
+def _fill_text_content_section(
+    cell, blocks: list[dict[str, Any]], *, intro: str, data_dir: Path
+) -> None:
+    if intro.strip():
+        blocks = [{"type": "paragraph", "runs": plain_runs(intro)}, *blocks]
     if all(block["type"] == "paragraph" for block in blocks):
         _fill_section(cell, [block["runs"] for block in blocks])
         return
@@ -559,11 +604,21 @@ def _fill_text_content_section(cell, blocks: list[dict[str, Any]], *, data_dir: 
     _append_text_content_blocks(cell, blocks, data_dir=data_dir)
 
 
+def _append_intro(cell, intro: str) -> None:
+    if not intro.strip():
+        return
+    paragraph = cell.add_paragraph()
+    _format_body_paragraph(paragraph, references=False)
+    _append_runs(paragraph, plain_runs(intro), size_pt=BODY_SIZE_PT)
+
+
 def _fill_methods_section(
     cell,
     methods: list[dict[str, Any]],
     steps: list[dict[str, Any]],
     *,
+    methods_intro: str,
+    steps_intro: str,
     data_dir: Path,
 ) -> None:
     if not cell.paragraphs:
@@ -571,14 +626,9 @@ def _fill_methods_section(
     for paragraph in list(cell.paragraphs[1:]):
         _remove_paragraph(paragraph)
 
-    groups = (
-        ("本课题研究方法、手段如下：", methods),
-        ("本课题研究步骤如下：", steps),
-    )
-    for heading, items in groups:
-        heading_paragraph = cell.add_paragraph()
-        _format_body_paragraph(heading_paragraph, references=False)
-        _append_runs(heading_paragraph, plain_runs(heading), size_pt=BODY_SIZE_PT)
+    groups = ((methods_intro, methods), (steps_intro, steps))
+    for intro, items in groups:
+        _append_intro(cell, intro)
         if not all(item["type"] == "paragraph" for item in items):
             _append_text_content_blocks(cell, items, data_dir=data_dir)
             continue
@@ -659,16 +709,21 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
     _fill_info_cell(table.rows[2].cells[4], metadata["advisor"])
 
     sections = data["sections"]
+    for row_index in (3, 4, 5, 6):
+        _format_section_label(table.rows[row_index].cells[0])
     _fill_section(table.rows[3].cells[0], sections["significance_and_status"])
     _fill_text_content_section(
         table.rows[4].cells[0],
         sections["research_content"],
+        intro=sections["research_content_intro"],
         data_dir=data_path.resolve().parent,
     )
     _fill_methods_section(
         table.rows[5].cells[0],
         sections["methods_and_means"],
         sections["research_steps"],
+        methods_intro=sections["methods_and_means_intro"],
+        steps_intro=sections["research_steps_intro"],
         data_dir=data_path.resolve().parent,
     )
     _fill_section(table.rows[6].cells[0], sections["references"], references=True)

@@ -32,7 +32,7 @@ from common.python.process_form import (  # noqa: E402
     load_process_document_layout,
     process_form_latex_tokens,
 )
-from common.python.equation import latex_display  # noqa: E402
+from common.python.equation import latex_display, latex_math  # noqa: E402
 
 
 LAYOUT = load_process_document_layout(
@@ -97,6 +97,7 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUPageLeftMargin}}{{{page['left_margin_mm']:g}mm}}",
             rf"\newcommand{{\SZTUPageRightMargin}}{{{page['right_margin_mm']:g}mm}}",
             rf"\newcommand{{\SZTUTitleVerticalPadding}}{{{table['title_vertical_padding_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUTitleSingleLineVerticalPadding}}{{{table['title_single_line_vertical_padding_mm']:g}mm}}",
             *process_form_latex_tokens(layout),
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUNestedListLeftIndent}}{{{paragraphs['nested_list_left_indent_em']:g}em}}",
@@ -133,6 +134,9 @@ def tex_escape(text: str) -> str:
 def rich_runs(runs: list[dict]) -> str:
     rendered = []
     for run in runs:
+        if run.get("type") == "inline_equation":
+            rendered.append(f"${latex_math(run['expression'])}$")
+            continue
         value = tex_escape(run["text"])
         if run["script"] == "sub":
             value = rf"\textsubscript{{{value}}}"
@@ -359,11 +363,23 @@ def data_tex(data: dict, *, data_dir: Path, assets_dir: Path) -> str:
         "ResearchContent": render_text_blocks(
             sections["research_content"], data_dir=data_dir, assets_dir=assets_dir
         ),
+        "ResearchContentIntro": (
+            rf"\ProposalParagraph{{{tex_escape(sections['research_content_intro'])}}}"
+            if sections["research_content_intro"].strip() else ""
+        ),
+        "MethodsAndMeansIntro": (
+            rf"\ProposalParagraph{{{tex_escape(sections['methods_and_means_intro'])}}}"
+            if sections["methods_and_means_intro"].strip() else ""
+        ),
         "MethodsAndMeans": render_method_blocks(
             sections["methods_and_means"], data_dir=data_dir, assets_dir=assets_dir
         ),
         "ResearchSteps": render_method_blocks(
             sections["research_steps"], data_dir=data_dir, assets_dir=assets_dir
+        ),
+        "ResearchStepsIntro": (
+            rf"\ProposalParagraph{{{tex_escape(sections['research_steps_intro'])}}}"
+            if sections["research_steps_intro"].strip() else ""
         ),
         "ReferencesContent": paragraphs(sections["references"], indent=False),
     }

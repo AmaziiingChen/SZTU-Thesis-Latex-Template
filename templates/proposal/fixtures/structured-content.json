@@ -10,11 +10,19 @@
   },
   "sections": {
     "significance_and_status": [
-      "过程文档同时包含段落、表格、图片和题注，使用统一结构模型可以减少重复排版。",
+      {"type": "paragraph", "runs": [
+        {"text": "过程文档中的局部比值 "},
+        {"type": "inline_equation", "expression": {"type": "fraction", "numerator": {"type": "text", "value": "a"}, "denominator": {"type": "text", "value": "b"}}, "alt": "a 除以 b"},
+        {"text": " 可以与段落共同排版。"}
+      ]},
       "本案例全部使用公开虚构数据，只验证通用能力，不复刻任何真实学生内容。"
     ],
     "research_content": [
-      "研究将比较结构化输入与双路输出，整体流程见{{fig:fig-proposal-flow}}，单图示例见{{fig:fig-proposal-review}}，计算式见{{eq:eq-efficiency0001}}。",
+      {"type": "paragraph", "runs": [
+        {"text": "研究将比较结构化输入与双路输出，整体流程见{{fig:fig-proposal-flow}}，单图示例见{{fig:fig-proposal-review}}，计算式见{{eq:eq-efficiency0001}}。局部关系 "},
+        {"type": "inline_equation", "expression": {"type": "fraction", "numerator": {"type": "text", "value": "a"}, "denominator": {"type": "text", "value": "b"}}, "alt": "a 除以 b"},
+        {"text": " 用于对照。"}
+      ]},
       {
         "type": "data_table",
         "columns": [

@@ -11,9 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pdfplumber
 from docx import Document
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from PIL import Image
@@ -30,6 +29,7 @@ from common.python.pdf_geometry import (  # noqa: E402
     clustered,
 )
 from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.list_layout import marker_advance_pt  # noqa: E402
 from common.python.regression_fixtures import (  # noqa: E402
     load_page_range_recipes,
     materialize_page_range_fixture,
@@ -61,6 +61,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-pdf", action="store_true", help="skip XeLaTeX and CJK checks")
     args = parser.parse_args()
+    if not args.skip_pdf:
+        import pdfplumber
 
     proposal_dir = Path(__file__).resolve().parent
     project_dir = proposal_dir.parents[1]
@@ -98,13 +100,17 @@ def main() -> int:
     assert layout["typography"]["title"]["bold"] is True
     assert layout["typography"]["label"]["bold"] is False
     assert layout["table"]["border_pt"] == 0.48
+    assert layout["table"]["title_single_line_vertical_padding_mm"] == 0.0
+    assert layout["table"]["title_vertical_padding_mm"] == 1.5
     assert layout["table"]["flow_vertical_padding_mm"] == 0.8
-    assert layout["table"]["section_title_content_gap_mm"] == 1.0
+    assert layout["table"]["section_title_content_gap_mm"] == 0.0
     assert layout["signature_regions"]["teacher_opinion_region_height_mm"] == 50.0
     assert layout["signature_regions"]["opinion_transition_gap_mm"] == 1.0
     assert layout["paragraphs"]["list_max_depth"] == 4
     assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
     assert layout["paragraphs"]["list_marker_gap_em"] == 0.25
+    assert layout["paragraphs"]["list_level_indent_em"] == 1.0
+    assert layout["paragraphs"]["list_hanging_indent_em"] == 0.0
 
     latex_template = (proposal_dir / "latex" / "main.tex").read_text(encoding="utf-8")
     assert r"\input{proposal-typography.tex}" in latex_template
@@ -134,6 +140,7 @@ def main() -> int:
 
     fixture_names = (
         "short",
+        "title-two-lines",
         "normal",
         "long",
         "layout_stress",
@@ -179,12 +186,36 @@ def main() -> int:
         assert len(document.tables) == 1
         table = document.tables[0]
         assert len(table.rows) == 9 and len(table.columns) == 7
+        if name in {"short", "title-two-lines"}:
+            title_row = table.rows[0]
+            assert title_row.height_rule == WD_ROW_HEIGHT_RULE.AT_LEAST
+            assert title_row.height.twips == 454
+            for cell in (title_row.cells[0], title_row.cells[1]):
+                margins = cell._tc.tcPr.find(qn("w:tcMar"))
+                assert margins is not None
+                for side in ("top", "bottom"):
+                    margin = margins.find(qn(f"w:{side}"))
+                    assert margin is not None
+                    assert int(margin.get(qn("w:w"))) == 85
         assert "学生签名" in table.rows[7].cells[0].text
         assert "指导教师意见" in table.rows[8].cells[0].text
         assert "学院领导意见" in table.rows[8].cells[0].text
         assert not table.rows[5].cells[0].paragraphs[0].paragraph_format.page_break_before
-        assert "本课题研究方法、手段如下" in table.rows[5].cells[0].text
-        assert "本课题研究步骤如下" in table.rows[5].cells[0].text
+        for section, row_index, starter in (
+            ("research_content", 4, "本课题研究内容如下："),
+            ("methods_and_means", 5, "本课题研究方法、手段如下："),
+            ("research_steps", 5, "本课题研究步骤如下："),
+        ):
+            first = fixture_data["sections"][section][0]
+            if first == starter:
+                assert starter in table.rows[row_index].cells[0].text
+            else:
+                assert starter not in table.rows[row_index].cells[0].text
+        for row_index in (3, 4, 5, 6):
+            label = table.rows[row_index].cells[0].paragraphs[0]
+            assert label.paragraph_format.space_before.pt == 0
+            assert label.paragraph_format.space_after.pt == 0
+            assert label.paragraph_format.line_spacing == 1
         method_paragraphs = table.rows[5].cells[0].paragraphs[1:]
         assert method_paragraphs
         if name not in {"nested-list", "structured-content"}:
@@ -270,16 +301,16 @@ def main() -> int:
                 prefix: next(p for p in research_paragraphs if p.text.startswith(prefix))
                 for prefix in ("•", "（1）", "▪", "A.", "列表结束后")
             }
+            latin_font, cjk_font = word_renderer._list_font_files()
             for depth, prefix in enumerate(("•", "（1）", "▪", "A."), start=1):
                 paragraph = by_prefix[prefix]
                 assert paragraph.paragraph_format.left_indent is not None
-                assert paragraph.paragraph_format.left_indent.pt == (
-                    depth * layout["typography"]["body"]["size_pt"]
-                    * layout["paragraphs"]["list_level_indent_em"]
-                    + layout["typography"]["body"]["size_pt"]
-                    * layout["paragraphs"]["list_hanging_indent_em"]
+                marker_width = marker_advance_pt(
+                    prefix, size_pt=10.5, latin_font=latin_font, cjk_font=cjk_font
                 )
-                assert paragraph.paragraph_format.first_line_indent.pt == -21.0
+                marker_start = 21.0 + (depth - 1) * 10.5
+                assert abs(paragraph.paragraph_format.left_indent.pt - (marker_start + marker_width)) <= 0.05
+                assert abs(paragraph.paragraph_format.first_line_indent.pt + marker_width) <= 0.05
             trailing = by_prefix["列表结束后"]
             assert trailing.paragraph_format.left_indent is None
             assert trailing.paragraph_format.first_line_indent.pt == 21.0
@@ -295,6 +326,8 @@ def main() -> int:
             assert normalized["sections"]["research_content"][1]["type"] == "unordered_list"
 
         if name == "structured-content":
+            assert normalized["sections"]["significance_and_status"][0][1]["type"] == "inline_equation"
+            assert table.rows[3].cells[0]._tc.xpath(".//m:oMath")
             research = normalized["sections"]["research_content"]
             embedded_block = next(item for item in research if item["type"] == "data_table")
             group = next(item for item in research if item["type"] == "figure_group")
@@ -309,6 +342,7 @@ def main() -> int:
             assert equation["equation_label"] == "(1-1)"
             assert "{{eq:" not in research[0]["runs"][0]["text"]
             assert "(1-1)" in research[0]["runs"][0]["text"]
+            assert research[0]["runs"][1]["type"] == "inline_equation"
             research_cell = table.rows[4].cells[0]
             embedded = research_cell.tables[0]
             equation_table = research_cell.tables[1]
@@ -324,6 +358,7 @@ def main() -> int:
                 "虚构的开题报告单图回归示意图",
             ]
             research_cell_paragraphs = research_cell.paragraphs
+            assert any(paragraph._p.xpath("./m:oMath/m:f") for paragraph in research_cell_paragraphs)
             image_paragraph = next(
                 paragraph for paragraph in research_cell_paragraphs
                 if paragraph.text.strip() == "图 1-2 开题报告单图回归示意"
@@ -390,7 +425,9 @@ def main() -> int:
         assert r"\newcommand{\SZTUBodySize}{\zihao{5}}" in typography_tex
         assert r"\newcommand{\SZTUFormRuleWidth}{0.48pt}" in typography_tex
         assert r"\newcommand{\SZTUFlowVerticalPadding}{0.8mm}" in typography_tex
-        assert r"\newcommand{\SZTUSectionTitleContentGap}{1mm}" in typography_tex
+        assert r"\newcommand{\SZTUTitleSingleLineVerticalPadding}{0mm}" in typography_tex
+        assert r"\newcommand{\SZTUTitleVerticalPadding}{1.5mm}" in typography_tex
+        assert r"\newcommand{\SZTUSectionTitleContentGap}{0mm}" in typography_tex
         assert "sztuformflow/.style" in process_form_tex
         if name == "normal":
             assert r"\long\def\ProposalTitle" in data_tex
@@ -417,6 +454,7 @@ def main() -> int:
             assert r"\ProposalListItem{1}{1.}{建立结构化测试数据}" in data_tex
             assert r"\ProposalListItem{1}{2.}{比较 Word 与 LaTeX 输出}" in data_tex
         if name == "structured-content":
+            assert r"过程文档中的局部比值 $\frac{a}{b}$" in data_tex
             assert r"\begin{tblr}" in data_tex
             assert r"\begin{minipage}[t]{0.4891\linewidth}" in data_tex
             assert "图 1-1" in data_tex
@@ -425,6 +463,7 @@ def main() -> int:
             assert r"}{72mm}{图 1-2 开题报告单图回归示意}" in data_tex
             assert "（a）" in data_tex and "（b）" in data_tex
             assert r"\frac{" in data_tex and r"_{out}" in data_tex
+            assert r"$\frac{a}{b}$" in data_tex
             assert r"\sqrt{{x}^{2}}" in data_tex
             assert r"\input" not in data_tex
             assert "(1-1)" in data_tex and "{{eq:" not in data_tex
@@ -445,6 +484,7 @@ def main() -> int:
         with pdfplumber.open(latex_dir / "main.pdf") as pdf:
             page_chars = [list(page.chars) for page in pdf.pages]
             page_words = [page.extract_words() for page in pdf.pages]
+            page_text_lines = [page.extract_text_lines(return_chars=True) for page in pdf.pages]
             chars = [
                 char
                 for current_page_chars in page_chars
@@ -456,6 +496,48 @@ def main() -> int:
             first_page_edges = list(pdf.pages[0].edges)
             page_edges = [list(page.edges) for page in pdf.pages]
             page_dimensions = [(float(page.width), float(page.height)) for page in pdf.pages]
+        if name == "nested-list":
+            def word_x(prefix: str) -> float:
+                return float(next(
+                    word["x0"] for word in page_words[0]
+                    if word["text"].startswith(prefix)
+                ))
+
+            marker_x = [
+                word_x("•一级无序：建立"),
+                word_x("（1）二级有序："),
+                word_x("▪三级无序："),
+                word_x("A.四级有序："),
+            ]
+            assert all(
+                3.0 <= following - current <= 20.0
+                for current, following in zip(marker_x, marker_x[1:])
+            ), marker_x
+            assert 29.0 <= marker_x[-1] - marker_x[0] <= 34.0
+            assert abs(word_x("•一级对齐测试") - marker_x[0]) <= 1.0
+            assert abs(word_x("列表结束后") - marker_x[0]) <= 1.0
+            assert 8.0 <= word_x("◦检查项目符号") - word_x("1.建立结构化测试数据") <= 15.0
+            lines = page_text_lines[0]
+            for prefix, marker_chars in (
+                ("•一级对齐测试", 1),
+                ("（1）二级有序：", 3),
+                ("◦二级对齐测试", 1),
+            ):
+                first_index = next(
+                    index for index, line in enumerate(lines)
+                    if line["text"].startswith(prefix)
+                )
+                first_line = lines[first_index]
+                continuation = next(
+                    line for line in lines[first_index + 1 :]
+                    if line["top"] - first_line["top"] >= 10.0
+                )
+                assert 12.0 <= continuation["top"] - first_line["top"] <= 20.0
+                first_body_x = float(first_line["chars"][marker_chars]["x0"])
+                continuation_x = float(continuation["chars"][0]["x0"])
+                assert abs(first_body_x - continuation_x) <= 0.75, (
+                    prefix, first_body_x, continuation_x
+                )
         simsun_sizes = {
             round(float(char["size"]), 2)
             for char in chars
@@ -509,6 +591,24 @@ def main() -> int:
         ]
         assert len(horizontal) >= 4
         rows = horizontal[:4]
+        if name in {"short", "title-two-lines"}:
+            title_height_mm = (rows[1] - rows[0]) * 25.4 / 72
+            title_chars = cell_chars(
+                first_page_chars,
+                (84.6, rows[0], 504.7, rows[1]),
+                font="SimSun",
+                size=10.50,
+            )
+            title_chars = [char for char in title_chars if float(char["x0"]) >= 169]
+            title_line_tops = clustered([round(float(char["top"]), 1) for char in title_chars])
+            if name == "short":
+                assert 8.0 <= title_height_mm <= 8.6, title_height_mm
+                assert len(title_line_tops) == 1, title_line_tops
+            else:
+                assert 11.5 <= title_height_mm <= 13.2, title_height_mm
+                assert len(title_line_tops) == 2, title_line_tops
+                assert min(float(char["top"]) for char in title_chars) - rows[0] >= 3.5
+                assert rows[1] - max(float(char["bottom"]) for char in title_chars) >= 3.5
         vertical = sorted(
             {
                 round(float(line["x0"]), 2)
@@ -731,6 +831,13 @@ def main() -> int:
             steps_intro = next(
                 word for word in all_words if word["text"] == "本课题研究步骤如下："
             )
+            first_method = next(
+                word for word in all_words
+                if word["text"].startswith("采用模板蒸馏方法提取官方")
+            )
+            title_to_intro_gap = float(methods_intro["top"]) - float(methods_label["bottom"])
+            intro_to_body_gap = float(first_method["top"]) - float(methods_intro["bottom"])
+            assert abs(title_to_intro_gap - intro_to_body_gap) <= 2.0
             continuation_word = next(
                 word for word in all_words if word["text"].startswith("通过统一数据")
             )
@@ -816,6 +923,31 @@ def main() -> int:
             ],
             cwd=project_dir,
         )
+
+    overrides = json.loads((proposal_dir / "fixtures" / "intro-variants.json").read_text(encoding="utf-8"))
+    variant = json.loads((proposal_dir / "fixtures" / "normal.json").read_text(encoding="utf-8"))
+    variant["sections"].update(overrides)
+    variant_path = output_root / "intro-variants.json"
+    variant_path.write_text(json.dumps(variant, ensure_ascii=False), encoding="utf-8")
+    variant_docx = output_root / "intro-variants.docx"
+    word_renderer.render(proposal_dir / "word" / "official-template.docx", variant_path, variant_docx, overwrite=True)
+    variant_table = Document(variant_docx).tables[0]
+    assert "研究范围和目标如下：" in variant_table.rows[4].cells[0].text
+    assert "实施安排如下：" in variant_table.rows[5].cells[0].text
+    assert "本课题研究方法、手段如下：" not in variant_table.rows[5].cells[0].text
+    variant_tex = latex_renderer.data_tex(word_renderer.validate_data(variant), data_dir=output_root, assets_dir=output_root)
+    assert "研究范围和目标如下：" in variant_tex
+    assert "实施安排如下：" in variant_tex
+    assert "本课题研究方法、手段如下：" not in variant_tex
+
+    legacy = json.loads((proposal_dir / "fixtures" / "normal.json").read_text(encoding="utf-8"))
+    legacy["sections"]["methods_and_means"].pop(0)
+    legacy["sections"]["methods_and_means_intro"] = "本课题研究方法、手段如下："
+    legacy_path = output_root / "legacy-intro.json"
+    legacy_path.write_text(json.dumps(legacy, ensure_ascii=False), encoding="utf-8")
+    legacy_docx = output_root / "legacy-intro.docx"
+    word_renderer.render(proposal_dir / "word" / "official-template.docx", legacy_path, legacy_docx, overwrite=True)
+    assert Document(legacy_docx).tables[0].rows[5].cells[0].text.count("本课题研究方法、手段如下：") == 1
 
     print("proposal regression checks passed")
     return 0

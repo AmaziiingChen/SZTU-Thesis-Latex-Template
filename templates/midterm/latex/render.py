@@ -22,8 +22,8 @@ from common.python.font_files import (  # noqa: E402
     resolve_font_files,
     tex_font_parts,
 )
-from common.python.content import figure_caption_runs, resolve_list_marker  # noqa: E402
-from common.python.equation import latex_display  # noqa: E402
+from common.python.content import figure_caption_runs, resolve_list_marker, runs_text  # noqa: E402
+from common.python.equation import latex_display, latex_math  # noqa: E402
 from common.python.process_form import (  # noqa: E402
     copy_process_form_latex_support,
     load_process_document_layout,
@@ -89,6 +89,13 @@ def typography_tex(layout: dict) -> str:
     columns = table["column_widths_mm"]
     rule_mm = float(table["border_pt"]) * 25.4 / 72.27
     column_rule_share_mm = 5 * rule_mm / 4
+    title_content_min_height = float(table["title_row_content_min_height_mm"])
+    if abs(
+        title_content_min_height
+        + 2 * float(table["title_vertical_padding_mm"])
+        - float(row_heights["metadata"])
+    ) > 0.01:
+        raise ValueError("title row content height and padding must equal the metadata row minimum")
     return "\n".join(
         [
             "% Generated file. Shared size map plus midterm-specific layout tokens.",
@@ -115,6 +122,7 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUTableContentWidth}}{{{table['width_mm'] - 2 * padding - 2 * rule_mm - 0.001:g}mm}}",
             rf"\newcommand{{\SZTUTitleContentWidth}}{{{sum(columns[1:]) - 2 * padding - 2 * rule_mm:g}mm}}",
             rf"\newcommand{{\SZTUTitleVerticalPadding}}{{{table['title_vertical_padding_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUTitleContentMinHeight}}{{{title_content_min_height:g}mm}}",
             *process_form_latex_tokens(layout),
             rf"\newcommand{{\SZTUResearchHeadingGap}}{{{paragraphs['research_heading_space_before_pt']:g}pt}}",
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
@@ -170,7 +178,7 @@ def _render_rich_run(run: dict, text: str) -> str:
 
 def _cjk_widow_target(runs: list[dict]) -> tuple[int, int] | None:
     """Locate the final CJK glyph when it should stay with its preceding glyph."""
-    flat = "".join(run["text"] for run in runs)
+    flat = "".join(run.get("text", "\uFFFC") for run in runs)
     index = len(flat) - 1
     while index >= 0 and flat[index].isspace():
         index -= 1
@@ -184,7 +192,7 @@ def _cjk_widow_target(runs: list[dict]) -> tuple[int, int] | None:
         return None
     cursor = 0
     for run_index, run in enumerate(runs):
-        next_cursor = cursor + len(run["text"])
+        next_cursor = cursor + len(run.get("text", "\uFFFC"))
         if cursor <= index < next_cursor:
             return run_index, index - cursor
         cursor = next_cursor
@@ -195,6 +203,9 @@ def rich_runs(runs: list[dict]) -> str:
     rendered = []
     widow_target = _cjk_widow_target(runs)
     for run_index, run in enumerate(runs):
+        if run.get("type") == "inline_equation":
+            rendered.append(f"${latex_math(run['expression'])}$")
+            continue
         if widow_target is not None and run_index == widow_target[0]:
             split_at = widow_target[1]
             if split_at:
@@ -396,6 +407,19 @@ def render_directory(items: list[dict]) -> str:
 def data_tex(data: dict, *, data_dir: Path, assets_dir: Path) -> str:
     metadata = data["metadata"]
     sections = data["sections"]
+    research_blocks = sections["main_research_content"]
+    progress_blocks = sections["progress"]
+    research_heading = r"\MidtermParagraph{主要研究内容：}"
+    progress_heading = r"\Label{毕业论文（设计）工作进展情况（详述）：}\par"
+    if sections["editable_headings"]:
+        research_heading = ""
+        progress_heading = ""
+        if research_blocks[0]["type"] == "paragraph" and runs_text(research_blocks[0]["runs"]).strip().endswith(("：", ":")):
+            research_heading = rf"\MidtermParagraph{{{rich_runs(research_blocks[0]['runs'])}}}"
+            research_blocks = research_blocks[1:]
+        if progress_blocks[0]["type"] == "paragraph" and runs_text(progress_blocks[0]["runs"]).strip().endswith(("：", ":")):
+            progress_heading = rf"\Label{{{rich_runs(progress_blocks[0]['runs'])}}}\par"
+            progress_blocks = progress_blocks[1:]
     year, month, day = (int(part) for part in metadata["check_date"].split("-"))
     macros = {
         "StudentName": tex_escape(metadata["student_name"]),
@@ -406,13 +430,15 @@ def data_tex(data: dict, *, data_dir: Path, assets_dir: Path) -> str:
         "CheckDate": f"{year} 年 {month} 月 {day} 日",
         "ThesisTitle": rich_runs(metadata["title"]),
         "DirectoryContent": render_directory(sections["directory"]),
+        "ResearchHeading": research_heading,
         "ResearchContent": render_blocks(
-            sections["main_research_content"],
+            research_blocks,
             data_dir=data_dir,
             assets_dir=assets_dir,
         ),
+        "ProgressHeading": progress_heading,
         "ProgressContent": render_blocks(
-            sections["progress"],
+            progress_blocks,
             data_dir=data_dir,
             assets_dir=assets_dir,
         ),

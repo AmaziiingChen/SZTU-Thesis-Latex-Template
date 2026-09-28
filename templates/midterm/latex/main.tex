@@ -45,14 +45,17 @@
 \newcommand{\MidtermListItem}[3]{%
   \par\begingroup
   \setlength{\leftskip}{#1\MidtermListLevelIndentLength}%
-  \addtolength{\leftskip}{\MidtermListHangingIndentLength}%
-  \setlength{\parindent}{-\MidtermListHangingIndentLength}%
-  \Body{#2\hspace{\SZTUListMarkerGap}#3}\par
+  \setlength{\parindent}{0pt}%
+  \hangindent=\MidtermListHangingIndentLength
+  \hangafter=1
+  \noindent\Body{#2\hspace{\SZTUListMarkerGap}#3}\par
   \endgroup
 }
 \newcommand{\MidtermOutlineItem}[3]{%
   \par\begingroup
-  \setlength{\leftskip}{#1\MidtermOutlineLevelIndentLength}%
+  \setlength{\leftskip}{\SZTUFirstLineIndent}%
+  \addtolength{\leftskip}{#1\MidtermOutlineLevelIndentLength}%
+  \addtolength{\leftskip}{-\MidtermOutlineLevelIndentLength}%
   \setlength{\parindent}{0pt}%
   \hangindent=\MidtermOutlineHangingIndentLength
   \hangafter=1
@@ -93,8 +96,8 @@
   colspec={Q[c,m,wd=\SZTUColOneContent]Q[c,m,wd=\SZTUColTwoContent]Q[c,m,wd=\SZTUColThreeContent]Q[c,m,wd=\SZTUColFourContent]},
   columns={colsep=\SZTUCellHorizontalPadding},
   rows={valign=m,rowsep=0pt},
-  row{1-4}={ht=\SZTUMetadataRowHeight},
-  row{4}={rowsep=\SZTUTitleVerticalPadding},
+  row{1-3}={ht=\SZTUMetadataRowHeight},
+  row{4}={ht=\SZTUTitleContentMinHeight,rowsep=\SZTUTitleVerticalPadding},
   stretch=0,
   hlines={\SZTUFormRuleWidth},
   vlines={\SZTUFormRuleWidth}
@@ -112,14 +115,14 @@
   \MidtermParagraph{目录：}
   \DirectoryContent
   \par\vspace{\SZTUResearchHeadingGap}
-  \MidtermParagraph{主要研究内容：}
+  \ResearchHeading
   \ResearchContent
   \par\vspace*{\SZTUFlowEndSpace}
 \end{tcolorbox}
 
 \SZTUFormTightJoin
 \begin{tcolorbox}[midtermflow,height from={\SZTUProgressMinHeight} to {\textheight}]
-  \Label{毕业论文（设计）工作进展情况（详述）：}\par
+  \ProgressHeading
   \SZTUFormSectionTitleGap
   \ProgressContent
   \par\vspace*{\SZTUFlowEndSpace}

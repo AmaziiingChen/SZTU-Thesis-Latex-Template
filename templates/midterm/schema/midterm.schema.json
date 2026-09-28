@@ -42,6 +42,7 @@
       "additionalProperties": false,
       "required": ["directory", "main_research_content", "progress"],
       "properties": {
+        "editable_headings": {"type": "boolean"},
         "numbering_style": {
           "enum": [
             "chinese_hierarchy",

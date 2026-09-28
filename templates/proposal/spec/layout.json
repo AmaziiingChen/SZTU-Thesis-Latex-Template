@@ -30,8 +30,8 @@
     "line_spacing": 1.0,
     "first_line_indent_em": 2.0,
     "nested_list_left_indent_em": 1.0,
-    "list_level_indent_em": 2.0,
-    "list_hanging_indent_em": 2.0,
+    "list_level_indent_em": 1.0,
+    "list_hanging_indent_em": 0.0,
     "list_marker_gap_em": 0.25,
     "list_max_depth": 4,
     "unordered_list_markers": ["•", "◦", "▪", "▫"],
@@ -45,12 +45,13 @@
   },
   "table": {
     "border_pt": 0.48,
+    "title_single_line_vertical_padding_mm": 0.0,
     "title_vertical_padding_mm": 1.5,
     "horizontal_padding_mm": 2.0,
     "top_bottom_padding_mm": 1.0,
     "flow_vertical_padding_mm": 0.8,
     "flow_end_space_mm": 0.0,
-    "section_title_content_gap_mm": 1.0
+    "section_title_content_gap_mm": 0.0
   },
   "image": {
     "max_height_mm": 170.0

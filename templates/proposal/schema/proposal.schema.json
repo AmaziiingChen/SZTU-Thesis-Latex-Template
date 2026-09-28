@@ -46,8 +46,11 @@
       ],
       "properties": {
         "significance_and_status": {"$ref": "#/$defs/significanceParagraphs"},
+        "research_content_intro": {"type": "string", "maxLength": 200, "pattern": "^[^\\r\\n]*$"},
         "research_content": {"$ref": "#/$defs/textContentBlocks"},
+        "methods_and_means_intro": {"type": "string", "maxLength": 200, "pattern": "^[^\\r\\n]*$"},
         "methods_and_means": {"$ref": "#/$defs/textContentBlocks"},
+        "research_steps_intro": {"type": "string", "maxLength": 200, "pattern": "^[^\\r\\n]*$"},
         "research_steps": {"$ref": "#/$defs/textContentBlocks"},
         "references": {"$ref": "#/$defs/referenceParagraphs"}
       }

@@ -76,6 +76,13 @@ def append_omml(paragraph, expression: dict[str, Any]) -> None:
     paragraph._p.append(math_para)
 
 
+def append_inline_omml(paragraph, expression: dict[str, Any]) -> None:
+    """Append a native inline Word math object within an ordinary paragraph."""
+    math = OxmlElement("m:oMath")
+    _append_omml_children(math, expression)
+    paragraph._p.append(math)
+
+
 def add_numbered_omml_table(
     cell,
     expression: dict[str, Any],

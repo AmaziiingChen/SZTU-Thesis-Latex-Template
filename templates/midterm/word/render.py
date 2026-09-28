@@ -40,7 +40,7 @@ from common.python.content import (  # noqa: E402
     runs_text,
 )
 from common.python.process_form import disable_word_numbering, set_word_cell_vertical_padding, load_process_document_layout  # noqa: E402
-from common.python.equation import add_numbered_omml_table, append_omml  # noqa: E402
+from common.python.equation import add_numbered_omml_table, append_omml, append_inline_omml  # noqa: E402
 from common.python.outline_numbering import (  # noqa: E402
     number_outline_levels,
     require_numbering_style,
@@ -108,6 +108,7 @@ def validate_data(raw: Any) -> dict[str, Any]:
 
     sections = require_object(data.get("sections"), "sections")
     expected_sections = {
+        "editable_headings",
         "numbering_style",
         "directory",
         "main_research_content",
@@ -116,6 +117,10 @@ def validate_data(raw: Any) -> dict[str, Any]:
     unknown_sections = set(sections) - expected_sections
     if unknown_sections:
         raise DataError(f"unknown section fields: {sorted(unknown_sections)}")
+
+    editable_headings = sections.get("editable_headings", False)
+    if not isinstance(editable_headings, bool):
+        raise DataError("sections.editable_headings must be boolean")
 
     numbering_style = sections.get("numbering_style")
     if numbering_style is not None:
@@ -187,7 +192,10 @@ def validate_data(raw: Any) -> dict[str, Any]:
         ),
     ]
 
-    clean_sections: dict[str, Any] = {"directory": clean_directory}
+    clean_sections: dict[str, Any] = {
+        "directory": clean_directory,
+        "editable_headings": editable_headings,
+    }
     if numbering_style is not None:
         clean_sections["numbering_style"] = numbering_style
     for key in ("main_research_content", "progress"):
@@ -250,6 +258,9 @@ def _set_run_font(run, *, style: dict[str, Any], bold: bool = False) -> None:
 
 def _append_runs(paragraph, runs: list[dict[str, Any]], *, style: dict[str, Any]) -> None:
     for rich_run in runs:
+        if rich_run.get("type") == "inline_equation":
+            append_inline_omml(paragraph, rich_run["expression"])
+            continue
         pieces = re.findall(r"[\x00-\x7f]+|[^\x00-\x7f]+", rich_run["text"])
         for piece in pieces:
             run = paragraph.add_run(piece)
@@ -620,10 +631,9 @@ def _fill_student_sections(table, data: dict[str, Any], *, data_dir: Path) -> No
     _append_runs(directory_heading, plain_runs("目录："), style=BODY)
     for item in sections["directory"]:
         paragraph = directory_cell.add_paragraph()
-        level_indent = (
-            BODY["size_pt"]
-            * LAYOUT["paragraphs"]["outline_level_indent_em"]
-            * item["level"]
+        level_indent = BODY["size_pt"] * (
+            LAYOUT["paragraphs"]["first_line_indent_em"]
+            + LAYOUT["paragraphs"]["outline_level_indent_em"] * (item["level"] - 1)
         )
         hanging_indent = (
             BODY["size_pt"] * LAYOUT["paragraphs"]["outline_hanging_indent_em"]
@@ -638,24 +648,44 @@ def _fill_student_sections(table, data: dict[str, Any], *, data_dir: Path) -> No
         if item["number"]:
             _append_runs(paragraph, plain_runs(f"{item['number']} "), style=BODY)
         _append_runs(paragraph, item["title"], style=BODY)
-    research_heading = _new_paragraph(directory_cell, indent=True)
-    research_heading.paragraph_format.space_before = Pt(
-        LAYOUT["paragraphs"]["research_heading_space_before_pt"]
-    )
-    research_heading.paragraph_format.keep_with_next = True
-    _append_runs(research_heading, plain_runs("主要研究内容："), style=BODY)
+    research_blocks = sections["main_research_content"]
+    if sections["editable_headings"]:
+        if research_blocks[0]["type"] == "paragraph" and runs_text(research_blocks[0]["runs"]).strip().endswith(("：", ":")):
+            research_heading = _new_paragraph(directory_cell, indent=True)
+            research_heading.paragraph_format.space_before = Pt(
+                LAYOUT["paragraphs"]["research_heading_space_before_pt"]
+            )
+            research_heading.paragraph_format.keep_with_next = True
+            _append_runs(research_heading, research_blocks[0]["runs"], style=BODY)
+            research_blocks = research_blocks[1:]
+    else:
+        research_heading = _new_paragraph(directory_cell, indent=True)
+        research_heading.paragraph_format.space_before = Pt(
+            LAYOUT["paragraphs"]["research_heading_space_before_pt"]
+        )
+        research_heading.paragraph_format.keep_with_next = True
+        _append_runs(research_heading, plain_runs("主要研究内容："), style=BODY)
     _append_content_blocks(
         directory_cell,
-        sections["main_research_content"],
+        research_blocks,
         data_dir=data_dir,
     )
 
     progress_cell = table.rows[5].cells[0]
     _clear_cell(progress_cell)
     progress_label = progress_cell.paragraphs[0]
-    _format_paragraph(progress_label)
-    _append_runs(progress_label, plain_runs("毕业论文（设计）工作进展情况（详述）："), style=LABEL)
-    _append_content_blocks(progress_cell, sections["progress"], data_dir=data_dir)
+    progress_blocks = sections["progress"]
+    if sections["editable_headings"]:
+        if progress_blocks[0]["type"] == "paragraph" and runs_text(progress_blocks[0]["runs"]).strip().endswith(("：", ":")):
+            _format_paragraph(progress_label)
+            _append_runs(progress_label, progress_blocks[0]["runs"], style=LABEL)
+            progress_blocks = progress_blocks[1:]
+        else:
+            _remove_paragraph(progress_label)
+    else:
+        _format_paragraph(progress_label)
+        _append_runs(progress_label, plain_runs("毕业论文（设计）工作进展情况（详述）："), style=LABEL)
+    _append_content_blocks(progress_cell, progress_blocks, data_dir=data_dir)
 
 
 def _fill_teacher_fixed_rows(table) -> None:

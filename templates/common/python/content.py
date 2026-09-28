@@ -143,7 +143,7 @@ def starts_with_calendar_date(text: str) -> bool:
 
 
 def runs_text(runs: list[dict[str, Any]]) -> str:
-    return "".join(run["text"] for run in runs)
+    return "".join(run.get("text", run.get("alt", "")) for run in runs)
 
 
 def normalize_paragraph(
@@ -171,6 +171,15 @@ def normalize_paragraph(
     for index, raw_run in enumerate(runs):
         run_path = f"{path}.runs[{index}]"
         run = require_object(raw_run, run_path)
+        if run.get("type") == "inline_equation":
+            if set(run) != {"type", "expression", "alt"}:
+                raise ContentDataError(f"{run_path} inline equation has invalid fields")
+            clean_runs.append({
+                "type": "inline_equation",
+                "expression": normalize_math_expression(run.get("expression"), f"{run_path}.expression"),
+                "alt": require_text(run.get("alt"), f"{run_path}.alt", 500),
+            })
+            continue
         unknown = set(run) - {"text", "script", "italic", "bold"}
         if unknown:
             raise ContentDataError(f"unknown fields in {run_path}: {sorted(unknown)}")
@@ -193,7 +202,7 @@ def normalize_paragraph(
         )
     if len(clean_runs) > max_runs:
         raise ContentDataError(f"{path}.runs exceeds {max_runs} normalized items")
-    if sum(len(run["text"]) for run in clean_runs) > max_length:
+    if sum(len(run.get("text", run.get("alt", ""))) for run in clean_runs) > max_length:
         raise ContentDataError(f"{path} exceeds {max_length} characters")
     return clean_runs
 
@@ -667,6 +676,8 @@ def _resolve_figure_references(
     path: str,
 ) -> None:
     for run_index, run in enumerate(runs):
+        if run.get("type") == "inline_equation":
+            continue
         def replacement(match: re.Match[str]) -> str:
             figure_id = match.group(1)
             label = labels.get(figure_id)
@@ -740,6 +751,8 @@ def prepare_equation_content(
         for block_index, block in enumerate(blocks):
             for runs in _iter_content_run_groups(block):
                 for run_index, run in enumerate(runs):
+                    if run.get("type") == "inline_equation":
+                        continue
                     def replacement(match: re.Match[str]) -> str:
                         equation_id = match.group(1)
                         label = labels.get(equation_id)
@@ -817,6 +830,8 @@ def split_numbered_subitems(
     list[list[dict[str, Any]]],
 ] | None:
     """Split a legacy inline （1）（2） sequence while preserving run styles."""
+    if any(run.get("type") == "inline_equation" for run in runs):
+        return None
     text = runs_text(runs)
     matches = list(PARENTHESIZED_SUBITEM_PATTERN.finditer(text))
     numbers = [int(match.group(1)) for match in matches]
