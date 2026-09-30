@@ -35,6 +35,8 @@ from common.python.content import (  # noqa: E402
     starts_with_calendar_date,
 )
 from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.font_files import resolve_font_files  # noqa: E402
+from common.python.list_layout import marker_advance_pt  # noqa: E402
 from common.python.regression_fixtures import (  # noqa: E402
     load_page_range_recipes,
     materialize_page_range_fixture,
@@ -50,6 +52,7 @@ FIXTURE_NAMES = (
     "page-break",
     "rich-text-list",
     "nested-list",
+    "list-wrap",
     "cover-subscript",
     "reference-overflow",
     "image-page-break",
@@ -526,6 +529,7 @@ def assert_word_indents(
         layout["paragraphs"]["list_hanging_indent_em"]
     )
     unordered_markers = layout["paragraphs"]["unordered_list_markers"]
+    fonts = resolve_font_files(["Times New Roman", "SimSun"])
 
     def assert_list(block: dict[str, Any], cell, *, depth: int = 1) -> None:
         for index, item in enumerate(block["items"], start=1):
@@ -538,15 +542,24 @@ def assert_word_indents(
                 text = f"{marker}\u2009{runs_text(item['runs'])}"
             paragraph = next(item for item in cell.paragraphs if item.text == text)
             marker_indent = list_first + (depth - 1) * list_level
+            actual_hanging = max(
+                list_hanging,
+                marker_advance_pt(
+                    marker,
+                    size_pt=body_size,
+                    latin_font=fonts["Times New Roman"],
+                    cjk_font=fonts["SimSun"],
+                ),
+            )
             assert abs(
                 points_or_zero(paragraph.paragraph_format.left_indent)
                 - marker_indent
-                - list_hanging
-            ) <= 0.01
+                - actual_hanging
+            ) <= 0.05
             assert abs(
                 points_or_zero(paragraph.paragraph_format.first_line_indent)
-                + list_hanging
-            ) <= 0.01
+                + actual_hanging
+            ) <= 0.05
             if item["children"]:
                 assert_list(item["children"], cell, depth=depth + 1)
 
@@ -1538,7 +1551,7 @@ def main() -> int:
     assert layout["paragraphs"]["notice_line_spacing"] == 1.5
     assert layout["paragraphs"]["list_first_level_indent_em"] == 2.0
     assert layout["paragraphs"]["list_level_indent_em"] == 2.0
-    assert layout["paragraphs"]["list_hanging_indent_em"] == 2.0
+    assert layout["paragraphs"]["list_hanging_indent_em"] == 0.0
     assert layout["paragraphs"]["list_marker_gap_em"] == 0.25
     assert layout["paragraphs"]["list_max_depth"] == 4
     assert layout["paragraphs"]["unordered_list_markers"] == ["•", "◦", "▪", "▫"]
@@ -1933,7 +1946,7 @@ def main() -> int:
         assert "sztuformflow/.style" in process_form_tex
         assert r"\newcommand{\SZTUTitleRowMinHeight}{12mm}" in typography_tex
         assert r"\newcommand{\SZTUNoticeItemGap}{0pt}" in typography_tex
-        assert r"\newcommand{\SZTUListHangingIndent}{2em}" in typography_tex
+        assert r"\newcommand{\SZTUListHangingIndent}{0em}" in typography_tex
         assert r"\newcommand{\SZTUTeacherSignatureBlank}{45mm}" in typography_tex
         assert r"\newcommand{\SZTUCollegeSignatureBlank}{50mm}" in typography_tex
         assert r"\newcommand{\SZTUSignatureRightInset}{7.5mm}" in typography_tex
@@ -2028,6 +2041,28 @@ def main() -> int:
             assert_pdf_title_row_geometry(pdf, layout)
             assert_pdf_form_geometry(pdf, fixture_name=name)
             assert_pdf_closing_bundle(pdf, layout, normalized)
+            if name == "list-wrap":
+                lines = [
+                    line
+                    for page in pdf.pages
+                    for line in page.extract_text_lines(return_chars=True)
+                ]
+                for prefix, marker_chars in (
+                    ("• 一级无序：验证项目", 1),
+                    ("1.收集官方模板", 2),
+                ):
+                    first_index = next(
+                        index for index, line in enumerate(lines)
+                        if line["text"].startswith(prefix)
+                    )
+                    first_line = lines[first_index]
+                    continuation = lines[first_index + 1]
+                    assert 10.0 <= continuation["top"] - first_line["top"] <= 24.0
+                    first_body_x = float(first_line["chars"][marker_chars]["x0"])
+                    continuation_x = float(continuation["chars"][0]["x0"])
+                    assert abs(first_body_x - continuation_x) <= 1.5, (
+                        prefix, first_body_x, continuation_x
+                    )
             chars = [
                 char
                 for page in pdf.pages

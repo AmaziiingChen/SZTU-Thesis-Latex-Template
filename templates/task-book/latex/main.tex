@@ -161,14 +161,19 @@
   #1\par
   \endgroup
 }
+\newlength{\TaskListMarkerAdvance}
 \newcommand{\TaskListItem}[3]{%
   \par\begingroup
   \setstretch{\SZTUBodyLineSpacing}%
   \songti\SZTUBodyStyle
   \justifying
+  \settowidth{\TaskListMarkerAdvance}{#2\hspace{\SZTUListMarkerGap}}%
+  \ifdim\TaskListMarkerAdvance<\SZTUListHangingIndent
+    \setlength{\TaskListMarkerAdvance}{\SZTUListHangingIndent}%
+  \fi
   \setlength{\leftskip}{#1em}%
-  \addtolength{\leftskip}{\SZTUListHangingIndent}%
-  \setlength{\parindent}{-\SZTUListHangingIndent}%
+  \addtolength{\leftskip}{\TaskListMarkerAdvance}%
+  \setlength{\parindent}{-\TaskListMarkerAdvance}%
   #2\hspace{\SZTUListMarkerGap}#3\par
   \endgroup
 }

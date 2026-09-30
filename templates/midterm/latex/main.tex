@@ -42,11 +42,16 @@
 \setlength{\MidtermListLevelIndentLength}{\SZTUListLevelIndent}
 \newlength{\MidtermListHangingIndentLength}
 \setlength{\MidtermListHangingIndentLength}{\SZTUListHangingIndent}
+\newlength{\MidtermListMarkerAdvance}
 \newcommand{\MidtermListItem}[3]{%
   \par\begingroup
+  \settowidth{\MidtermListMarkerAdvance}{\Body{#2\hspace{\SZTUListMarkerGap}}}%
+  \ifdim\MidtermListMarkerAdvance<\MidtermListHangingIndentLength
+    \setlength{\MidtermListMarkerAdvance}{\MidtermListHangingIndentLength}%
+  \fi
   \setlength{\leftskip}{#1\MidtermListLevelIndentLength}%
   \setlength{\parindent}{0pt}%
-  \hangindent=\MidtermListHangingIndentLength
+  \hangindent=\MidtermListMarkerAdvance
   \hangafter=1
   \noindent\Body{#2\hspace{\SZTUListMarkerGap}#3}\par
   \endgroup

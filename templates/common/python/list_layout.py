@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -23,7 +22,9 @@ def marker_advance_pt(
     scale = 16
     scaled_size = round(size_pt * scale)
     total = 0.0
-    for piece in re.findall(r"[\x00-\x7f]+|[^\x00-\x7f]+", list_marker_text(marker)):
-        font = latin_font if ord(piece[0]) < 128 else cjk_font
-        total += _font(str(font), scaled_size).getlength(piece) / scale
+    for char in list_marker_text(marker):
+        # U+2009 is spacing between marker and body; Word lays it out as Latin
+        # spacing even when the preceding marker uses the CJK font.
+        font = latin_font if ord(char) < 128 or char == "\u2009" else cjk_font
+        total += _font(str(font), scaled_size).getlength(char) / scale
     return total

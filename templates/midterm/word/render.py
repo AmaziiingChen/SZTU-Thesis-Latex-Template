@@ -39,6 +39,8 @@ from common.python.content import (  # noqa: E402
     resolve_list_marker,
     runs_text,
 )
+from common.python.font_files import resolve_font_files  # noqa: E402
+from common.python.list_layout import marker_advance_pt  # noqa: E402
 from common.python.process_form import disable_word_numbering, set_word_cell_vertical_padding, load_process_document_layout  # noqa: E402
 from common.python.equation import add_numbered_omml_table, append_omml, append_inline_omml  # noqa: E402
 from common.python.outline_numbering import (  # noqa: E402
@@ -564,15 +566,25 @@ def _append_figure_group(cell, block: dict[str, Any], *, data_dir: Path) -> None
 def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
     if not 1 <= depth <= LIST_MAX_DEPTH:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
+    fonts = resolve_font_files(["Times New Roman", "SimSun"])
     for index, item in enumerate(block["items"], start=1):
+        marker = resolve_list_marker(
+            block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+        )
+        hanging_indent_pt = max(
+            LIST_HANGING_INDENT_PT,
+            marker_advance_pt(
+                marker,
+                size_pt=BODY["size_pt"],
+                latin_font=fonts["Times New Roman"],
+                cjk_font=fonts["SimSun"],
+            ),
+        )
         paragraph = cell.add_paragraph()
         _format_paragraph(
             paragraph,
-            left_indent_pt=depth * LIST_LEVEL_INDENT_PT + LIST_HANGING_INDENT_PT,
-            first_line_indent_pt=-LIST_HANGING_INDENT_PT,
-        )
-        marker = resolve_list_marker(
-            block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+            left_indent_pt=depth * LIST_LEVEL_INDENT_PT + hanging_indent_pt,
+            first_line_indent_pt=-hanging_indent_pt,
         )
         _append_runs(paragraph, plain_runs(list_marker_text(marker)), style=BODY)
         _append_runs(paragraph, item["runs"], style=BODY)

@@ -35,6 +35,7 @@ from common.python.content import (  # noqa: E402
     starts_with_calendar_date,
 )
 from common.python.font_files import font_roots, resolve_font_files  # noqa: E402
+from common.python.list_layout import marker_advance_pt  # noqa: E402
 from common.python.process_form import load_process_document_layout  # noqa: E402
 from common.python.equation import add_numbered_omml_table, append_omml  # noqa: E402
 
@@ -794,16 +795,26 @@ def _append_list_block(cell, block: dict[str, Any], *, depth: int = 1) -> None:
         raise AssertionError(f"normalized list depth escaped bounds: {depth}")
     style = LAYOUT["typography"]["body"]
     marker_indent = LIST_FIRST_LEVEL_INDENT_PT + (depth - 1) * LIST_LEVEL_INDENT_PT
+    fonts = resolve_font_files(["Times New Roman", "SimSun"])
     for index, item in enumerate(block["items"], start=1):
+        marker = resolve_list_marker(
+            block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+        )
+        hanging_indent_pt = max(
+            LIST_HANGING_INDENT_PT,
+            marker_advance_pt(
+                marker,
+                size_pt=style["size_pt"],
+                latin_font=fonts["Times New Roman"],
+                cjk_font=fonts["SimSun"],
+            ),
+        )
         paragraph = cell.add_paragraph()
         _format_paragraph(
             paragraph,
             alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-            left_indent_pt=marker_indent + LIST_HANGING_INDENT_PT,
-            first_line_indent_pt=-LIST_HANGING_INDENT_PT,
-        )
-        marker = resolve_list_marker(
-            block["type"], item["marker"], index, depth, UNORDERED_LIST_MARKERS
+            left_indent_pt=marker_indent + hanging_indent_pt,
+            first_line_indent_pt=-hanging_indent_pt,
         )
         marker_text = list_marker_text(marker)
         _append_runs(paragraph, plain_runs(marker_text), style=style)

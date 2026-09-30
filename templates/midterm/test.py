@@ -24,6 +24,8 @@ if str(TEMPLATES_DIR) not in sys.path:
     sys.path.insert(0, str(TEMPLATES_DIR))
 
 from common.python.process_form import load_process_document_layout  # noqa: E402
+from common.python.font_files import resolve_font_files  # noqa: E402
+from common.python.list_layout import marker_advance_pt  # noqa: E402
 from common.python.regression_fixtures import (  # noqa: E402
     load_page_range_recipes,
     materialize_page_range_fixture,
@@ -451,8 +453,15 @@ def main() -> int:
                 p for p in progress_body if re.match(r"^(?:（\d+）|\d+[、.])", p.text)
             ]
             assert list_paragraphs
-            assert all(p.paragraph_format.first_line_indent.pt == -21.0 for p in list_paragraphs)
-            assert all(p.paragraph_format.left_indent.pt == 42.0 for p in list_paragraphs)
+            fonts = resolve_font_files(["Times New Roman", "SimSun"])
+            for paragraph in list_paragraphs:
+                marker = paragraph.text.split("\u2009", 1)[0]
+                advance = marker_advance_pt(
+                    marker, size_pt=layout["typography"]["body"]["size_pt"],
+                    latin_font=fonts["Times New Roman"], cjk_font=fonts["SimSun"],
+                )
+                assert abs(paragraph.paragraph_format.first_line_indent.pt + advance) <= 0.05
+                assert abs(paragraph.paragraph_format.left_indent.pt - 21.0 - advance) <= 0.05
 
         if name == "normal":
             all_runs = [run_item for cell in (directory_cell, progress_cell) for run_item in paragraph_runs(cell)]
@@ -496,20 +505,25 @@ def main() -> int:
             assert any(run_item.text == "−" and run_item.font.superscript for run_item in all_runs)
             assert any(run_item.text == "3" and run_item.font.superscript for run_item in all_runs)
         if name == "nested-list":
+            fonts = resolve_font_files(["Times New Roman", "SimSun"])
             by_prefix = {
                 prefix: next(p for p in body_paragraphs if p.text.startswith(prefix))
                 for prefix in ("•", "（1）", "▪", "A.", "列表结束后")
             }
             for depth, prefix in enumerate(("•", "（1）", "▪", "A."), start=1):
                 paragraph = by_prefix[prefix]
+                marker = paragraph.text.split("\u2009", 1)[0]
+                advance = marker_advance_pt(
+                    marker, size_pt=layout["typography"]["body"]["size_pt"],
+                    latin_font=fonts["Times New Roman"], cjk_font=fonts["SimSun"],
+                )
                 assert paragraph.paragraph_format.left_indent is not None
-                assert paragraph.paragraph_format.left_indent.pt == (
+                assert abs(paragraph.paragraph_format.left_indent.pt - (
                     depth * layout["typography"]["body"]["size_pt"]
                     * layout["paragraphs"]["list_level_indent_em"]
-                    + layout["typography"]["body"]["size_pt"]
-                    * layout["paragraphs"]["list_hanging_indent_em"]
-                )
-                assert paragraph.paragraph_format.first_line_indent.pt == -21.0
+                    + advance
+                )) <= 0.05
+                assert abs(paragraph.paragraph_format.first_line_indent.pt + advance) <= 0.05
             trailing = by_prefix["列表结束后"]
             assert trailing.paragraph_format.left_indent is None
             assert trailing.paragraph_format.first_line_indent.pt == 21.0
@@ -615,7 +629,7 @@ def main() -> int:
         assert r"\newcommand{\SZTUSectionTitleContentGap}{0mm}" in typography_tex
         assert "sztuformflow/.style" in process_form_tex
         assert r"\newcommand{\SZTUListLevelIndent}{2em}" in typography_tex
-        assert r"\newcommand{\SZTUListHangingIndent}{2em}" in typography_tex
+        assert r"\newcommand{\SZTUListHangingIndent}{0em}" in typography_tex
         assert r"\newcommand{\SZTUOutlineLevelIndent}{1em}" in typography_tex
         assert r"\newcommand{\SZTUTeacherOpinionHeight}{84mm}" in typography_tex
         assert r"\newcommand{\SZTUReviewOpinionHeight}{72mm}" in typography_tex
@@ -734,7 +748,15 @@ def main() -> int:
                     line for line in first_page.extract_text_lines()
                     if "签质量与训练验证边界" in line["text"]
                 )
-                assert abs(wrapped_line["x0"] - heading["x0"] - 21.0) < 1.0
+                first_item_line = next(
+                    line for line in first_page.extract_text_lines(return_chars=True)
+                    if line["text"].startswith("（1）完成公开数据集")
+                )
+                first_body_x = next(
+                    char["x0"] for char in first_item_line["chars"]
+                    if char["text"] == "完"
+                )
+                assert abs(wrapped_line["x0"] - first_body_x) < 1.5
                 progress_body = first_page.search("目前已完成文献调研")[0]
                 progress_marker = next(
                     match for match in first_page.search("1.", regex=False)
