@@ -1,0 +1,702 @@
+{
+  "version": "0.3",
+  "kind": "defense-record",
+  "title": "答辩记录表",
+  "official_source": {
+    "filename": "7 答辩记录表.doc",
+    "sha256": "1ad8c64113da1775edbcaaa5d74af4e4364e6f5b49427192e4edace9edf7c7eb",
+    "year": 2026,
+    "page_count": 1
+  },
+  "page": {
+    "width_mm": 210,
+    "height_mm": 297,
+    "top_margin_mm": 25.4,
+    "bottom_margin_mm": 25.4,
+    "left_margin_mm": 31.75,
+    "right_margin_mm": 31.75
+  },
+  "table": {
+    "width_mm": 150.319,
+    "left_mm": 29.803,
+    "top_mm": 69.427,
+    "border_pt": 0.5,
+    "horizontal_padding_mm": 1.905,
+    "rows_mm": [
+      11.994,
+      11.994,
+      164.871
+    ],
+    "vertical_segments_mm": [
+      [
+        51.26953,
+        69.427,
+        81.421
+      ],
+      [
+        94.20258,
+        69.427,
+        81.421
+      ],
+      [
+        115.66911,
+        69.427,
+        81.421
+      ],
+      [
+        137.15328,
+        69.427,
+        81.421
+      ],
+      [
+        152.358,
+        69.427,
+        81.421
+      ],
+      [
+        51.26953,
+        81.421,
+        93.415
+      ],
+      [
+        72.73606,
+        81.421,
+        93.415
+      ],
+      [
+        94.20258,
+        81.421,
+        93.415
+      ],
+      [
+        115.66911,
+        81.421,
+        93.415
+      ],
+      [
+        137.15328,
+        81.421,
+        93.415
+      ]
+    ]
+  },
+  "word": {
+    "table_count": 1,
+    "table_grid_twips": [
+      1217,
+      1217,
+      1217,
+      1217,
+      1218,
+      862,
+      1574
+    ],
+    "row_heights_twips": [
+      680,
+      680,
+      9347
+    ],
+    "row_height_rule": "exact",
+    "prelude": {
+      "time_space_after_mm": 6.31,
+      "time_tab_mm": 80
+    },
+    "footer": {
+      "left_indent_mm": 9.3,
+      "leader_tab_mm": 48.19,
+      "date_tab_mm": 120.42,
+      "space_before_mm": 6.0033333333,
+      "right_indent_mm": -1.92,
+      "snap_to_grid": false,
+      "auto_space_latin": false,
+      "single_line": true,
+      "remove_empty_body_paragraphs": true,
+      "adjust_right_indent_to_grid": false
+    },
+    "members_paragraph_vertical_adjust_mm": -2.61
+  },
+  "typography": {
+    "title": {
+      "size_pt": 18,
+      "bold": true,
+      "size": "小二",
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "cjk_label"
+    },
+    "basic_label": {
+      "size_pt": 12,
+      "bold": false,
+      "size": "小四",
+      "cjk_font_role": "cjk_label",
+      "latin_font_role": "latin"
+    },
+    "prefill": {
+      "size_pt": 12,
+      "bold": false,
+      "size": "小四",
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin"
+    },
+    "body": {
+      "size_pt": 10.5,
+      "bold": false,
+      "size": "五号",
+      "cjk_font_role": "cjk_body",
+      "latin_font_role": "latin"
+    }
+  },
+  "required_font_files": [
+    "SimSun",
+    "SimHei",
+    "Times New Roman",
+    "Times New Roman Bold",
+    "Times New Roman Italic",
+    "Times New Roman Bold Italic"
+  ],
+  "paragraphs": {
+    "body_first_line_indent_em": 2,
+    "body_line_spacing_pt": 15.6,
+    "list_max_depth": 4,
+    "list_markers": [
+      "•",
+      "◦",
+      "▪",
+      "▫"
+    ],
+    "point_unit": "bp"
+  },
+  "single_page": {
+    "overflow_policy": "reject",
+    "lower_default": "blank",
+    "signature_policy": "handwritten-reserved",
+    "measurement": "official font glyph advances plus actual XeTeX box height before DOCX/PDF export"
+  },
+  "regions": [
+    {
+      "key": "school-title",
+      "x_mm": 20,
+      "y_mm": 28.08,
+      "width_mm": 170,
+      "height_mm": 9,
+      "source": "static",
+      "value": "深圳技术大学本科毕业论文（设计）",
+      "size_pt": 18,
+      "line_spacing_pt": 19.8,
+      "font": "heitiBold",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "top",
+      "latin_font_role": "cjk_label",
+      "point_unit": "bp",
+      "disable_cjk_latin_spacing": true,
+      "punct_style": "plain"
+    },
+    {
+      "key": "form-title",
+      "x_mm": 20,
+      "y_mm": 39.09,
+      "width_mm": 170,
+      "height_mm": 9,
+      "source": "static",
+      "value": "答辩记录表",
+      "size_pt": 18,
+      "line_spacing_pt": 19.8,
+      "font": "heitiBold",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "top",
+      "latin_font_role": "cjk_label",
+      "point_unit": "bp"
+    },
+    {
+      "key": "defense_time",
+      "x_mm": 31.75,
+      "y_mm": 62.03,
+      "width_mm": 78,
+      "height_mm": 9,
+      "source": "metadata",
+      "value": "defense_time",
+      "size_pt": 12,
+      "line_spacing_pt": 13.2,
+      "font": "songti",
+      "alignment": "left",
+      "label": "答辩时间：",
+      "label_font": "heiti",
+      "vertical_alignment": "top"
+    },
+    {
+      "key": "defense_location",
+      "x_mm": 112.22,
+      "y_mm": 62.03,
+      "width_mm": 67,
+      "height_mm": 9,
+      "source": "metadata",
+      "value": "defense_location",
+      "size_pt": 12,
+      "line_spacing_pt": 13.2,
+      "font": "songti",
+      "alignment": "left",
+      "label": "地点：",
+      "label_font": "heiti",
+      "vertical_alignment": "top"
+    },
+    {
+      "key": "title-label",
+      "x_mm": 31.708,
+      "y_mm": 69.727,
+      "width_mm": 17.65653,
+      "height_mm": 11.394,
+      "source": "static",
+      "value": "题 目",
+      "size_pt": 12,
+      "line_spacing_pt": 15.6,
+      "font": "heiti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center",
+      "point_unit": "bp",
+      "disable_cjk_latin_spacing": true,
+      "punct_style": "plain"
+    },
+    {
+      "key": "title",
+      "x_mm": 53.17453,
+      "y_mm": 69.727,
+      "width_mm": 39.12306,
+      "height_mm": 11.394,
+      "source": "metadata",
+      "value": "title",
+      "size_pt": 12,
+      "line_spacing_pt": 15.6,
+      "font": "songti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center",
+      "point_unit": "bp",
+      "disable_cjk_latin_spacing": true,
+      "punct_style": "plain"
+    },
+    {
+      "key": "advisor-label",
+      "x_mm": 96.10758,
+      "y_mm": 69.727,
+      "width_mm": 17.65653,
+      "height_mm": 11.394,
+      "source": "static",
+      "value": "指导教师姓 名",
+      "size_pt": 12,
+      "line_spacing_pt": 15.6,
+      "font": "heiti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center",
+      "point_unit": "bp",
+      "disable_cjk_latin_spacing": true,
+      "punct_style": "plain"
+    },
+    {
+      "key": "advisor",
+      "x_mm": 117.57411,
+      "y_mm": 69.727,
+      "width_mm": 17.67417,
+      "height_mm": 11.394,
+      "source": "metadata",
+      "value": "advisor",
+      "size_pt": 12,
+      "line_spacing_pt": 15.6,
+      "font": "songti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center",
+      "point_unit": "bp",
+      "disable_cjk_latin_spacing": true,
+      "punct_style": "plain"
+    },
+    {
+      "key": "title-label-2",
+      "x_mm": 139.05828,
+      "y_mm": 69.727,
+      "width_mm": 11.39472,
+      "height_mm": 11.394,
+      "source": "static",
+      "value": "职称",
+      "size_pt": 12,
+      "line_spacing_pt": 15.6,
+      "font": "heiti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center",
+      "point_unit": "bp",
+      "disable_cjk_latin_spacing": true,
+      "punct_style": "plain"
+    },
+    {
+      "key": "advisor_title",
+      "x_mm": 154.263,
+      "y_mm": 69.727,
+      "width_mm": 23.95361,
+      "height_mm": 11.394,
+      "source": "metadata",
+      "value": "advisor_title",
+      "size_pt": 12,
+      "line_spacing_pt": 15.6,
+      "font": "songti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center",
+      "point_unit": "bp",
+      "disable_cjk_latin_spacing": true,
+      "punct_style": "plain"
+    },
+    {
+      "key": "name-label",
+      "x_mm": 31.708,
+      "y_mm": 81.721,
+      "width_mm": 17.65653,
+      "height_mm": 11.394,
+      "source": "static",
+      "value": "学生姓名",
+      "size_pt": 12,
+      "line_spacing_pt": 13.2,
+      "font": "heiti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center"
+    },
+    {
+      "key": "student_name",
+      "x_mm": 53.17453,
+      "y_mm": 81.721,
+      "width_mm": 17.65653,
+      "height_mm": 11.394,
+      "source": "metadata",
+      "value": "student_name",
+      "size_pt": 12,
+      "line_spacing_pt": 13.2,
+      "font": "songti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center"
+    },
+    {
+      "key": "major-label",
+      "x_mm": 74.64106,
+      "y_mm": 81.721,
+      "width_mm": 17.65653,
+      "height_mm": 11.394,
+      "source": "static",
+      "value": "专业",
+      "size_pt": 12,
+      "line_spacing_pt": 13.2,
+      "font": "heiti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center"
+    },
+    {
+      "key": "major",
+      "x_mm": 96.10758,
+      "y_mm": 81.721,
+      "width_mm": 17.65653,
+      "height_mm": 11.394,
+      "source": "metadata",
+      "value": "major",
+      "size_pt": 12,
+      "line_spacing_pt": 13.2,
+      "font": "songti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center"
+    },
+    {
+      "key": "id-label",
+      "x_mm": 117.57411,
+      "y_mm": 81.721,
+      "width_mm": 17.67417,
+      "height_mm": 11.394,
+      "source": "static",
+      "value": "学号",
+      "size_pt": 12,
+      "line_spacing_pt": 13.2,
+      "font": "heiti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center"
+    },
+    {
+      "key": "student_id",
+      "x_mm": 139.05828,
+      "y_mm": 81.721,
+      "width_mm": 39.15833,
+      "height_mm": 11.394,
+      "source": "metadata",
+      "value": "student_id",
+      "size_pt": 12,
+      "line_spacing_pt": 13.2,
+      "font": "songti",
+      "alignment": "center",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "center"
+    },
+    {
+      "key": "questions-prompt",
+      "x_mm": 31.708,
+      "y_mm": 94.72,
+      "width_mm": 146.509,
+      "height_mm": 11,
+      "source": "static",
+      "value": "答辩小组（学院答辩委员会）对学生毕业设计（论文）的陈述提出的问题及学生的回答情况：",
+      "size_pt": 10.5,
+      "line_spacing_pt": 15.6,
+      "font": "songti",
+      "alignment": "left",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "top",
+      "first_line_indent_em": 2.5,
+      "point_unit": "bp",
+      "punct_style": "banjiao",
+      "guidance_style": {
+        "key": "questions",
+        "fixed_label": {
+          "font": "heiti",
+          "size_pt": 14,
+          "bold": false,
+          "first_line_indent_em": 0
+        },
+        "text": {
+          "font": "songti",
+          "size_pt": 10.5
+        },
+        "fixed_suffix": {
+          "font": "heiti",
+          "size_pt": 14,
+          "bold": false
+        },
+        "empty_policy": "omit guidance only; fixed label and suffix remain",
+        "body_policy": "independent paragraphs; no first-paragraph text guessing",
+        "weight_authority": "official DOCX run properties + Normal/DocDefaults inheritance: regular SimHei; no extra bold",
+        "punctuation": {
+          "name": "assessmentGuidanceBoundedHalf",
+          "fixed_punct_ratio": 0.5,
+          "kerning_total_ratio": 0.5,
+          "optimize_kerning": true,
+          "optimize_margin": false
+        }
+      }
+    },
+    {
+      "key": "questions",
+      "x_mm": 31.708,
+      "y_mm": 107.415,
+      "width_mm": 146.509,
+      "height_mm": 66.0,
+      "source": "questions",
+      "value": "",
+      "size_pt": 10.5,
+      "line_spacing_pt": 15.6,
+      "font": "songti",
+      "alignment": "left",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "top",
+      "point_unit": "bp"
+    },
+    {
+      "key": "members-label",
+      "x_mm": 31.708,
+      "y_mm": 176.8,
+      "width_mm": 146.509,
+      "height_mm": 6,
+      "source": "static",
+      "value": "答辩小组（学院答辩委员会）成员名单：",
+      "size_pt": 10.5,
+      "line_spacing_pt": 14,
+      "font": "songti",
+      "alignment": "left",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "top"
+    },
+    {
+      "key": "members",
+      "x_mm": 31.708,
+      "y_mm": 183.0,
+      "width_mm": 146.509,
+      "height_mm": 73.386,
+      "source": "members",
+      "value": "",
+      "size_pt": 10.5,
+      "line_spacing_pt": 14,
+      "font": "songti",
+      "alignment": "left",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "top"
+    },
+    {
+      "key": "recorder",
+      "x_mm": 41.05,
+      "y_mm": 264.74,
+      "width_mm": 35,
+      "height_mm": 7,
+      "source": "metadata",
+      "value": "recorder",
+      "size_pt": 10.5,
+      "line_spacing_pt": 14,
+      "font": "songti",
+      "alignment": "left",
+      "label": "记录员：",
+      "label_font": "songti",
+      "vertical_alignment": "top"
+    },
+    {
+      "key": "leader",
+      "x_mm": 79.94,
+      "y_mm": 264.74,
+      "width_mm": 70,
+      "height_mm": 7,
+      "source": "metadata",
+      "value": "leader",
+      "size_pt": 10.5,
+      "line_spacing_pt": 14,
+      "font": "songti",
+      "alignment": "left",
+      "label": "答辩小组（答辩委员会）组长：",
+      "label_font": "songti",
+      "vertical_alignment": "top"
+    },
+    {
+      "key": "date",
+      "x_mm": 152.17,
+      "y_mm": 264.74,
+      "width_mm": 28,
+      "height_mm": 7,
+      "source": "date",
+      "value": "",
+      "size_pt": 10.5,
+      "line_spacing_pt": 14,
+      "font": "songti",
+      "alignment": "left",
+      "label": "",
+      "label_font": "heiti",
+      "vertical_alignment": "top",
+      "empty_gap_mm": [
+        3.71,
+        3.71
+      ]
+    }
+  ],
+  "source_geometry": {
+    "raw_doc_page_twips": [
+      11906,
+      16838
+    ],
+    "raw_doc_margins_twips": {
+      "top": 1440,
+      "bottom": 1440,
+      "left": 1800,
+      "right": 1800
+    },
+    "raw_doc_row_heights": [
+      {
+        "twips": 680,
+        "rule": "exact"
+      },
+      {
+        "twips": 680,
+        "rule": "exact"
+      },
+      {
+        "twips": 9347,
+        "rule": "atLeast"
+      }
+    ],
+    "diagnostic_table_top_mm": 69.427,
+    "diagnostic_table_bottom_mm": 258.286,
+    "diagnostic_source": "raw DOC SPRM + controlled DOCX/FODT + LibreOffice PDF; no WPS layout acceptance",
+    "college_glyph_bottom_mm": null,
+    "previous_pdf_college_glyph_bottom_mm": null
+  },
+  "print_layout": {
+    "authority": "user-authorized full-page handwriting layout overrides dynamic/minimum row heights",
+    "preserved": [
+      "A4",
+      "page margins",
+      "table width/grid/labels/borders",
+      "official font sizes",
+      "signature labels/date fonts and minimum 30 mm handwriting width"
+    ],
+    "table_bottom_min_mm": 258.1,
+    "table_bottom_max_mm": 258.5,
+    "target_table_bottom_mm": 258.286,
+    "footer_bottom_min_mm": 267,
+    "footer_bottom_max_mm": 271.6
+  },
+  "metadata_row": {
+    "row_index": 1,
+    "minimum_height_mm": 11.994,
+    "base_lines": 2,
+    "line_step_pt": 13.2,
+    "field_keys": [
+      "student_name",
+      "major",
+      "student_id"
+    ],
+    "row_region_keys": [
+      "name-label",
+      "student_name",
+      "major-label",
+      "major",
+      "id-label",
+      "student_id"
+    ],
+    "flexible_row_index": 2,
+    "flexible_region_key": "questions",
+    "shift_region_keys": [
+      "questions-prompt",
+      "questions"
+    ]
+  },
+  "title_row": {
+    "region_key": "title",
+    "row_region_keys": [
+      "title-label",
+      "title",
+      "advisor-label",
+      "advisor",
+      "title-label-2",
+      "advisor_title"
+    ],
+    "minimum_height_mm": 11.994,
+    "line_step_pt": 15.6,
+    "vertical_padding_mm": 3,
+    "flexible_row_index": 2,
+    "flexible_region_key": "questions",
+    "shift_region_keys": [
+      "name-label",
+      "student_name",
+      "major-label",
+      "major",
+      "id-label",
+      "student_id",
+      "questions-prompt",
+      "questions"
+    ],
+    "office_boundary_reserve_em": 0.2
+  }
+}

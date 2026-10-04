@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "陈示例",
+    "student_id": "202600000001",
+    "college": "测试学院",
+    "major": "热能工程",
+    "advisor": "李示例",
+    "advisor_title": "教授",
+    "reviewer": "王示例",
+    "reviewer_title": "副教授",
+    "defense_time": "2026年6月1日",
+    "defense_location": "测试教室",
+    "recorder": "赵示例",
+    "leader": "周示例",
+    "title": "换热器结构优化及传热性能的实验研究"
+  },
+  "sections": {
+    "comments": [
+      {
+        "type": "paragraph",
+        "runs": [
+          {
+            "text": "答辩小组（学",
+            "bold": true
+          },
+          {
+            "text": "院",
+            "italic": true
+          },
+          {
+            "text": "答",
+            "script": "super"
+          },
+          {
+            "text": "辩委员会）对学生毕业设计（论文）的陈述提出的问题及学生的回答情况："
+          }
+        ]
+      }
+    ],
+    "division_of_work": [
+      "独立完成研究与撰写。"
+    ],
+    "suggested_grade": "89.5",
+    "questions": [
+      {
+        "question": [
+          "说明研究方法。"
+        ],
+        "answer": [
+          "采用实验分析与理论计算相结合的方法。"
+        ]
+      }
+    ],
+    "members": [
+      "周示例",
+      "李示例",
+      "王示例"
+    ],
+    "final_grade": "89.5",
+    "date": "2026-06-01",
+    "editable_headings": true
+  }
+}

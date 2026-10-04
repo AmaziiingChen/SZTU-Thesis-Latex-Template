@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "陈示例",
+    "student_id": "202600000001",
+    "college": "测试学院",
+    "major": "测试专业",
+    "advisor": "",
+    "advisor_title": "",
+    "reviewer": "",
+    "reviewer_title": "",
+    "defense_time": "",
+    "defense_location": "",
+    "recorder": "",
+    "leader": "",
+    "title": "测试论文题目"
+  },
+  "sections": {
+    "comments": [],
+    "division_of_work": [],
+    "suggested_grade": "",
+    "questions": [],
+    "members": [],
+    "final_grade": "",
+    "date": "",
+    "editable_headings": true
+  }
+}

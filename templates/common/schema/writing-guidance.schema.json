@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sztu.example/schema/common/writing-guidance.schema.json",
+  "title": "可编辑写作提示段落（独立于固定标题和正文）",
+  "oneOf": [
+    {
+      "type": "null"
+    },
+    {
+      "type": "string",
+      "maxLength": 20000
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runs"
+      ],
+      "properties": {
+        "type": {
+          "const": "paragraph"
+        },
+        "runs": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "content-block.schema.json#/$defs/run"
+          }
+        }
+      }
+    }
+  ]
+}

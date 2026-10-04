@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "评阅人评审表",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "paragraph"
+                },
+                "runs": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "script": {
+                        "enum": [
+                          "normal",
+                          "super",
+                          "sub"
+                        ]
+                      },
+                      "bold": {
+                        "type": "boolean"
+                      },
+                      "italic": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "runs"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "student_name": {
+          "type": "string"
+        },
+        "student_id": {
+          "type": "string"
+        },
+        "college": {
+          "type": "string"
+        },
+        "major": {
+          "type": "string"
+        },
+        "advisor": {
+          "type": "string"
+        },
+        "advisor_title": {
+          "type": "string"
+        },
+        "reviewer": {
+          "type": "string"
+        },
+        "reviewer_title": {
+          "type": "string"
+        },
+        "defense_time": {
+          "type": "string"
+        },
+        "defense_location": {
+          "type": "string"
+        },
+        "recorder": {
+          "type": "string"
+        },
+        "leader": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "student_name",
+        "student_id",
+        "college",
+        "major"
+      ],
+      "additionalProperties": false
+    },
+    "sections": {
+      "type": "object",
+      "properties": {
+        "comments": {
+          "type": "array",
+          "items": {
+            "$ref": "../../common/schema/content-block.schema.json"
+          }
+        },
+        "division_of_work": {
+          "type": "array",
+          "items": {
+            "$ref": "../../common/schema/content-block.schema.json"
+          }
+        },
+        "suggested_grade": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "array",
+                "items": {
+                  "$ref": "../../common/schema/content-block.schema.json"
+                }
+              },
+              "answer": {
+                "type": "array",
+                "items": {
+                  "$ref": "../../common/schema/content-block.schema.json"
+                }
+              }
+            },
+            "required": [
+              "question",
+              "answer"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "final_grade": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "editable_headings": {
+          "type": "boolean",
+          "description": "提示语已存为可编辑正文；true尊重改写/删除，false或省略兼容旧静态提示。"
+        },
+        "writing_guidance": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "comments": {
+              "$ref": "../../common/schema/writing-guidance.schema.json"
+            },
+            "division_of_work": {
+              "$ref": "../../common/schema/writing-guidance.schema.json"
+            },
+            "questions": {
+              "$ref": "../../common/schema/writing-guidance.schema.json"
+            }
+          },
+          "description": "显式提示段落：null/空字符串/空runs删除提示；固定标题/冒号保留，正文独立。缺活跃key保持旧调用行为。"
+        }
+      },
+      "required": [
+        "comments",
+        "division_of_work",
+        "suggested_grade",
+        "questions",
+        "members",
+        "final_grade",
+        "date"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "metadata",
+    "sections"
+  ],
+  "additionalProperties": false
+}
