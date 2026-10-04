@@ -14,17 +14,16 @@
 ## 换机后准备
 
 1. 拉取模板仓库 `codex/thesis-workbench` 分支。应用开发工作树默认读取同级 `Thesis`；也可在应用中选择此模板工程。
-2. 按各模板 `spec/artifact.md` 核对官方来源，并准备经过项目核对的本地 Word 底稿：
+2. 四份空白 Word 底稿已随分支提供，可按各模板 `spec/artifact.md` 核对来源及哈希：
    - `templates/advisor-review/word/official-template.docx`
    - `templates/reviewer-review/word/official-template.docx`
    - `templates/defense-record/word/official-template.docx`
    - `templates/grade-assessment/word/official-template.docx`
 3. 按模板 README 准备 Python 依赖、XeLaTeX/Poppler 和合法字体。不要把字体或机器字体配置提交到仓库。
 
-这四份 DOCX 按现有规格及 `.gitignore` 留在本地，Git 拉取不会提供。Word 渲染器保留它们的
-结构；截至应用提交 `f0ba179`，应用的模板快照清单也无条件要求它们存在，因此即使只在应用中
-预览 PDF，也必须先补齐。直接调用 LaTeX 渲染入口则不读取 Word 底稿。不能把源码已推送表述
-成目标机器已经具备全部运行依赖，也不要将未经验证的任意转换件当作兼容底稿。
+这四份 DOCX 已按用户明确授权纳入 Git，“只在本地保存”的旧约定已废止。拉取分支即可取得
+渲染器、规格和底稿。Word 渲染器保留底稿结构，应用的模板快照也会读取它们；无需额外寻找或转换
+这四份文件。Python、TeX、Poppler 和合法字体仍按功能需要在目标机器准备。
 
 ## 2026-10-04 推送前复核
 
@@ -34,3 +33,11 @@
 - 将暂存源码导出到独立目录，额外放入本机四份底稿；对应用已提交版本 `f0ba179` 运行
   `backend/tests/test_assessment_forms.py`，18 项全部通过，包含四类模板的隔离快照和 Word 输出结构检查。
 - 本轮是源码补齐和集成检查，未重新进行逐页视觉或 Word/WPS 验收；各模板 QA 保留此前证据及限制。
+
+## 2026-10-04 底稿补齐
+
+用户明确要求将四份空白 Word 底稿一并上传。已移除四条忽略规则，同步更新 AGENTS、各模板 README、
+规格及本说明。提取的正文只有表单固定标签和填写说明，无学生填写信息；未发现批注、修订、图片或嵌入文件。
+底稿二进制保持原样，SHA-256 记录于各自规格。历史“补入本机底稿后通过”的测试记录保留为当时证据。
+
+本轮从 Git 暂存内容直接导出全新模板工程，未额外拷入任何底稿；应用已提交版本的 18 项 assessment 集成测试全部通过，确认四份底稿与共享依赖均由仓库提供。

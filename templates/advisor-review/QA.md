@@ -16,7 +16,7 @@
 
 最新合成样例在 `tmp/assessment-fullpage-20261002/`。早期20PDF/20DOCX矩阵用于能力开发；最新满页与来源校准后按授权仅重新生成并检验4blank+4normal，不把早期矩阵标作最新全矩阵验收。当前rich/list、capacity和layout-stress完成最新模型预检；最新实际编译矩阵尚未全部重复。
 
-可运行 `python templates/common/test_assessment_forms.py` 重现74条模型预检；`--render` 可在后续需要时运行完整20件PDF/Word矩阵，本轮未扩大此验证范围。私人输出、商业字体和本地官方Word底稿不提交。
+可运行 `python templates/common/test_assessment_forms.py` 重现74条模型预检；`--render` 可在后续需要时运行完整20件PDF/Word矩阵，本轮未扩大此验证范围。私人输出和商业字体不提交。此处原有的“官方 Word 底稿不提交”约定已于 2026-10-04 按用户要求废止，空白底稿现随仓库提供。
 
 缺陷闭环均有四项：原行高来源误读→spec的source_geometry/print_layout→按授权扩大手写行并压缩Word终止空段→blank/normal及独立底边栅格断言；院系栏偏高→官方字盒规则→共享排版与Word前导段距→blank/normal及实际间距断言；标题ASCII字体及中西文空隙→spec标题局部字距规则→共享标题字体/局部glue与标点控制→blank/normal与原件X/Y字盒断言；提示语行距/换行→逐表源坐标和字号规则→明确bp单位和区域标点/行距→blank/normal与源行首行尾/Y断言；答辩名单位置→源bbox规则→固定名单区域与Word段距→容量fixture/几何断言。
 

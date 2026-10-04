@@ -51,9 +51,3 @@ __pycache__/
 /fonts.local/
 /sztu-fonts.local.tex
 /sztu-fonts.local.json
-
-# Assessment official Word masters are local reference material.
-/templates/advisor-review/word/official-template.docx
-/templates/reviewer-review/word/official-template.docx
-/templates/defense-record/word/official-template.docx
-/templates/grade-assessment/word/official-template.docx

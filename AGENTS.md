@@ -73,6 +73,7 @@ integrity-declaration, or thesis process-document templates.
 9. Never commit real student content, generated private outputs, commercial fonts,
    signatures, or teacher comments. Respect `references/private/`,
    `output/**/private/`, and `tmp/` boundaries.
+   The four blank assessment Word masters at `templates/{advisor-review,reviewer-review,defense-record,grade-assessment}/word/official-template.docx` are explicitly authorized for repository distribution and must be versioned with their renderers. This exception does not cover filled student documents, signatures, or fonts.
 
 The rationale and full workflow are in `docs/TEMPLATE_ENGINEERING_GUIDE.md`.
 
