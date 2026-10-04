@@ -1,4 +1,13 @@
-%
+% SZTU 本科毕业论文排版核心。学生先读 README.md，再编辑 content/ 下的内容。
+% 给维护者和 Agent：这里规定“怎样排版”，不要把学生姓名、题目和研究正文写进来。
+% 文件地图：字体、页面和段落、封面、声明、目录、摘要、图表、参考文献。
+% 使用上述关键词搜索相应分区；正文内容在 content/ 中修改。
+% 修改格式前，先核对 templates/thesis/spec/ 中的规格（下载包见 docs/）。
+% 字体缺失属于环境问题；不要用缩小字号、替换字体或删除内容来掩盖编译错误。
+% 本类基于 article：论文的“章”使用 \section，“节”使用 \subsection，
+% 三级标题使用 \subsubsection；不要使用 book/report 才有的 \chapter。
+% 上游：https://github.com/SZTU-ACM/SZTU-Thesis-Latex-Template
+% 本地校准与注释维护保留上游 GPL-3.0 许可；下载包 NOTICE.md 记录来源。
 % 本模版依据深圳技术大学本科生毕业论文（设计）撰写规范编排。
 % 主体装订顺序（与主文件 sztuthesis_main.tex 一致）：
 % 1.封面；2.诚信声明；3.目录；4.中文摘要与关键词；5.英文摘要与关键词；
@@ -6,7 +15,7 @@
 
 
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesClass{SZTUthesis}[2021/03/31 v1.0 Standard LaTeX document class]
+\ProvidesClass{SZTUthesis}[2026/10/04 v1.1 SZTU undergraduate thesis class]
 \ProcessOptions\relax
 %% 读取基类
 \LoadClass[a4paper,12pt]{article}
@@ -270,12 +279,11 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
   \newCJKfontfamily[kai]\kaishu{\sztu@font@cjkkai}[AutoFakeBold]
 \fi
 
-\let\huawenxingkai\relax
-\newCJKfontfamily[hwxk]\huawenxingkai{STXingkai.ttf}[AutoFakeBold]
+% 华文中宋用于中文摘要上方的论文题名，路径由字体检查脚本解析。
+% 上游还声明了华文行楷、华文新魏，但本论文没有使用它们；不再强制加载，
+% 避免下载包在不携带这两份无用字体的情况下无法编译。
 \let\huawenzhongsong\relax
 \newCJKfontfamily[hwzs]\huawenzhongsong{\sztu@font@zhongsong}[Path={\sztu@path@zhongsong},AutoFakeBold]
-\let\huawenxinwei\relax
-\newCJKfontfamily[hwxw]\huawenxinwei{STXinwei.ttf}[AutoFakeBold]
 
 
 % 每行缩进两个汉字
@@ -321,6 +329,9 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 
 
 % 封面 %
+% \makecoverpage 只读取 info.tex 已定义的信息。校名图 images/school_title.pdf
+% 是上游封面素材。题目过长先检查自然换行；不要插入空格定位、缩小官方字号。
+% 如果学院要求不同的封面，应单独核对规格后修改此处，不能仅改学生字段来模拟。
 % -------------------------------------------------------------%
 
 % 论文日期
@@ -418,6 +429,8 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 3. 目录 %
+% 目录来自各级标题和 .toc 辅助文件；目录页码需要多轮编译才能稳定。
+% 不要在 content/ 中手写目录，也不要编辑 .toc。章节标题不要写“1.”等手工编号。
 % -----------------------------------------------%
 % 目录由论文（设计）的章、节、附录等序号、名称和页码组成。单独成页。四号宋体，1.5倍行距分散对齐排版。 
 % “目录”两字居中（三号黑体），下空两行为章、节、小节及其开始页码（靠右顶格）。章、节、小节分别以阶梯式排列：1（第1章）、1.1、1.1.1依次标出。章、节、小节的题名与页码之间用“．．．．．．”连接。除“目录”两字外，其余字体均为小四号宋体。
@@ -476,6 +489,8 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 % }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 页眉
+% 页眉去掉题目中显式的换行符。中文摘要、英文摘要、正文的切换由主文件调用，
+% 必须先出完上一分区页面再更改页码，否则短摘要可能继承错误页式。
 \newcommand{\setheader}{
     \pagestyle{fancy}
     \fancyhf{}
@@ -565,6 +580,10 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 % 以上内容一律1.5倍行距、段前段后0.5行、两端对齐排版。 
 
 % 图表等浮动环境设置 %
+% 浮动体允许 LaTeX 在邻近页面安排图片/表格，以避免大块空白。
+% [htbp] 是位置偏好，不是保证；[H] 强制固定位置，应只在确有需要时使用。
+% \caption 产生编号，\label 必须紧随其后，正文用 \ref 引用。
+% position=top/bottom 只影响题注间距，实际位置由作者把 \caption 写在图表前后决定。
 % ----------------------------------------------------------%
 % 图、表按章编号，题号形如「图 1-1」「表 2-3」；\thefigure / \thetable 在主文件中设定。
 % 默认情况下, \LaTeX{} 要求每页的文字至少占据 20%,否则该页就只单独放置一个浮动环境,
@@ -660,6 +679,8 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 % 所以目前只好在主文件里局部\AtBeginEnvironment
 
 % 数学环境, 定理等设置 %
+% 数学变量放在 $...$ 中；独立公式用 equation/align，引用用 \eqref{标签}。
+% 用 x_{i}、x^{2} 表达上下标，不用 Unicode 的 ₂、² 模拟数学结构。
 % -------------------------------------------------------%
 % 数学定理相关的常量
 \newcommand*{\sztu@cap@definition}{定义}
@@ -700,6 +721,9 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 \makeatother
 
 % 6. 参考文献 %
+% 正文 \cite{key} 对应 .bib 中的 key。BibTeX 生成 .bbl，不要直接编辑 .bbl。
+% 此处只负责排序、编号和外观，不能验证文献真实性、引用是否准确或外文数量。
+% 文献条目应从出版商/数据库核实后导入，缺少资料时报告待补项，不生成虚构引用。
 % ------------------------------------------------------%
 % 可选参数为 BibTeX 数据库名；正式论文默认读取 thesis-references，公开压力样例
 % 可以复用同一版式实现而不触碰学生数据。
