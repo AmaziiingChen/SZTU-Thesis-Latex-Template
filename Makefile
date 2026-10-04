@@ -42,4 +42,4 @@ cleanall :
 	-@rm -f $(TEX_DIR)/*.aux 2> /dev/null || true
 
 zip :
-	git archive --format zip --output thesis.zip master
+	python3 scripts/build_thesis_package.py --output output/thesis/sztu-thesis-2026.zip

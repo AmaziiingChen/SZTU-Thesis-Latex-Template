@@ -1,3 +1,12 @@
+% !TeX program = xelatex
+% 毕业论文总入口：始终编译这个文件，不单独编译 content/ 中的片段。
+% 快速路线：README.md -> content/info.tex -> 中英文摘要 -> content/content.tex。
+% 学生填写内容；SZTUthesis.cls 决定排版；.bib 保存文献；images/ 保存插图。
+% Agent 应先读 AGENTS.md，保留事实、数据、引用与学校固定文本，只改用户授权范围。
+% 编译链为 XeLaTeX -> BibTeX -> XeLaTeX -> XeLaTeX，latexmk 会自动判断轮数。
+% 下载包推荐：python3 scripts/build_thesis.py（Windows 可用 py -3）。
+% 仓库开发入口仍为 bash build.sh。首次使用先按说明准备合法字体和 TeX Live。
+% 以 % 开始的内容是注释，不进入 PDF；一行中未转义的 % 会注释掉后面全部内容。
 \documentclass{SZTUthesis}
 \usepackage{makecell}
 \usepackage{algorithm}
@@ -45,9 +54,11 @@ hypertexnames=false
 %\end{algorithmic}
 %\end{algorithm}
 
+% 必须先读基本信息，再生成封面和页眉。不要在本文件重复写姓名/题名。
 \input{content/info}
 
-% lipsum
+% 开发仓库演示正文使用的占位段落。下载包的学生正文不调用它；它不会自行输出。
+% 这是本项目自定义的 \lipsum，无可选参数，与同名宏包的接口不同。
 \newcommand{\lipsum}{%
 这是一段随机插入的文本，用来填充模板布局，感受模板视觉效果。
 
@@ -77,6 +88,7 @@ hypertexnames=false
 \special{pdf:minorversion 6}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 封面
+% 封面、声明和目录的顺序按当前学校格式保留；不要用空行把下一部分推到新页。
 % -----------------------------------------------%
 \makecoverpage
 
@@ -89,12 +101,14 @@ hypertexnames=false
 \pagestyle{empty}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 声明页
+% 固定诚信声明来自类文件，签名留给本人完成；Agent 不生成签名或替用户作承诺。
 % -----------------------------------------------%
 \announcement
 \newpage
 
 
 % 目录
+% 标题和页码自动汇总。第一次编译目录缺项是正常的中间状态，必须完成整条编译链。
 % -------------------------------------------%
 {
 \renewcommand{\contentsname}{\hfill \heiti \zihao{-2} 目录\hfill}
@@ -121,6 +135,8 @@ hypertexnames=false
 \setlength{\baselineskip}{16pt}         % 基准行间距
 
 % 摘要
+% 摘要和关键词分别在 abstractcn.tex / abstracten.tex 填写。
+% 中文摘要无页眉，英文摘要恢复页眉；两者连续使用罗马页码。
 {
     \linespread{1.5}
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -141,6 +157,8 @@ hypertexnames=false
 }
 \setfooter
 % 正文
+% content.tex 可以继续用 \input{content/chapters/xxx} 拆章；路径相对本主文件。
+% 正常段落之间空一行。不要用多次 \\ 代替段落，不手写章节、公式或图表序号。
 {
 % 表格字号应比正文小，这里设为五号，但是暂时没法在cls里设置（不然会影响到封面等tabular环境）
 % 所以目前只好在主文件里局部\AtBeginEnvironment
@@ -172,10 +190,12 @@ hypertexnames=false
 \renewcommand{\sectionmark}[1]{\markright{#1}}
 
 \setreference
+% 文献只收录正文引用过的条目；不要用 \nocite{*} 凑条目数量。
 
 \input{content/additional}
 
 % 附录（非必需）排在致谢之后，与《撰写规范》装订顺序一致；以下为示例，正式论文可删改。
+% 无附录时可保留一个仅含注释的 appendix_example.tex；无需改变其他装订顺序。
 \setcounter{secnumdepth}{3}
 \input{content/appendix_example}
 

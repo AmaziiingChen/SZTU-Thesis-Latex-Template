@@ -85,3 +85,19 @@ TeXstudio 验收完成。
 ## 字体检查与换机
 
 编译前运行 `bash build.sh --check-fonts`；已有字体目录可用 `--font-dir "/字体目录"` 指定并记住。新电脑设置、编辑器使用与测试文件位置见[字体使用指南](../../docs/FONTS.md)。
+
+## 学生下载包
+
+桌面端分发完整可编译的源码 ZIP，学生在自己的编辑器或 Agent 中写作。维护仓库的
+`content/` 保留回归演示；下载包用 `starter/` 的占位稿覆盖，不把演示作者或历史论文交给学生。
+`package/` 维护中文使用说明、Agent 约定和写作示例，`package/files.json` 是唯一打包清单。
+
+```bash
+python3 scripts/build_thesis_package.py --output output/thesis/sztu-thesis-2026.zip --overwrite
+python3 scripts/test_thesis_package.py
+```
+
+ZIP 包括版式引擎、学校题字、文献样式、内容片段、跨平台编译脚本、共享字体检查与中文说明；
+排除商业字体、本机配置、旧 PDF、私有学生资料和历史样本。ZIP 内记录逐文件哈希，旁边的 JSON
+记录版本、字节数和 SHA-256，供桌面端保存前检查。文件变化时需重建 ZIP 与 JSON，不手改两者。
+学生入口是解压后的 `README.md`，编译入口是 `python3 scripts/build_thesis.py`（Windows 用 `py -3`）。

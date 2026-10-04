@@ -1,0 +1,67 @@
+%!TEX root = ../sztuthesis_main.tex
+% 正文入口。所有占位文字、示例数据和示例引用都应在提交前替换或删除。
+% 本类使用 article：\section 是章，\subsection 是节，\subsubsection 是三级标题。
+% 章会自动另起一页，不必重复写 \newpage。不要在标题里输入手工序号。
+% 若拆分章节，可把内容移到 content/chapters/introduction.tex，再在此处写
+% \input{content/chapters/introduction}。文件路径始终相对于 sztuthesis_main.tex。
+\section{绪论}
+\label{sec:introduction}
+\subsection{研究背景与意义}
+此处说明研究对象、现有问题及研究价值。引用应支持具体论断，并由作者核实。
+
+% 这条真实出版物仅演示引用语法，并不为你的研究背景提供证据；提交前按需替换。
+LaTeX 的基本用法可参见其使用手册\cite{lamport1994latex}。
+
+\subsection{研究内容与论文结构}
+此处说明研究问题、研究范围，以及各章之间的关系。
+
+\section{研究方法}
+\label{sec:method}
+\subsection{方法与实施过程}
+此处说明采用的方法、材料、步骤和评价方式，使其他人能够理解并复现。
+
+% 段落之间空一行；不要用空格模拟首行缩进。数学上下标使用数学语法。
+% equation 自动居中并编号，\label 使用稳定且唯一的标识。
+以下公式只演示排版；它不是已完成的实验或理论结果。
+\begin{equation}
+  E = mc^{2}
+  \label{eq:example}
+\end{equation}
+公式~\eqref{eq:example} 的编号由模板生成，删除或移动公式后会随编译更新。
+
+% 单图示例：先把文件保存为 images/result.png，再取消以下各行的注释。
+% \linewidth 表示当前位置可用宽度；图题在图片下，\label 放在 \caption 后。
+% [htbp] 允许合理浮动；不要为了“贴住文字”给所有图片都加 [H]。
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.75\linewidth]{result.png}
+%   \caption{填写图题，不加句末标点}
+%   \label{fig:result}
+% \end{figure}
+% 正文引用写作：如图~\ref{fig:result} 所示。
+
+\section{结果与讨论}
+\label{sec:results}
+此处填写真实实验或分析结果，解释结果的含义，并讨论适用条件与局限。
+
+% 三线表：表题在表上，列定义 l/c/r 分别表示左/中/右对齐。
+% & 分隔单元格，\\ 结束一行；正文中的 & 则要写成 \&。
+% 数据均为占位；表格不应使用截图，长表用 longtable 并重复表头。
+\begin{table}[htbp]
+  \centering
+  \caption{研究结果记录示例}
+  \label{tab:results}
+  \begin{tabular}{lll}
+    \toprule
+    研究项目 & 记录结果 & 备注 \\
+    \midrule
+    项目一 & 待填写 & 使用真实数据 \\
+    项目二 & 待填写 & 标明单位与条件 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+表~\ref{tab:results} 展示数据表的写法。更换表格时同步修改讨论，避免图文不一致。
+
+\section{总结与展望}
+此处概括正文已经证明的结论，说明不足与后续工作，不在此处引入未经验证的新结果。
+% 文献由主文件生成；不要在这里手写“参考文献”标题或编号列表。
