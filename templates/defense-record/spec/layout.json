@@ -1,5 +1,5 @@
 {
-  "version": "0.3",
+  "version": "0.4",
   "kind": "defense-record",
   "title": "答辩记录表",
   "official_source": {
@@ -113,7 +113,8 @@
       "remove_empty_body_paragraphs": true,
       "adjust_right_indent_to_grid": false
     },
-    "members_paragraph_vertical_adjust_mm": -2.61
+    "members_paragraph_vertical_adjust_mm": -2.61,
+    "effective_layout_report": true
   },
   "typography": {
     "title": {

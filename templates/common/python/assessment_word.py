@@ -1,6 +1,6 @@
 """Source-preserving DOCX renderer for fixed one-page official assessment forms."""
 from __future__ import annotations
-import argparse,json,sys,math,tempfile
+import argparse,json,sys,math,tempfile,hashlib
 from zipfile import ZipFile,ZIP_DEFLATED
 from lxml import etree
 from pathlib import Path
@@ -206,7 +206,7 @@ def minimal_terminal_paragraph(doc,table,spec):
         if sz is None:sz=OxmlElement('w:sz');mark.append(sz)
         sz.set(qn('w:val'),'2')
 
-def render(kind,template,data_path,output,*,overwrite=False):
+def render(kind,template,data_path,output,*,overwrite=False,layout_output=None):
     output=Path(output);data_path=Path(data_path);template=Path(template)
     if output.exists() and not overwrite:raise FileExistsError(f'output exists; pass --overwrite: {output}')
     data=validate_data(json.loads(data_path.read_text(encoding='utf-8')),kind);spec=layout(kind);fonts=preflight(data,kind,spec)
@@ -294,10 +294,15 @@ def render(kind,template,data_path,output,*,overwrite=False):
     output.parent.mkdir(parents=True,exist_ok=True);doc.save(output);canonicalize_package_fonts(output)
     reopened=Document(output)
     if len(reopened.tables)!=1 or len(reopened.tables[0].rows)!=len(spec['word']['row_heights_twips']):raise RuntimeError('DOCX table structure failed')
+    if layout_output is not None:
+        spec_path=Path(__file__).resolve().parents[2]/kind/'spec/layout.json'
+        report={'schema_version':'1.0','input_sha256':hashlib.sha256(data_path.read_bytes()).hexdigest(),
+                'layout_spec_sha256':hashlib.sha256(spec_path.read_bytes()).hexdigest(),'layout':spec}
+        Path(layout_output).write_text(json.dumps(report,ensure_ascii=False),encoding='utf-8')
     return output
 
 def word_cli(kind,base):
-    p=argparse.ArgumentParser();p.add_argument('--template',type=Path,default=base/'word/official-template.docx');p.add_argument('--data',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--overwrite',action='store_true');a=p.parse_args()
-    try:result=render(kind,a.template,a.data,a.output,overwrite=a.overwrite)
+    p=argparse.ArgumentParser();p.add_argument('--template',type=Path,default=base/'word/official-template.docx');p.add_argument('--data',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--overwrite',action='store_true');p.add_argument('--layout-output',type=Path);a=p.parse_args()
+    try:result=render(kind,a.template,a.data,a.output,overwrite=a.overwrite,layout_output=a.layout_output)
     except (DataError,ValueError,RuntimeError,OSError) as e:print('error: '+str(e),file=sys.stderr);return 2
     print(result);return 0

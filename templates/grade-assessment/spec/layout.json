@@ -1,5 +1,5 @@
 {
-  "version": "0.4",
+  "version": "0.5",
   "kind": "grade-assessment",
   "title": "成绩考核表",
   "official_source": {
@@ -58,7 +58,8 @@
       "college_left_indent_mm": 0.04
     },
     "signature_paragraph_vertical_adjust_mm": 0.23,
-    "trailing_empty_paragraph_line_pt": 1
+    "trailing_empty_paragraph_line_pt": 1,
+    "effective_layout_report": true
   },
   "typography": {
     "title": {
