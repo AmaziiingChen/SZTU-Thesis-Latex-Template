@@ -50,7 +50,7 @@
     },
     "FZXiaoBiaoSong": {
       "environment": "SZTU_FZXIAOBIAOSONG_FONT",
-      "candidates": ["方正小标宋简体.ttf", "FZXiaoBiaoSong-B05S.ttf"]
+      "candidates": ["方正小标宋简体.ttf", "FZXiaoBiaoSong-B05S.ttf", "FZXBSJW.TTF"]
     },
     "SimSun": {
       "environment": "SZTU_SIMSUN_FONT",

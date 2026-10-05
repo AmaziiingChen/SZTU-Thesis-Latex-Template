@@ -209,7 +209,7 @@ def minimal_terminal_paragraph(doc,table,spec):
 def render(kind,template,data_path,output,*,overwrite=False):
     output=Path(output);data_path=Path(data_path);template=Path(template)
     if output.exists() and not overwrite:raise FileExistsError(f'output exists; pass --overwrite: {output}')
-    data=validate_data(json.loads(data_path.read_text()),kind);spec=layout(kind);fonts=preflight(data,kind,spec)
+    data=validate_data(json.loads(data_path.read_text(encoding='utf-8')),kind);spec=layout(kind);fonts=preflight(data,kind,spec)
     spec=metadata_row_plan(data,title_row_plan(data,identity_row_plan(data,spec,fonts),fonts),fonts)
     # Use actual TeX font shaping and region boxes before publishing any fixed-height DOCX.
     from .assessment_latex import render_bundle

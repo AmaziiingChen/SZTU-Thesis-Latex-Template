@@ -100,15 +100,15 @@ MAIN=r'''\documentclass[a4paper,10.5pt]{article}
 def render_bundle(kind,data_path,output_dir,*,overwrite=False,compile_pdf=False):
     output_dir=Path(output_dir);data_path=Path(data_path)
     if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:raise FileExistsError(f'output exists; pass --overwrite: {output_dir}')
-    data=validate_data(json.loads(data_path.read_text()),kind);spec=layout(kind);fonts=preflight(data,kind,spec)
+    data=validate_data(json.loads(data_path.read_text(encoding='utf-8')),kind);spec=layout(kind);fonts=preflight(data,kind,spec)
     output_dir.mkdir(parents=True,exist_ok=True)
     active,_=writing_plan(data,kind,spec,fonts);punct_styles={r['punct_style']:r for r in spec['regions']+active['regions'] if 'punct_fixed_ratio' in r}
     punct_declarations='\n'.join(r'\xeCJKDeclarePunctStyle{'+r['punct_style']+'}{fixed-punct-ratio='+str(r['punct_fixed_ratio'])+',optimize-margin='+str(r.get('punct_optimize_margin',True)).lower()+',kerning-total-ratio='+str(r.get('punct_kerning_ratio',.6))+',optimize-kerning='+str(r.get('punct_optimize_kerning',True)).lower()+'}' for r in punct_styles.values())
     (output_dir/'main.tex').write_text(MAIN.replace(r'\begin{document}',punct_declarations+'\n'+r'\begin{document}'),encoding='utf-8');(output_dir/'body.tex').write_text(body_tex(data,kind,spec,fonts),encoding='utf-8');(output_dir/'assessment-fonts.tex').write_text(fonts_tex(fonts),encoding='utf-8')
     if compile_pdf:
         cmd=['xelatex','-interaction=nonstopmode','-halt-on-error','main.tex']
-        result=subprocess.run(cmd,cwd=output_dir,capture_output=True,text=True)
-        if result.returncode == 0: result=subprocess.run(cmd,cwd=output_dir,capture_output=True,text=True)
+        result=subprocess.run(cmd,cwd=output_dir,capture_output=True,text=True,encoding='utf-8',errors='replace')
+        if result.returncode == 0: result=subprocess.run(cmd,cwd=output_dir,capture_output=True,text=True,encoding='utf-8',errors='replace')
         if result.returncode == 0 and 'Overfull \\hbox' in result.stdout:
             (output_dir/'main.pdf').unlink(missing_ok=True)
             raise DataError('SINGLE_PAGE_OVERFLOW: unbreakable text exceeds the fixed region; please shorten the content')
@@ -116,7 +116,7 @@ def render_bundle(kind,data_path,output_dir,*,overwrite=False,compile_pdf=False)
             (output_dir/'main.pdf').unlink(missing_ok=True)
             if 'SINGLE_PAGE_OVERFLOW' in result.stdout:raise DataError(next(l for l in result.stdout.splitlines() if 'SINGLE_PAGE_OVERFLOW' in l))
             raise RuntimeError('LaTeX compile failed: '+result.stdout[-3000:])
-        info=subprocess.run(['pdfinfo',str(output_dir/'main.pdf')],capture_output=True,text=True,check=True).stdout
+        info=subprocess.run(['pdfinfo',str(output_dir/'main.pdf')],capture_output=True,text=True,encoding='utf-8',errors='replace',check=True).stdout
         if not any(l.strip()=='Pages:           1' for l in info.splitlines()):
             (output_dir/'main.pdf').unlink(missing_ok=True);raise DataError('SINGLE_PAGE_OVERFLOW: generated PDF must contain exactly one page')
     return output_dir

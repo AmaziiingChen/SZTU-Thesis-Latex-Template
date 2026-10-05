@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.1",
+  "metadata": {
+    "student_name": "合成测试学生",
+    "student_id": "REVIEW-001",
+    "college": "合成学院",
+    "major": "合成专业",
+    "advisor": "",
+    "advisor_title": "",
+    "reviewer": "",
+    "reviewer_title": "",
+    "defense_time": "",
+    "defense_location": "",
+    "recorder": "",
+    "leader": "",
+    "title": "评阅提示行距合成验证"
+  },
+  "sections": {
+    "comments": [],
+    "division_of_work": [],
+    "suggested_grade": "",
+    "questions": [],
+    "members": [],
+    "final_grade": "",
+    "date": "",
+    "writing_guidance": {
+      "comments": "（从选题价值和难度、工作量、材料翔实性与论证严密性、创新性、撰写的水平与规范性等方面进行评述）"
+    }
+  }
+}

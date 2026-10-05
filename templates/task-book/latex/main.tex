@@ -65,7 +65,7 @@
     \node[anchor=north west,inner sep=0pt,outer sep=0pt] (label) at (0,0) {%
       \makebox[\TaskCoverTitleLabelWidth][l]{\CoverLabelText{\FixedCoverTitleLabel}}%
     };
-    \node[anchor=north west,inner sep=0pt,outer sep=0pt] (line-one) at (label.north east) {%
+    \node[anchor=base west,inner sep=0pt,outer sep=0pt] (line-one) at (label.base east) {%
       \makebox[\TaskCoverTitleValueWidth][c]{\CoverTitleValueText{\TaskCoverTitleLineOne}}%
     };
     \draw[line width=\SZTUCoverUnderlineWidth]
@@ -90,10 +90,10 @@
     \node[anchor=north west,inner sep=0pt,outer sep=0pt] (label) at (0,0) {%
       \makebox[\TaskCoverTitleLabelWidth][l]{\CoverLabelText{\FixedCoverTitleLabel}}%
     };
-    \node[anchor=north west,inner sep=0pt,outer sep=0pt] (line-one) at (label.north east) {%
+    \node[anchor=base west,inner sep=0pt,outer sep=0pt] (line-one) at (label.base east) {%
       \makebox[\TaskCoverTitleValueWidth][c]{\CoverTitleValueText{\TaskCoverTitleLineOne}}%
     };
-    \node[anchor=north west,inner sep=0pt,outer sep=0pt] (line-two) at (0,-11mm) {%
+    \node[anchor=base west,inner sep=0pt,outer sep=0pt] (line-two) at ([yshift=-11mm]label.base west) {%
       \makebox[\SZTUCoverContentWidth][l]{\CoverTitleValueText{\TaskCoverTitleLineTwo}}%
     };
     \draw[line width=\SZTUCoverUnderlineWidth]

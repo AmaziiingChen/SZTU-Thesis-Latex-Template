@@ -1542,11 +1542,11 @@ def main() -> int:
     assert layout["table"]["section_title_content_gap_mm"] == 1.0
     assert layout["cover"]["title_max_lines"] == 2
     assert layout["cover"]["title_second_line_alignment"] == "left"
-    assert layout["cover"]["title_underline_clearance_mm"] == 0.3
-    assert layout["cover"]["title_latex_single_line_rule_offset_mm"] == 1.1
-    assert layout["cover"]["title_latex_single_line_subscript_rule_offset_mm"] == 1.4
-    assert layout["cover"]["title_latex_two_line_rule_offset_mm"] == 0.6
-    assert layout["cover"]["title_latex_two_line_subscript_rule_offset_mm"] == 1.5
+    assert layout["cover"]["title_underline_clearance_mm"] == 0.0
+    assert layout["cover"]["title_latex_single_line_rule_offset_mm"] == 0.4
+    assert layout["cover"]["title_latex_single_line_subscript_rule_offset_mm"] == 1.15
+    assert layout["cover"]["title_latex_two_line_rule_offset_mm"] == 0.35
+    assert layout["cover"]["title_latex_two_line_subscript_rule_offset_mm"] == 1.2
     assert layout["cover"]["title_cell_vertical_padding_mm"] == 0.5
     assert layout["paragraphs"]["notice_line_spacing"] == 1.5
     assert layout["paragraphs"]["list_first_level_indent_em"] == 2.0

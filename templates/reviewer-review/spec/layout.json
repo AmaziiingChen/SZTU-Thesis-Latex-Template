@@ -1,5 +1,5 @@
 {
-  "version": "0.3",
+  "version": "0.4",
   "kind": "reviewer-review",
   "title": "评阅人评审表",
   "official_source": {
@@ -284,7 +284,7 @@
       "source": "static",
       "value": "（从选题价值和难度、工作量、材料翔实性与论证严密性、创新性、撰写的水平与规范性等方面进行评述）",
       "size_pt": 10.5,
-      "line_spacing_pt": 31.2,
+      "line_spacing_pt": 18.2,
       "font": "songti",
       "alignment": "left",
       "label": "评阅教师评语",
