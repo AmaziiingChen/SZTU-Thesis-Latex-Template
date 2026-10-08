@@ -23,6 +23,7 @@ from docx.enum.table import (
 )
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
+from test_cover_alignment import render_cover, title_ink_clearance_mm
 
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[1]
@@ -292,12 +293,7 @@ def assert_cover_structure(
         value_cell = row.cells[1] if index == 0 else row.cells[0]
         if index:
             assert raw_row_spans(row) == [2]
-        expected_alignment = (
-            WD_ALIGN_PARAGRAPH.CENTER
-            if index == 0
-            else WD_ALIGN_PARAGRAPH.LEFT
-        )
-        assert value_cell.paragraphs[0].alignment == expected_alignment
+        assert value_cell.paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.CENTER
         assert value_cell.vertical_alignment == WD_CELL_VERTICAL_ALIGNMENT.CENTER
         usable_twips = int(value_cell._tc.tcPr.tcW.w) - sum(
             cell_margin_dxa(value_cell, edge) for edge in ("left", "right")
@@ -1198,14 +1194,15 @@ def assert_pdf_cover_geometry(
             key=lambda edge: abs(float(edge["width"]) - full_width),
         )
         assert abs(float(full_rule["width"]) - full_width) <= 0.6
-        assert abs(spans[1][0] - float(full_rule["x0"])) <= 0.5
+        second_center = (spans[1][0] + spans[1][1]) / 2
+        full_rule_center = (float(full_rule["x0"]) + float(full_rule["x1"])) / 2
+        assert abs(second_center - full_rule_center) <= 1.0
 
     rules = [short_rule]
     if title_line_count == 2:
         rules.append(full_rule)
-    minimum_clearance = (
-        float(cover["title_underline_clearance_mm"]) * MM_TO_PT
-    )
+    raster = render_cover(Path(pdf.stream.name))
+    clearances = []
     previous_rule_top = title_top - 4.0
     for rule in rules:
         rule_top = float(rule["top"])
@@ -1219,10 +1216,11 @@ def assert_pdf_cover_geometry(
             and float(char["top"]) < rule_top
         ]
         assert line_chars
-        lowest_glyph = max(float(char["bottom"]) for char in line_chars)
-        visible_rule_top = rule_top - float(rule["linewidth"]) / 2
-        assert visible_rule_top - lowest_glyph >= minimum_clearance - 0.2
+        clearance = title_ink_clearance_mm(page, raster, line_chars, rule)
+        assert cover["title_underline_clearance_mm"] <= clearance <= cover["title_underline_clearance_max_mm"], clearance
+        clearances.append(clearance)
         previous_rule_top = rule_top + 0.2
+    assert max(clearances) - min(clearances) <= cover["title_underline_clearance_difference_max_mm"]
 
     cohort_top = float(cover["cohort_top_mm"]) * MM_TO_PT
     cohort_chars = [
@@ -1497,7 +1495,7 @@ def main() -> int:
     assert r"\RequiredMaterialsReferenceGap" in latex_source
     assert r"rectangle (\SZTUCheckboxSize,\SZTUCheckboxSize)" in latex_source
     assert r"\TaskCoverTitleValueWidth][c]" in latex_source
-    assert r"\SZTUCoverContentWidth][l]" in latex_source
+    assert r"\SZTUCoverContentWidth][c]{\CoverTitleValueText{\TaskCoverTitleLineTwo}}" in latex_source
     for forbidden in (r"\blacksquare", "TaskNoticeLongItem", "3.25"):
         assert forbidden not in latex_source
     emphasis_tex = latex_renderer.rich_runs(
@@ -1541,12 +1539,12 @@ def main() -> int:
     assert layout["table"]["flow_end_space_mm"] == 0.0
     assert layout["table"]["section_title_content_gap_mm"] == 1.0
     assert layout["cover"]["title_max_lines"] == 2
-    assert layout["cover"]["title_second_line_alignment"] == "left"
-    assert layout["cover"]["title_underline_clearance_mm"] == 0.0
+    assert layout["cover"]["title_second_line_alignment"] == "center"
+    assert layout["cover"]["title_underline_clearance_mm"] == 0.1
     assert layout["cover"]["title_latex_single_line_rule_offset_mm"] == 0.4
-    assert layout["cover"]["title_latex_single_line_subscript_rule_offset_mm"] == 1.15
+    assert layout["cover"]["title_latex_single_line_subscript_rule_offset_mm"] == 0.3
     assert layout["cover"]["title_latex_two_line_rule_offset_mm"] == 0.35
-    assert layout["cover"]["title_latex_two_line_subscript_rule_offset_mm"] == 1.2
+    assert layout["cover"]["title_latex_two_line_subscript_rule_offset_mm"] == 0.3
     assert layout["cover"]["title_cell_vertical_padding_mm"] == 0.5
     assert layout["paragraphs"]["notice_line_spacing"] == 1.5
     assert layout["paragraphs"]["list_first_level_indent_em"] == 2.0
@@ -1936,10 +1934,13 @@ def main() -> int:
         assert r"\newCJKfontfamily\songti[" in fonts_tex
         assert fonts_tex.count("AutoFakeBold=3") >= 5
         assert r"\newcommand{\SZTUFormRuleWidth}{0.5pt}" in typography_tex
-        assert r"\newcommand{\SZTUTitleSingleLineUnderlineOffset}{1.1mm}" in typography_tex
-        assert r"\newcommand{\SZTUTitleSingleLineSubscriptUnderlineOffset}{1.4mm}" in typography_tex
-        assert r"\newcommand{\SZTUTitleTwoLineUnderlineOffset}{0.6mm}" in typography_tex
-        assert r"\newcommand{\SZTUTitleTwoLineSubscriptUnderlineOffset}{1.5mm}" in typography_tex
+        for token, field in (
+            ("SZTUTitleSingleLineUnderlineOffset", "title_latex_single_line_rule_offset_mm"),
+            ("SZTUTitleSingleLineSubscriptUnderlineOffset", "title_latex_single_line_subscript_rule_offset_mm"),
+            ("SZTUTitleTwoLineUnderlineOffset", "title_latex_two_line_rule_offset_mm"),
+            ("SZTUTitleTwoLineSubscriptUnderlineOffset", "title_latex_two_line_subscript_rule_offset_mm"),
+        ):
+            assert rf"\newcommand{{\{token}}}{{{layout['cover'][field]:g}mm}}" in typography_tex
         assert r"\newcommand{\SZTUFlowVerticalPadding}{1mm}" in typography_tex
         assert r"\newcommand{\SZTUFixedVerticalPadding}{1mm}" in typography_tex
         assert r"\newcommand{\SZTUSectionTitleContentGap}{1mm}" in typography_tex
