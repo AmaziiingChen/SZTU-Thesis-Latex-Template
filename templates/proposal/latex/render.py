@@ -98,6 +98,8 @@ def typography_tex(layout: dict) -> str:
             rf"\newcommand{{\SZTUPageRightMargin}}{{{page['right_margin_mm']:g}mm}}",
             rf"\newcommand{{\SZTUTitleVerticalPadding}}{{{table['title_vertical_padding_mm']:g}mm}}",
             rf"\newcommand{{\SZTUTitleSingleLineVerticalPadding}}{{{table['title_single_line_vertical_padding_mm']:g}mm}}",
+            rf"\newcommand{{\SZTUAdvisorLabelShift}}{{{table['advisor_label_baseline_shift_pt']:g}bp}}",
+            rf"\newcommand{{\SZTUAdvisorValueShift}}{{{table['advisor_value_baseline_shift_pt']:g}bp}}",
             *process_form_latex_tokens(layout),
             rf"\newcommand{{\SZTUFirstLineIndent}}{{{paragraphs['first_line_indent_em']:g}em}}",
             rf"\newcommand{{\SZTUNestedListLeftIndent}}{{{paragraphs['nested_list_left_indent_em']:g}em}}",

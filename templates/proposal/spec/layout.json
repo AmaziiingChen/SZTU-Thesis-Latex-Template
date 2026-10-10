@@ -45,6 +45,8 @@
   },
   "table": {
     "border_pt": 0.48,
+    "advisor_label_baseline_shift_pt": -1.0,
+    "advisor_value_baseline_shift_pt": -0.5,
     "title_single_line_vertical_padding_mm": 0.0,
     "title_vertical_padding_mm": 1.5,
     "horizontal_padding_mm": 2.0,

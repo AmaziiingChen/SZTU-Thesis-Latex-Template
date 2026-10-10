@@ -148,7 +148,7 @@
   }
     \Label{题\quad 目} & \SetCell[c=6]{l,m,wd=117.21mm}\InfoPaddedLeft{\ProposalTitle} & & & & & \\
     \Label{学生姓名} & \Info{\StudentName} & \Label{学号} & \SetCell[c=2]{c,m,wd=28.13mm}\Info{\StudentId} & & \Label{专业} & \SetCell{l,m,wd=34.80mm}\InfoPaddedAutoAlign{\Major} \\
-    \Label{学\quad 院} & \SetCell{l,m,wd=29.09mm}\InfoPaddedLeft{\College} & \SetCell[c=2]{c,m,wd=29.37mm}\Label{指导教师} & & \SetCell[c=3]{c,m,wd=58.75mm}\Info{\Advisor} & & \\
+    \Label{学\quad 院} & \SetCell{l,m,wd=29.09mm}\InfoPaddedLeft{\College} & \SetCell[c=2]{c,m,wd=29.37mm}\raisebox{\SZTUAdvisorLabelShift}[\height][\depth]{\Label{指导教师}} & & \SetCell[c=3]{c,m,wd=58.75mm}\raisebox{\SZTUAdvisorValueShift}[\height][\depth]{\Info{\Advisor}} & & \\
   \end{tblr}
   \SZTUFormTightJoin
   \begin{tcolorbox}[proposalflow]

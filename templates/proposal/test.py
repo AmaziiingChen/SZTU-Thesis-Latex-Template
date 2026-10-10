@@ -41,11 +41,13 @@ def run(command: list[str], *, cwd: Path) -> str:
         command,
         cwd=cwd,
         check=True,
-        text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-    return result.stdout
+    try:
+        return result.stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        return result.stdout.decode("mbcs" if sys.platform == "win32" else "utf-8", errors="replace")
 
 
 def load_renderer(path: Path, module_name: str):
@@ -468,10 +470,9 @@ def main() -> int:
             assert r"\input" not in data_tex
             assert "(1-1)" in data_tex and "{{eq:" not in data_tex
 
-        info = run(["pdfinfo", str(latex_dir / "main.pdf")], cwd=project_dir)
-        match = re.search(r"^Pages:\s+(\d+)$", info, re.MULTILINE)
-        assert match is not None
-        pages = int(match.group(1))
+        # PDF metadata CLI labels are localized on Windows.
+        with pdfplumber.open(latex_dir / "main.pdf") as counted_pdf:
+            pages = len(counted_pdf.pages)
         if name == "page-range-maximum":
             minimum, maximum = page_range_recipe["expected_pdf_pages"]
             assert minimum <= pages <= maximum

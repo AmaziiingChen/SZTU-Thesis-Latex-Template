@@ -707,6 +707,16 @@ def render(template: Path, data_path: Path, output: Path, *, overwrite: bool) ->
         alignment=WD_ALIGN_PARAGRAPH.LEFT,
     )
     _fill_info_cell(table.rows[2].cells[4], metadata["advisor"])
+    # Baseline-only optical compensation preserves the official row geometry.
+    for cell_index, key in ((2, "advisor_label_baseline_shift_pt"), (4, "advisor_value_baseline_shift_pt")):
+        for paragraph in table.rows[2].cells[cell_index].paragraphs:
+            for run in paragraph.runs:
+                properties = run._r.get_or_add_rPr()
+                position = properties.find(qn("w:position"))
+                if position is None:
+                    position = OxmlElement("w:position")
+                    properties.append(position)
+                position.set(qn("w:val"), str(round(LAYOUT["table"][key] * 2)))
 
     sections = data["sections"]
     for row_index in (3, 4, 5, 6):
