@@ -121,5 +121,51 @@
     "default_style": "three_line",
     "continuation_label": "续表 {number}",
     "repeat_header_on_page_break": true
+  },
+  "cover": {
+    "authority_year": 2027,
+    "official_doc_sha256": "42500cd54dc8e70d422471e84e028c1e1abad7ec3c3745fa797d942dec1745d5",
+    "coordinate_unit": "bp",
+    "logo": {
+      "left": 142.8,
+      "top": 115.3,
+      "width": 309.75
+    },
+    "document_title": {
+      "center_x": 333.39,
+      "baseline": 214.92
+    },
+    "topic": {
+      "label_x": 144.14,
+      "center_x": 345.375,
+      "baseline": 324.27,
+      "width": 275.93,
+      "colon_x": 182.3,
+      "cjk_inter_character_gap_bp": 3.0
+    },
+    "fields": {
+      "label_x": 124.82,
+      "label_width": 81.4,
+      "value_left": 214.61,
+      "value_width": 261.53,
+      "first_baseline": 502.97,
+      "row_step": 34.0,
+      "underline_offset": 6.26,
+      "labels": [
+        "姓名",
+        "学院",
+        "专业",
+        "学号",
+        "指导教师",
+        "提交日期"
+      ]
+    },
+    "title_font": "KaiTi",
+    "title_size_pt": 22,
+    "field_font": "KaiTi",
+    "field_size_pt": 16,
+    "values_bold": true,
+    "supervisor_separator": "；",
+    "show_supervisor_title": false
   }
 }

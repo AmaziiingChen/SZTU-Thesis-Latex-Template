@@ -15,7 +15,7 @@
 
 
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesClass{SZTUthesis}[2026/10/04 v1.1 SZTU undergraduate thesis class]
+\ProvidesClass{SZTUthesis}[2026/11/01 v1.2 SZTU undergraduate thesis class]
 \ProcessOptions\relax
 %% 读取基类
 \LoadClass[a4paper,12pt]{article}
@@ -85,6 +85,7 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 \RequirePackage{etoolbox}
 % 下划线（\underline会执行box逻辑，下划线文字无法换行。ulem的\uline为替代品）
 \RequirePackage[normalem]{ulem}
+\RequirePackage{xeCJKfntef}
 % 动态宽度包，代替minipage
 \RequirePackage{varwidth}
 % % 尺寸计算
@@ -319,6 +320,7 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 \newcommand*{\department}[1]{\gdef\@department{#1}}                     % 二级培养单位
 \newcommand*{\supervisor}[1]{\gdef\@supervisor{#1}}                     % 导师
 \newcommand*{\supervisortitle}[1]{\gdef\@supervisortitle{#1}}           % 导师职称
+\def\@subsupervisor{}
 \newcommand*{\subsupervisor}[1]{\gdef\@subsupervisor{#1}}               % 副导师
 \newcommand*{\studentid}[1]{\gdef\@studentid{#1}}                       % 学号
 
@@ -352,43 +354,48 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 定义 \makecoverpage 实现封面的重新绘制
 % -----------------------------------------------%
-\newcommand{\makecoverpage} {
-    \thispagestyle{empty}
-    {
-        \hbadness=10000  % Suppress "Underful \hbox ..."
-        \centering
-        \linespread{1.5}
-        \begin{figure}[H]
-            \centering
-            \includegraphics[width=0.75\textwidth]{school_title.pdf}
-        \end{figure}
-        \vspace{-1cm}
-        {\zihao{2} \bfseries \songti 本科毕业论文（设计） \par} % 二号宋体
-        \vspace{2.5cm} % 空行
-        \begin{minipage}{\textwidth}
-            \centering
-            \bfseries
-            {\zihao{3} \heiti 题目：} 
-            \begin{varwidth}[t]{0.85\textwidth}
-                \zihao{2} \kaishu \uline{\@titlecn} 
-            \end{varwidth}
-
-        \end{minipage}
-        \vskip 3.5cm
-        {
-            \zihao{3} \heiti
-            \begin{tabular}{ll}
-                \makebox[5em][s]{姓名}      & \parbox[t]{14em}{\bfseries \kaishu \uline{\centering \hfill \@author \hfill}} \\
-                \makebox[5em][s]{学院}      & \parbox[t]{14em}{\bfseries \kaishu \uline{\centering \hfill \@department \hfill}} \\
-                \makebox[5em][s]{专业}      & \parbox[t]{14em}{\bfseries \kaishu \uline{\centering \hfill \@priormajor \hfill}} \\
-                \makebox[5em][s]{学号}      & \parbox[t]{14em}{\bfseries \kaishu \uline{\centering \hfill \@studentid \hfill}} \\
-                \makebox[5em][s]{指导教师}  & \parbox[t]{14em}{\bfseries \kaishu \uline{\centering \hfill \@supervisor \hfill}} \\
-                \makebox[5em][s]{职称}      & \parbox[t]{14em}{\bfseries \kaishu \uline{\centering \hfill \@supervisortitle \hfill}} \\
-                \makebox[5em][s]{提交日期}   & \parbox[t]{14em}{\bfseries \kaishu \uline{\centering \hfill \@thesisdate \hfill}} \\
-            \end{tabular}
-        }
-        \par
-    }
+% 2027 official cover: page coordinates in bp, measured from Word PDF.
+% Use shipout coordinates only on this page; never change the body geometry.
+\newsavebox{\sztu@cover@topicbox}
+\newsavebox{\sztu@cover@fieldbox}
+\newcommand{\sztu@cover@advisors}{%
+    \@supervisor\expandafter\ifblank\expandafter{\@subsupervisor}{}{；\@subsupervisor}%
+}
+\newcommand{\sztu@cover@field}[3]{%
+    \sbox{\sztu@cover@fieldbox}{{\zihao{3}\bfseries\kaishu #2}}%
+    \ifdim\wd\sztu@cover@fieldbox>261.53bp
+        \ClassError{SZTUthesis}{Cover field exceeds the official width}{Check field content; do not reduce the official font size.}%
+    \fi
+    \put(124.82,-#3){\makebox[81.4bp][s]{{\zihao{3}\heiti #1}}}%
+    \put(214.61,-#3){\makebox[261.53bp][c]{\usebox{\sztu@cover@fieldbox}}}%
+    \put(214.61,-\dimexpr#3bp+6.26bp\relax){\rule{261.53bp}{0.48bp}}%
+}
+\newcommand{\makecoverpage}{%
+    \begingroup
+    \sbox{\sztu@cover@topicbox}{%
+        \parbox[t]{275.93bp}{\linespread{1}\fontsize{22bp}{33bp}\selectfont\bfseries\kaishu\xeCJKsetup{CJKglue=\hskip3bp}\centering\CJKunderline{\@titlecn}\par}}%
+    \ifdim\dimexpr\ht\sztu@cover@topicbox+\dp\sztu@cover@topicbox\relax>156bp
+        \ClassError{SZTUthesis}{Title exceeds the official cover area}{Shorten or revise the title; do not reduce the official font size.}%
+    \fi
+    \thispagestyle{empty}%
+    \AddToHookNext{shipout/foreground}{%
+        \begingroup
+        \setlength{\unitlength}{1bp}%
+        \put(142.8,-115.3){\raisebox{-\height}[0pt][0pt]{\includegraphics[width=309.75bp]{school_title.pdf}}}%
+        \put(333.39,-214.92){\makebox[0pt][c]{{\zihao{2}\bfseries\songti 本科毕业论文（设计）}}}%
+        \put(144.14,-324.27){{\zihao{3}\heiti\xeCJKsetup{CJKglue=\hskip3bp}题目}}%
+        \put(182.3,-324.27){{\zihao{2}\bfseries\kaishu ：}}%
+        \put(345.375,-324.27){\makebox[0pt][c]{\usebox{\sztu@cover@topicbox}}}%
+        \sztu@cover@field{姓名}{\@author}{502.97}%
+        \sztu@cover@field{学院}{\@department}{536.97}%
+        \sztu@cover@field{专业}{\@priormajor}{570.97}%
+        \sztu@cover@field{学号}{\@studentid}{604.97}%
+        \sztu@cover@field{指导教师}{\sztu@cover@advisors}{638.97}%
+        \sztu@cover@field{提交日期}{\@thesisdate}{672.97}%
+        \endgroup
+    }%
+    \null\clearpage
+    \endgroup
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
