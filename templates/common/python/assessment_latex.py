@@ -1,6 +1,7 @@
 """Render fixed A4 assessment forms with measured TeX boxes and no clipping."""
 from __future__ import annotations
-import argparse,json,subprocess,shutil,sys
+import argparse,json,os,subprocess,shutil,sys
+from contextlib import ExitStack
 from pathlib import Path
 from .assessment_forms import *
 from .font_files import tex_font_parts,cjk_emphasis_options
@@ -97,6 +98,36 @@ MAIN=r'''\documentclass[a4paper,10.5pt]{article}
 \end{document}
 '''
 
+def run_compiler(command, output_dir, name, *, check=False):
+    directory = os.environ.get("SZTU_DOCS_RENDER_EVIDENCE_DIR")
+    if not directory:
+        return subprocess.run(command, cwd=output_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", check=check)
+    evidence = Path(directory)
+    with ExitStack() as stack:
+        try:
+            evidence.mkdir(mode=0o700, parents=True, exist_ok=True)
+            (evidence / f"{name}-invocation.json").write_text(
+                json.dumps({"argv": command, "cwd": str(output_dir)}, ensure_ascii=False), encoding="utf-8",
+            )
+            stdout = stack.enter_context((evidence / f"{name}-stdout.bin").open("w+b"))
+            stderr = stack.enter_context((evidence / f"{name}-stderr.bin").open("w+b"))
+        except OSError as error:
+            print(f"Could not retain compiler output for {name}: {error}", file=sys.stderr)
+            return subprocess.run(command, cwd=output_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", check=check)
+        result = subprocess.run(command, cwd=output_dir, stdout=stdout, stderr=stderr)
+        stdout.seek(0)
+        stderr.seek(0)
+        result.stdout = stdout.read().decode("utf-8", errors="replace")
+        result.stderr = stderr.read().decode("utf-8", errors="replace")
+    try:
+        (evidence / f"{name}-exit.json").write_text(json.dumps({"exit_code": result.returncode}), encoding="utf-8")
+    except OSError as error:
+        print(f"Could not retain compiler exit status for {name}: {error}", file=sys.stderr)
+    if check:
+        result.check_returncode()
+    return result
+
+
 def render_bundle(kind,data_path,output_dir,*,overwrite=False,compile_pdf=False):
     output_dir=Path(output_dir);data_path=Path(data_path)
     if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:raise FileExistsError(f'output exists; pass --overwrite: {output_dir}')
@@ -107,18 +138,33 @@ def render_bundle(kind,data_path,output_dir,*,overwrite=False,compile_pdf=False)
     (output_dir/'main.tex').write_text(MAIN.replace(r'\begin{document}',punct_declarations+'\n'+r'\begin{document}'),encoding='utf-8');(output_dir/'body.tex').write_text(body_tex(data,kind,spec,fonts),encoding='utf-8');(output_dir/'assessment-fonts.tex').write_text(fonts_tex(fonts),encoding='utf-8')
     if compile_pdf:
         cmd=['xelatex','-interaction=nonstopmode','-halt-on-error','main.tex']
-        result=subprocess.run(cmd,cwd=output_dir,capture_output=True,text=True,encoding='utf-8',errors='replace')
-        if result.returncode == 0: result=subprocess.run(cmd,cwd=output_dir,capture_output=True,text=True,encoding='utf-8',errors='replace')
-        if result.returncode == 0 and 'Overfull \\hbox' in result.stdout:
-            (output_dir/'main.pdf').unlink(missing_ok=True)
-            raise DataError('SINGLE_PAGE_OVERFLOW: unbreakable text exceeds the fixed region; please shorten the content')
-        if result.returncode:
-            (output_dir/'main.pdf').unlink(missing_ok=True)
-            if 'SINGLE_PAGE_OVERFLOW' in result.stdout:raise DataError(next(l for l in result.stdout.splitlines() if 'SINGLE_PAGE_OVERFLOW' in l))
-            raise RuntimeError('LaTeX compile failed: '+result.stdout[-3000:])
-        info=subprocess.run(['pdfinfo',str(output_dir/'main.pdf')],capture_output=True,text=True,encoding='utf-8',errors='replace',check=True).stdout
-        if not any(l.strip()=='Pages:           1' for l in info.splitlines()):
-            (output_dir/'main.pdf').unlink(missing_ok=True);raise DataError('SINGLE_PAGE_OVERFLOW: generated PDF must contain exactly one page')
+        try:
+            result = run_compiler(cmd, output_dir, "xelatex-1")
+            if result.returncode == 0:
+                result = run_compiler(cmd, output_dir, "xelatex-2")
+            if result.returncode == 0 and 'Overfull \\hbox' in result.stdout:
+                raise DataError('SINGLE_PAGE_OVERFLOW: unbreakable text exceeds the fixed region; please shorten the content')
+            if result.returncode:
+                if 'SINGLE_PAGE_OVERFLOW' in result.stdout:raise DataError(next(l for l in result.stdout.splitlines() if 'SINGLE_PAGE_OVERFLOW' in l))
+                raise RuntimeError('LaTeX compile failed: '+result.stdout[-3000:])
+            info = run_compiler(["pdfinfo", str((output_dir / "main.pdf").resolve())], output_dir, "pdfinfo", check=True).stdout
+            if not any(l.strip()=='Pages:           1' for l in info.splitlines()):
+                raise DataError('SINGLE_PAGE_OVERFLOW: generated PDF must contain exactly one page')
+        except Exception:
+            directory = os.environ.get("SZTU_DOCS_RENDER_EVIDENCE_DIR")
+            if directory:
+                for filename in ("main.tex", "body.tex", "assessment-fonts.tex", "main.log", "main.aux", "main.pdf"):
+                    source = output_dir / filename
+                    if source.is_file():
+                        try:
+                            shutil.copyfile(source, Path(directory) / filename)
+                        except OSError as error:
+                            print(f"Could not retain {filename}: {error}", file=sys.stderr)
+            try:
+                (output_dir / "main.pdf").unlink(missing_ok=True)
+            except OSError as error:
+                print(f"Could not remove failed PDF: {error}", file=sys.stderr)
+            raise
     return output_dir
 
 def latex_cli(kind,base):
