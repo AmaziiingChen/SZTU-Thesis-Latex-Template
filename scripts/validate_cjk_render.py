@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Fail when a PDF text layer contains CJK words whose glyph areas render blank."""
+"""Fail when a PDF text layer contains CJK text whose page areas render blank.
+
+Every external call is chosen so that a non-ASCII working directory is safe:
+
+* page images are written by ``pdftoppm`` (``_wfopen`` on Windows, so it accepts
+  a Chinese user name or a localized ``%TEMP%``); ``pdftocairo`` writes through a
+  bare ``fopen`` and must not be used for such paths;
+* ``pdftotext`` never writes a file: its output is read from stdout, because the
+  file path it writes is also opened with a bare ``fopen``;
+* ``-bbox-layout`` is optional. The Xpdf 4.x ``pdftotext`` that ships with some
+  offline runtimes rejects it, so the gate falls back to a page-level ink check
+  instead of failing the export.
+"""
 
 from __future__ import annotations
 
@@ -19,14 +31,19 @@ except ImportError as exc:  # pragma: no cover - dependency error path
 
 
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+CJK_WORD_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+")
 TRAILING_NUMBER_RE = re.compile(r"-(\d+)\.png$")
+
+
+class ToolFailure(RuntimeError):
+    """A required external tool exited with a non-zero status."""
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Compare CJK word boxes in a PDF text layer with a fresh raster render. "
-            "This catches missing-glyph/font-substitution renders before visual review."
+            "Compare CJK text in a PDF with a fresh raster render. This catches "
+            "missing-glyph/font-substitution renders before visual review."
         )
     )
     parser.add_argument("pdf", type=Path, help="PDF to validate")
@@ -60,14 +77,24 @@ def require_command(name: str) -> str:
     return path
 
 
-def run(command: list[str]) -> None:
-    completed = subprocess.run(command, text=True, capture_output=True, check=False)
+def decode_output(value: bytes) -> str:
+    """Decode child-process output without depending on the Windows ANSI code page."""
+    return value.decode("utf-8", errors="replace")
+
+
+def run(command: list[str]) -> bytes:
+    """Run an external tool and return its raw stdout.
+
+    Output is captured as bytes: on Windows the parent process may use a legacy
+    ANSI code page (for example GBK), while the PDF tools emit UTF-8.
+    """
+    completed = subprocess.run(command, capture_output=True, check=False)
     if completed.returncode != 0:
-        details = completed.stderr.strip() or completed.stdout.strip()
-        print(f"ERROR: command failed: {' '.join(command)}", file=sys.stderr)
-        if details:
-            print(details, file=sys.stderr)
-        raise SystemExit(2)
+        details = decode_output(completed.stderr).strip() or decode_output(
+            completed.stdout
+        ).strip()
+        raise ToolFailure(f"{' '.join(command)}\n{details}".strip())
+    return completed.stdout
 
 
 def local_name(tag: str) -> str:
@@ -92,6 +119,88 @@ def ink_ratio(image: Image.Image, box: tuple[int, int, int, int]) -> float:
     return dark_pixels / (crop.width * crop.height)
 
 
+def bbox_pages(pdftotext: str, pdf: Path) -> list[ET.Element] | None:
+    """Return the ``<page>`` elements, or None when the tool lacks -bbox-layout."""
+    try:
+        xml = run([pdftotext, "-enc", "UTF-8", "-bbox-layout", str(pdf), "-"])
+    except ToolFailure:
+        return None
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError:
+        return None
+    return [element for element in root.iter() if local_name(element.tag) == "page"]
+
+
+def measure_bbox(
+    pages: list[ET.Element],
+    images: dict[int, Path],
+    args: argparse.Namespace,
+) -> tuple[int, int, list[str]] | None:
+    total = 0
+    visible = 0
+    blank_samples: list[str] = []
+    for page_number, page in enumerate(pages, start=1):
+        image_path = images.get(page_number)
+        if not image_path:
+            print(f"ERROR: missing raster page {page_number}", file=sys.stderr)
+            return None
+        page_width = float(page.attrib["width"])
+        page_height = float(page.attrib["height"])
+        with Image.open(image_path) as image:
+            scale_x = image.width / page_width
+            scale_y = image.height / page_height
+            for word in page.iter():
+                if local_name(word.tag) != "word":
+                    continue
+                text = "".join(word.itertext()).strip()
+                if not CJK_RE.search(text):
+                    continue
+                x_min = max(0, int(float(word.attrib["xMin"]) * scale_x) - 1)
+                y_min = max(0, int(float(word.attrib["yMin"]) * scale_y) - 1)
+                x_max = min(image.width, int(float(word.attrib["xMax"]) * scale_x) + 2)
+                y_max = min(image.height, int(float(word.attrib["yMax"]) * scale_y) + 2)
+                if x_max - x_min < 2 or y_max - y_min < 2:
+                    continue
+                total += 1
+                if ink_ratio(image, (x_min, y_min, x_max, y_max)) >= args.min_ink_ratio:
+                    visible += 1
+                elif len(blank_samples) < 8:
+                    blank_samples.append(f"p{page_number}:{text[:16]}")
+    return total, visible, blank_samples
+
+
+def measure_pages(
+    pdftotext: str,
+    pdf: Path,
+    images: dict[int, Path],
+    args: argparse.Namespace,
+) -> tuple[int, int, list[str]]:
+    """Page-level fallback for tools without -bbox-layout."""
+    text = decode_output(run([pdftotext, "-enc", "UTF-8", str(pdf), "-"]))
+    page_texts = text.split("\f")
+    while page_texts and not page_texts[-1].strip():
+        page_texts.pop()
+    total = 0
+    visible = 0
+    blank_samples: list[str] = []
+    for page_number, page_text in enumerate(page_texts, start=1):
+        words = CJK_WORD_RE.findall(page_text)
+        if not words:
+            continue
+        total += len(words)
+        image_path = images.get(page_number)
+        if not image_path:
+            print(f"ERROR: missing raster page {page_number}", file=sys.stderr)
+            raise SystemExit(2)
+        with Image.open(image_path) as image:
+            if ink_ratio(image, (0, 0, image.width, image.height)) >= args.min_ink_ratio:
+                visible += len(words)
+            elif len(blank_samples) < 8:
+                blank_samples.append(f"p{page_number}:{words[0][:16]}")
+    return total, visible, blank_samples
+
+
 def main() -> int:
     args = parse_args()
     pdf = args.pdf.resolve()
@@ -106,61 +215,39 @@ def main() -> int:
         return 2
 
     pdftotext = require_command("pdftotext")
-    pdftocairo = require_command("pdftocairo")
+    pdftoppm = require_command("pdftoppm")
 
     with tempfile.TemporaryDirectory(prefix="cjk-render-gate-") as temp_name:
-        temp_dir = Path(temp_name)
-        bbox_path = temp_dir / "bbox.html"
-        render_dir = temp_dir / "render"
+        render_dir = Path(temp_name) / "render"
         render_dir.mkdir()
-
-        run([pdftotext, "-bbox-layout", str(pdf), str(bbox_path)])
-        run([pdftocairo, "-png", "-r", str(args.dpi), str(pdf), str(render_dir / "page")])
-
         try:
-            root = ET.parse(bbox_path).getroot()
-        except (ET.ParseError, OSError) as exc:
-            print(f"ERROR: could not parse pdftotext bbox output: {exc}", file=sys.stderr)
+            run([pdftoppm, "-png", "-r", str(args.dpi), str(pdf), str(render_dir / "page")])
+        except ToolFailure as failure:
+            print(f"ERROR: command failed: {failure}", file=sys.stderr)
             return 2
-
-        pages = [element for element in root.iter() if local_name(element.tag) == "page"]
         images = rendered_pages(render_dir)
-        total = 0
-        visible = 0
-        blank_samples: list[str] = []
 
-        for page_number, page in enumerate(pages, start=1):
-            image_path = images.get(page_number)
-            if not image_path:
-                print(f"ERROR: missing raster page {page_number}", file=sys.stderr)
+        pages = bbox_pages(pdftotext, pdf)
+        if pages is not None:
+            measured = measure_bbox(pages, images, args)
+            if measured is None:
                 return 2
-            page_width = float(page.attrib["width"])
-            page_height = float(page.attrib["height"])
-            with Image.open(image_path) as image:
-                scale_x = image.width / page_width
-                scale_y = image.height / page_height
-                for word in page.iter():
-                    if local_name(word.tag) != "word":
-                        continue
-                    text = "".join(word.itertext()).strip()
-                    if not CJK_RE.search(text):
-                        continue
-                    x_min = max(0, int(float(word.attrib["xMin"]) * scale_x) - 1)
-                    y_min = max(0, int(float(word.attrib["yMin"]) * scale_y) - 1)
-                    x_max = min(image.width, int(float(word.attrib["xMax"]) * scale_x) + 2)
-                    y_max = min(image.height, int(float(word.attrib["yMax"]) * scale_y) + 2)
-                    if x_max - x_min < 2 or y_max - y_min < 2:
-                        continue
-                    total += 1
-                    ratio = ink_ratio(image, (x_min, y_min, x_max, y_max))
-                    if ratio >= args.min_ink_ratio:
-                        visible += 1
-                    elif len(blank_samples) < 8:
-                        blank_samples.append(f"p{page_number}:{text[:16]}")
+            total, visible, blank_samples = measured
+            page_count = len(pages)
+            print("CJK render gate: mode=word-boxes")
+        else:
+            print(
+                "WARNING: pdftotext has no -bbox-layout support; "
+                "falling back to the page-level ink check.",
+                file=sys.stderr,
+            )
+            total, visible, blank_samples = measure_pages(pdftotext, pdf, images, args)
+            page_count = len(images)
+            print("CJK render gate: mode=page-ink")
 
         if total < args.min_cjk_words:
             print(
-                f"INCONCLUSIVE: found only {total} CJK word boxes; "
+                f"INCONCLUSIVE: found only {total} CJK words; "
                 f"at least {args.min_cjk_words} are required.",
                 file=sys.stderr,
             )
@@ -168,7 +255,7 @@ def main() -> int:
 
         visible_rate = visible / total
         print(
-            f"CJK render gate: pages={len(pages)} words={total} "
+            f"CJK render gate: pages={page_count} words={total} "
             f"visible={visible} blank={total - visible} rate={visible_rate:.1%}"
         )
         if visible_rate < args.min_visible_rate:
@@ -176,7 +263,7 @@ def main() -> int:
                 print("Blank CJK samples: " + ", ".join(blank_samples), file=sys.stderr)
             print(
                 "FAIL: the PDF text layer contains Chinese, but too many corresponding "
-                "raster regions are blank. Stop visual QA and fix fonts/rendering.",
+                "areas are blank. Stop visual QA and fix fonts/rendering.",
                 file=sys.stderr,
             )
             return 1
