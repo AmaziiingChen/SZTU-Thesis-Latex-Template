@@ -101,10 +101,43 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 % 字符串处理
 \RequirePackage{xstring}
 
-% 2026 届模板固定使用 GB/T 7714—2015 数字顺序制（随仓库版本 v2.1）。
+% 使用 GB/T 7714—2025 数字顺序制（2025-12-02 发布、2026-07-01 实施，全部代替
+% GB/T 7714—2015）；样式取自 gbt7714-bibtex-style v3.1.2（2026-11-16）的 2025 顺序
+% 编码制样式，沿用仓库内的 gbt7714-numerical.bst 文件名（该名指顺序编码制，不改名以免
+% 与已发布应用的模板文件清单失配）。
 % 来自https://github.com/CTeX-org/gbt7714-bibtex-style
 % \RequirePackage{natbib} % gbt7714.sty已经包含了natbib宏包
 \RequirePackage[sort&compress]{gbt7714}
+% GB/T 7714—2025 要求正文标注为小四号整体上标。gbt7714 默认用 \textsuperscript，
+% 会把 12pt 字号缩到约 8pt；这里改为只上移、不缩字号，行高不受影响。
+\newcommand{\sztu@citesup}[1]{\raisebox{0.33em}[0pt][0pt]{\zihao{-4}#1}}
+% 文献编号为小四楷体方括号，右对齐到条目起点。此处不能用 @ 命名：
+% 类文件 \makeatother 之后 @ 已不是字母。
+\newcommand{\sztuBiblabel}[1]{{\zihao{-4}\kaishu\sztu@kai@latin[#1]}\hfill}
+\renewcommand\NAT@citesuper[3]{%
+  \ifNAT@swa
+    \if*#2*\else
+      #2\NAT@spacechar
+    \fi
+    \unskip\kern\p@
+    \sztu@citesup{%
+      \NAT@@open
+      #1%
+      \ifgbt@locator@in@brackets
+        \if*#3*\else
+          \NAT@cmt#3%
+        \fi
+        \NAT@@close
+      \else
+        \NAT@@close
+        #3%
+      \fi
+    }%
+  \else
+    #1%
+  \fi
+  \endgroup
+}
 
 % 2026 官方范例要求精确使用宋体、黑体、楷体、华文中宋和
 % Times New Roman。缺失时停止编译，不允许静默回退到系统默认字体或
@@ -278,6 +311,13 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
   \newCJKfontfamily[kai]\kaishu{\sztu@font@cjkkai}[Path={\sztu@path@cjkkai},AutoFakeBold]
 \else
   \newCJKfontfamily[kai]\kaishu{\sztu@font@cjkkai}[AutoFakeBold]
+\fi
+% 同一份楷体的西文字族：编号方括号与阿拉伯数字属于西文字符类，
+% 只用 \kaishu 它们仍会落在 Times 上，与规格要求的"编号小四楷体"不符。
+\ifsztu@kaifile
+  \newfontfamily\sztu@kai@latin{\sztu@font@cjkkai}[Path={\sztu@path@cjkkai}]
+\else
+  \newfontfamily\sztu@kai@latin{\sztu@font@cjkkai}
 \fi
 
 % 华文中宋用于中文摘要上方的论文题名，路径由字体检查脚本解析。
@@ -747,7 +787,9 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
     }%
     % 文献编号用小四楷体；正文五号，中文楷体、西文 Times New Roman。
     % natbib 的数字列表使续行与编号后的条目正文起点对齐。
-    \renewcommand{\bibnumfmt}[1]{{\zihao{-4}\kaishu[##1]}\hfill}%
+    % gbt7714 v3 的 \@biblabel 固定用 \bibfont（五号），旧写法重定义 \bibnumfmt
+    % 不会生效；这里直接接管 \@biblabel，编号改用小四楷体。
+    \expandafter\let\csname @biblabel\endcsname\sztuBiblabel%
     \renewcommand{\bibfont}{%
         \zihao{5}\kaishu
         \linespread{1.5}\selectfont

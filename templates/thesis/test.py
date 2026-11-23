@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -10,6 +11,7 @@ import shutil
 import statistics
 import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -87,6 +89,77 @@ def font_environment() -> dict[str, str]:
             existing.append(env["OSFONTDIR"])
         env["OSFONTDIR"] = os.pathsep.join(existing)
     return env
+
+
+def load_thesis_renderer():
+    path = THESIS_DIR / "latex" / "render.py"
+    spec = importlib.util.spec_from_file_location("thesis_latex_render", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def assert_render_contract() -> None:
+    """Guard the packaged export path and the fatal/warning split."""
+    render_path = THESIS_DIR / "latex" / "render.py"
+    source = render_path.read_text(encoding="utf-8")
+    assert "sys.executable" not in source, (
+        "render.py 不得通过 sys.executable 启动 check_fonts：打包版 sidecar 的 "
+        "sys.executable 是 sidecar 本体，会把检查参数当成 sidecar 参数。"
+    )
+    renderer = load_thesis_renderer()
+    assert hasattr(renderer, "run_font_check")
+
+    fatal, warnings = renderer.log_findings(
+        "Overfull \\hbox (12.0pt too wide) in paragraph at lines 10--12\n"
+        "Underfull \\hbox (badness 10000) in paragraph at lines 20--21\n"
+        "LaTeX Warning: Reference `fig:wide' on page 3 undefined on input line 42.\n"
+        "! Undefined control sequence.\n"
+    )
+    assert not any("Overfull" in item or "Underfull" in item for item in fatal), fatal
+    assert any("Overfull" in item for item in warnings), warnings
+    assert any("Underfull" in item for item in warnings), warnings
+    assert any("Reference" in item for item in fatal), fatal
+    assert any("Undefined control sequence" in item for item in fatal), fatal
+    fatal, warnings = renderer.log_findings(
+        "LaTeX Warning: There were undefined references.\n"
+        "LaTeX Warning: There were undefined citations.\n"
+    )
+    assert any("undefined references" in item for item in fatal), fatal
+    assert any("undefined citations" in item for item in fatal), fatal
+    assert warnings == [], warnings
+
+    # 进程内入口必须仍以输出目录为检查器根目录，并在失败时带回检查器自己的诊断。
+    before = Path.cwd()
+    with tempfile.TemporaryDirectory() as temp:
+        folder = Path(temp)
+        script = folder / "check_fonts.py"
+        script.write_text(
+            "from pathlib import Path\n"
+            "def check(directory, *, save):\n"
+            "    assert directory is None and save is True\n"
+            "    Path('cwd.txt').write_text(str(Path.cwd()), encoding='utf-8')\n"
+            "    print('字体检查通过')\n"
+            "    return 0\n",
+            encoding="utf-8",
+        )
+        renderer.run_font_check(script, folder)
+        assert Path((folder / "cwd.txt").read_text(encoding="utf-8")).resolve() == folder.resolve()
+        script.write_text(
+            "def check(directory, *, save):\n"
+            "    print('缺失 宋体 / SimSun')\n"
+            "    return 1\n",
+            encoding="utf-8",
+        )
+        try:
+            renderer.run_font_check(script, folder)
+        except ValueError as exc:
+            assert "退出码 1" in str(exc), str(exc)
+            assert "缺失 宋体" in str(exc), str(exc)
+        else:
+            raise AssertionError("font checker failure must raise ValueError")
+    assert Path.cwd() == before
 
 
 def compile_case(tex: Path, case_name: str) -> CaseArtifacts:
@@ -361,16 +434,26 @@ def assert_main_case(layout: dict[str, object]) -> CaseArtifacts:
     assert "\\RequirePackage[sort&compress]{gbt7714}" in class_source
     assert "\\newcommand{\\setreference}[1][thesis-references]" in class_source
     assert "\\setlength{\\bibsep}{0pt}" in class_source
-    assert "\\renewcommand{\\bibnumfmt}[1]" in class_source
+    assert "\\bibliographystyle{gbt7714-numerical}" in class_source
+    assert "\\expandafter\\let\\csname @biblabel\\endcsname\\sztuBiblabel" in class_source
+    assert "\\newcommand{\\sztu@citesup}[1]" in class_source
+    assert "\\raisebox{0.33em}[0pt][0pt]" in class_source
+    # 编号走楷体：数字与方括号属于西文字符类，需要同一份楷体的西文字族。
+    assert "\\newfontfamily\\sztu@kai@latin" in class_source
+    assert "\\sztu@kai@latin[#1]" in class_source
+    # 著录符号按语种区分：中文全角、西文半角。
+    assert '"bylanguage" \'control.bib.punct :=' in bst_source
     assert "\\renewcommand{\\bibfont}" in class_source
     assert "\\let\\url\\nolinkurl" in class_source
-    assert "GB/T 7714—2015" in style_source
-    assert "GB/T 7714—2015" in bst_source
+    assert "{3.1.2}" in style_source
+    assert "(with options: `2025,numeric')" in bst_source
+    assert "Version: 2026-11-16 v3.1.2" in bst_source
     assert_caption_contract(layout)
 
     artifacts = compile_case(MAIN_TEX, "main")
     assert_clean_build(artifacts)
     assert_pdf_a4(artifacts.pdf)
+    assert_citation_superscript(artifacts)
     assert_required_fonts(
         artifacts.pdf,
         ("SimSun", "SimHei", "KaiTi", "STZhongsong", "TimesNewRoman"),
@@ -476,6 +559,36 @@ def word_index(line: dict[str, object], token: str) -> int | None:
     return None
 
 
+def assert_citation_superscript(artifacts: CaseArtifacts) -> None:
+    """GB/T 7714—2025 要求正文标注为小四号整体上标。
+
+    这同时挡住两类回归：一是退回到 \\textsuperscript 把 12pt 缩到约 8pt，
+    二是上标只缩不抬或只抬不缩。
+    """
+    lines = bbox_lines(artifacts.pdf, artifacts.directory / "citation-bbox.html")
+    marker = None
+    for line in lines:
+        index = word_index(line, "[2]")
+        if index is None or index == 0:
+            continue
+        following = [
+            word
+            for position, word in enumerate(line["words"])
+            if position > index and len(word["text"]) >= 4
+        ]
+        if not following:
+            continue
+        marker = (line["words"][index], following[0])
+        break
+    assert marker, "in-text citation marker [2] was not found"
+    citation, body_word = marker
+    citation_height = citation["y_max"] - citation["y_min"]
+    body_height = body_word["y_max"] - body_word["y_min"]
+    assert citation_height >= body_height * 0.85, (citation_height, body_height)
+    raise_amount = body_word["y_min"] - citation["y_min"]
+    assert 1.0 <= raise_amount <= 6.0, raise_amount
+
+
 def assert_bibliography_geometry(
     artifacts: CaseArtifacts, reference_start_page: int
 ) -> None:
@@ -523,12 +636,18 @@ def assert_bibliography_geometry(
     page_width = first_line["page_width"]
     right_margin_pt = 31.7 * 72.0 / 25.4
     right_limit = page_width - right_margin_pt + 1.6
+    # GB/T 7714—2025 统一改用全角著录符号（"，"、"："），行末全角标点按 xeCJK 的
+    # 悬挂规则可正常压出版心，最多半个字宽；这里按"半个字宽 + 2 pt"给全角标点留量，
+    # 其余任何字符仍必须落在版心内。
+    hangable = "，。：；、！？）》」』”’"
     for line in body_lines:
         for word in line["words"]:
-            assert word["x_max"] <= right_limit, (
+            text = word["text"].strip()
+            allowance = content_height * 0.5 + 2.0 if text and text[-1] in hangable else 0.0
+            assert word["x_max"] <= right_limit + allowance, (
                 word["text"],
                 word["x_max"],
-                right_limit,
+                right_limit + allowance,
             )
 
     ten_index = next(
@@ -655,7 +774,7 @@ def main() -> int:
     assert layout["numbering"]["equation_pattern"] == "{chapter}-{item}"
     assert layout["captions"]["terminal_punctuation_allowed"] is False
     references = layout["references"]
-    assert references["standard"] == "GB/T 7714-2015"
+    assert references["standard"] == "GB/T 7714-2025"
     assert references["style"] == "numerical"
     assert references["sort_order"] == "first_citation"
     assert references["item_spacing_pt"] == 0.0
@@ -666,6 +785,7 @@ def main() -> int:
     assert references["minimum_entries"] == 10
     assert references["minimum_foreign_entries"] == 2
 
+    assert_render_contract()
     main_case = assert_main_case(layout)
     stress_case = assert_stress_case(layout)
     print(

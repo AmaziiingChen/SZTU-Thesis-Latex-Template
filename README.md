@@ -62,7 +62,9 @@ Word/LaTeX 双路工程原型。LaTeX 与结构回归已完成，Word/WPS 的目
 
 ### `gbt7714-numerical.bst`和`gbt7714.sty`两个文件
 
-来自项目[CTeX-org/gbt7714-bibtex-style](https://github.com/CTeX-org/gbt7714-bibtex-style)，是参考文献的样式。
+来自项目[zepinglee/gbt7714-bibtex-style](https://github.com/zepinglee/gbt7714-bibtex-style)（v3.1.2），是参考文献的样式，
+按 GB/T 7714—2025 生成条目。国标已于 2026-07-01 由 2025 版全部代替 2015 版；
+换标准时这两个文件和 `SZTUthesis.cls` 中的 `\bibliographystyle` 需要一起改。
 
 
 ### `content`目录

@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import importlib.util
+import io
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -15,6 +19,15 @@ ROOT = Path(__file__).resolve().parents[3]
 TOKEN = re.compile(r"\{\{(fig|eq|cite):([A-Za-z0-9_:.+/-]{1,200})\}\}")
 SAFE_KEY = re.compile(r"[A-Za-z0-9_:.+/-]{1,200}")
 SAFE_ASSET = re.compile(r"[a-f0-9]{64}\.(?:png|jpg)")
+FATAL_LOG_PATTERNS = (
+    re.compile(r"(?:Reference|Citation) `[^'\n]*'[^\n]*undefined"),
+    re.compile(r"There were undefined (?:references|citations)"),
+    re.compile(r"Undefined control sequence"),
+)
+WARNING_LOG_PATTERNS = (
+    re.compile(r"(?:Overfull|Underfull) \\[hv]box"),
+    re.compile(r"Missing character:"),
+)
 MATH_COMMANDS = frozenset("frac dfrac tfrac sqrt sum prod int iint iiint lim sin cos tan cot sec csc log ln exp min max sup inf alpha beta gamma delta epsilon varepsilon theta vartheta lambda mu nu xi pi rho sigma tau phi varphi chi psi omega Gamma Delta Theta Lambda Xi Pi Sigma Phi Psi Omega cdot times div pm mp leq geq neq approx equiv infty partial nabla text mathrm mathbf mathit operatorname left right overline underline hat bar vec dot ddot tilde widehat widetilde mathcal mathbb mathsf to in notin subset subseteq cup cap forall exists cdots ldots vdots dots quad qquad , ; : !".split())
 TEX_ESCAPES = {"\\": r"\textbackslash{}", "{": r"\{", "}": r"\}", "%": r"\%", "$": r"\$", "#": r"\#", "&": r"\&", "_": r"\_", "^": r"\textasciicircum{}", "~": r"\textasciitilde{}"}
 
@@ -136,7 +149,63 @@ def blocks(values: list, targets: dict[str, set[str]], assets_root: Path, output
     return "\n".join(rendered)
 
 
-def render(data: dict, output: Path, assets_root: Path, compile_pdf: bool) -> None:
+def log_findings(log: str) -> tuple[list[str], list[str]]:
+    """Return (fatal defects, non-blocking layout warnings) from a LaTeX log."""
+    fatal = [match.group(0) for pattern in FATAL_LOG_PATTERNS for match in pattern.finditer(log)]
+    warnings = [
+        line.strip()
+        for line in log.splitlines()
+        if any(pattern.search(line) for pattern in WARNING_LOG_PATTERNS)
+    ]
+    return _unique(fatal), _unique(warnings)
+
+
+def _unique(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    unique = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            unique.append(value)
+    return unique
+
+
+def run_font_check(script: Path, cwd: Path) -> None:
+    """Run the copied scripts/check_fonts.py in this process.
+
+    The packaged sidecar starts render.py with ``--run-python-script``, so the
+    current interpreter is the sidecar binary and cannot execute a Python script.
+    Loading the copied checker by path keeps ``check_fonts.ROOT`` pointed at the
+    output directory (``script.parents[1]``), exactly as the old
+    ``subprocess.run(..., cwd=output)`` arrangement did.
+    """
+    spec = importlib.util.spec_from_file_location("sztu_thesis_check_fonts", script)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"无法加载字体检查脚本：{script}")
+    module = importlib.util.module_from_spec(spec)
+    stdout, stderr = io.StringIO(), io.StringIO()
+    previous = Path.cwd()
+    status = -1
+    try:
+        os.chdir(cwd)
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            spec.loader.exec_module(module)
+            status = module.check(None, save=True)
+    except Exception as exc:  # noqa: BLE001 - report the checker's own diagnosis
+        raise ValueError(
+            f"字体检查进程内调用失败（{script}）：{type(exc).__name__}: {exc}"
+        ) from exc
+    finally:
+        os.chdir(previous)
+    if status != 0:
+        report = (stdout.getvalue() + stderr.getvalue()).strip()
+        detail = "\n".join(report.splitlines()[-15:]) or "（字体检查没有输出）"
+        raise ValueError(
+            f"字体检查未通过（退出码 {status}）。请按检查器提示安装缺失字体后重试。\n{detail}"
+        )
+
+
+def render(data: dict, output: Path, assets_root: Path, compile_pdf: bool) -> list[str]:
     thesis = data["thesis"]
     metadata = data["metadata"]
     keys = set(re.findall(r"@[A-Za-z]+\s*[{(]\s*([A-Za-z0-9_:.+/-]+)\s*,", thesis["referencesBibtex"]))
@@ -177,11 +246,37 @@ def render(data: dict, output: Path, assets_root: Path, compile_pdf: bool) -> No
     (output / "thesis-references.bib").write_text(bibliography, encoding="utf-8")
     (output / "main.tex").write_text((output / "sztuthesis_main.tex").read_text(encoding="utf-8"), encoding="utf-8")
     if compile_pdf:
-        subprocess.run([sys.executable, "scripts/check_fonts.py"], cwd=output, check=True)
-        subprocess.run(["latexmk", "-no-shell-escape", "-interaction=nonstopmode", "-file-line-error", "-halt-on-error", "-xelatex", "main.tex"], cwd=output, check=True)
-        log = (output / "main.log").read_text(encoding="utf-8", errors="replace")
-        if re.search(r"(?:Reference .* undefined|Citation .* undefined|There were undefined|Missing character:|Overfull \\hbox)", log):
-            raise ValueError("最终 PDF 仍有未解析引用、缺字或越界内容。")
+        run_font_check(output / "scripts/check_fonts.py", output)
+        command = [
+            "latexmk",
+            "-no-shell-escape",
+            "-interaction=nonstopmode",
+            "-file-line-error",
+            "-halt-on-error",
+            "-xelatex",
+            "main.tex",
+        ]
+        try:
+            subprocess.run(command, cwd=output, check=True)
+        except subprocess.CalledProcessError as exc:
+            raise ValueError(
+                f"XeLaTeX 编译失败（退出码 {exc.returncode}）：{' '.join(command)}；"
+                f"日志：{output / 'main.log'}"
+            ) from exc
+        pdf = output / "main.pdf"
+        if not pdf.is_file():
+            raise ValueError(f"XeLaTeX 未产出 PDF，编译未完成：{pdf}")
+        log_path = output / "main.log"
+        if not log_path.is_file():
+            raise ValueError(f"XeLaTeX 未生成日志，无法检查引用：{log_path}")
+        log = log_path.read_text(encoding="utf-8", errors="replace")
+        fatal, warnings = log_findings(log)
+        if fatal:
+            detail = "；".join(fatal[:5]) + (f" 等 {len(fatal)} 项" if len(fatal) > 5 else "")
+            raise ValueError(f"最终 PDF 仍有未解析引用或未定义控制序列：{detail}")
+    else:
+        warnings = []
+    return warnings
 
 
 def main() -> int:
@@ -196,10 +291,14 @@ def main() -> int:
         parser.error("output directory is not empty")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     try:
-        render(json.loads(args.data.read_text(encoding="utf-8")), args.output_dir, args.assets_root.resolve(), args.compile)
+        warnings = render(json.loads(args.data.read_text(encoding="utf-8")), args.output_dir, args.assets_root.resolve(), args.compile)
     except (KeyError, OSError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"thesis render failed: {exc}", file=sys.stderr)
         return 2
+    if warnings:
+        print(f"thesis render warnings: {len(warnings)} 项排版警告（不影响 PDF 生成，请人工复核）", file=sys.stderr)
+        for warning in warnings[:20]:
+            print(f"  {warning}", file=sys.stderr)
     print(args.output_dir / ("main.pdf" if args.compile else "main.tex"))
     return 0
 

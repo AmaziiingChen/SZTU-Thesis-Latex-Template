@@ -3,7 +3,7 @@
 本目录只包含为模板回归而编写的虚构资料，不对应真实作者、机构、出版物、标准、专利、
 数据集或网络资源，也不可作为学术文献引用。
 
-`bibliography-stress.tex` 与 `bibliography-stress.bib` 用于验证 GB/T 7714—2015 数字顺序制、
+`bibliography-stress.tex` 与 `bibliography-stress.bib` 用于验证 GB/T 7714—2025 数字顺序制、
 连续和不连续上标引用、重复引用、双位编号、长条目悬挂缩进、跨页、DOI/URL 断行以及中西文
 字体。所有网址均使用保留的 `.invalid` 顶级域名，所有 DOI 均以无效前缀 `10.0000` 开头。
 
