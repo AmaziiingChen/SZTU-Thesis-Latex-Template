@@ -98,8 +98,6 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 \RequirePackage{lastpage}
 % 控制元素编号与章节的关系
 \RequirePackage{chngcntr}
-% 字符串处理
-\RequirePackage{xstring}
 
 % 使用 GB/T 7714—2025 数字顺序制（2025-12-02 发布、2026-07-01 实施，全部代替
 % GB/T 7714—2015）；样式取自 gbt7714-bibtex-style v3.1.2（2026-11-16）的 2025 顺序
@@ -351,9 +349,21 @@ Just choose `xelatex', no `pdflatex' or `latex' and so on.}
 %----------------------------------------------------------------------%
 % 以下定义封面相关命令和相应的宏，以titleen为例，\titleen为实际在源码中使用的命令，一旦执行就会因为\gdef\@titleen{#1}使得其产生一个\@titleen的宏，而该宏能够在后续的环境中使用。
 \newcommand*{\titlecn}[1]{\gdef\@titlecn{#1}}                           % 中文标题
-\newcommand*{\titlecnSingleLine}{\StrSubstitute{\@titlecn}{\\}{}}         % 中文标题去掉换行“\\”
+% 单行标题用于声明页与页眉：去掉换行“\\”，但必须原样保留上下标、数学符号等标题格式。
+% 不能用 xstring 的 \StrSubstitute：它会逐字符展开参数，遇到 \textsuperscript 里的
+% \iffalse 保护逻辑就报“Incomplete \iffalse”。这里改为在分组内把 \\ 临时变成空操作，
+% 排版标题本身，既能去掉换行，又不会展开标题里的命令。
+\newcommand*{\titlecnSingleLine}{%
+  \begingroup
+  \let\\\relax
+  \@titlecn
+  \endgroup}
 \newcommand*{\titleen}[1]{\gdef\@titleen{#1}}                           % 英文标题
-\newcommand*{\titleenSingleLine}{\StrSubstitute{\@titleen}{\\}{}}         % 英文标题去掉换行“\\”
+\newcommand*{\titleenSingleLine}{%
+  \begingroup
+  \let\\\relax
+  \@titleen
+  \endgroup}
 \newcommand*{\priormajor}[1]{\gdef\@priormajor{#1}}                     % 一级学科（学科专业）
 \newcommand*{\minormajor}[1]{\gdef\@minormajor{#1}}                     % 二级学科（学科方向）
 \newcommand*{\interestmajor}[1]{\gdef\@interestmajor{#1}}               % 研究方向，关键词组
